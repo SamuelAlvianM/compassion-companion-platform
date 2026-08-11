@@ -220,10 +220,15 @@ const itemSesiId = ref('')
 const itemBagian = ref<Bagian>('materi')
 const itemDiubah = ref<ItemTersunting | null>(null)
 
+// Galeri memakai modal unggah banyak foto; dua bagian lain tetap lewat form
+// satu-item. Alasannya ada di GaleriUnggahModal.vue.
+const galeriModal = ref(false)
+
 const tambahItem = (sesiId: string, bagian: Bagian) => {
   itemSesiId.value = sesiId
   itemBagian.value = bagian
   itemDiubah.value = null
+  if (bagian === 'galeri') { galeriModal.value = true; return }
   itemModal.value = true
 }
 
@@ -542,6 +547,14 @@ const BAGIAN: { key: Bagian, label: () => string }[] = [
       :sesi-id="itemSesiId"
       :bagian="itemBagian"
       :item="itemDiubah"
+      @tersimpan="emit('ubah')"
+    />
+
+    <!-- Unggah banyak foto galeri sekaligus -->
+    <GaleriUnggahModal
+      v-model:open="galeriModal"
+      :sesi-id="itemSesiId"
+      :is-en="isEn"
       @tersimpan="emit('ubah')"
     />
 

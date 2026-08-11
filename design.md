@@ -5,12 +5,12 @@ Isinya **deskriptif**: apa yang benar-benar ada di kode per 11 Agustus 2026, buk
 rencana atau cita-cita. Pasangan dokumen ini adalah [`journal.md`](journal.md)
 (catatan per sesi kerja).
 
-> **Catatan sinkronisasi.** Dokumen ini mencerminkan keadaan setelah Sesi 3
-> (11 Agu 2026). Isi `journal.md` Sesi 1 sudah banyak yang tidak berlaku —
-> pernyataan "tidak ada ORM", "Tailwind praktis mati", dan "tidak ada backend"
-> semuanya sudah usang. Selisihnya dirangkum di
-> [§10](#10-selisih-terhadap-journalmd-sesi-1); entri Sesi 2 dan 3 di `journal.md`
-> mencatat apa yang berubah dan mengapa.
+> **Catatan sinkronisasi.** Badan dokumen ini mencerminkan keadaan setelah Sesi 3
+> (11 Agu 2026), dengan tambalan Sesi 9 di [§12](#12-perubahan-sesi-9-12-agu-2026).
+> Isi `journal.md` Sesi 1 sudah banyak yang tidak berlaku — pernyataan "tidak ada
+> ORM", "Tailwind praktis mati", dan "tidak ada backend" semuanya sudah usang.
+> Selisihnya dirangkum di [§10](#10-selisih-terhadap-journalmd-sesi-1); entri Sesi 2
+> dan seterusnya di `journal.md` mencatat apa yang berubah dan mengapa.
 
 ---
 
@@ -725,5 +725,94 @@ Daftar ini murni observasi arsitektural; prioritas dan keputusannya bukan bagian
 
 ---
 
-*Dokumen ini menggambarkan keadaan kode per 11 Agustus 2026. Perbarui bersamaan
-dengan entri baru di `journal.md` bila struktur atau sistem gaya berubah.*
+---
+
+## 12. Perubahan Sesi 9 (12 Agu 2026)
+
+Bagian ini menambal §5, §6, dan §8 di atas tanpa menulis ulang keseluruhannya.
+Alasan di balik tiap keputusan ada di entri Sesi 9 `journal.md`.
+
+### 12.1 Fase menang penuh atas `status`
+
+Tabel di [§5.2](#52-skema) tetap benar tentang **apa** kedua konsep itu, tapi
+pembagian perannya berubah: `status` sudah **tidak muncul di antarmuka mana pun**.
+
+| | keadaan sekarang |
+|---|---|
+| `status` | masih kolom `cc_kegiatan.status`, tapi selalu `terbit` untuk apa pun yang disimpan dari formulir admin. `batal` masih dihormati `faseKegiatan()`. Tidak ada UI yang memasangnya. |
+| **fase** | satu-satunya keadaan yang terlihat — di kartu publik, tabel admin, dan filternya |
+
+Migrasi `0005` menerbitkan seluruh baris `draft` yang tertinggal. **Konsekuensinya:
+tidak ada lagi cara menyembunyikan event yang belum siap.** Kalau itu dibutuhkan
+lagi, kembalikan sebagai satu sakelar "Tampilkan di publik", bukan empat status.
+
+`harga` juga dicabut dari tabel dan formulir; kolomnya tetap ada (default 0).
+
+### 12.2 Kolom baru & aturan waktu
+
+Migrasi `0005_jam-kegiatan` menambah dua kolom di `cc_kegiatan`:
+
+| Kolom | Tipe | Catatan |
+|---|---|---|
+| `jam_mulai` | `text(5)` | `HH:MM`, menit **kelipatan 5** (ditegakkan `keJam()`) |
+| `jam_selesai` | `text(5)` | idem |
+
+Jam sengaja **tidak** digabung ke `tanggal_mulai`. `faseKegiatan()` menganggap
+kegiatan berlangsung sepanjang hari `tanggalMulai`; begitu jam ikut masuk, event
+jam 14.00 tercatat "mendatang" sepanjang pagi di hari-H.
+
+`waktu` (teks bebas, Sesi 6) tetap ada sebagai cadangan tampilan selama kedua kolom
+jam kosong — lihat `rentangJam()` di `utils/waktuEvent.ts`.
+
+Aturan yang ditegakkan `server/utils/validasi-event.ts`:
+
+- `tanggalSelesai` boleh **sama** dengan `tanggalMulai`; yang ditolak hanya mundur.
+- `jamSelesai > jamMulai` **hanya** untuk event yang jatuh di satu hari.
+- `keTanggal()` menambahkan `+07:00` pada bentuk `YYYY-MM-DDTHH:MM`. Tanpa itu,
+  zona mesin yang membaca yang dipakai — dan produksi berjalan UTC.
+
+### 12.3 Endpoint yang berubah
+
+| Method | Route | Perubahan |
+|---|---|---|
+| `GET` | `/api/events` | kirim `jamMulai`, `jamSelesai`, `createdAt` |
+| `GET` | `/api/events/:slug/detail` | kirim `jamMulai`, `jamSelesai` |
+| `GET` | `/api/admin/events` | query `status` → **`fase`** (disaring di JS); kirim jam + `tutupPendaftaran`; tambah `meta.perFase` |
+| `GET` | `/api/media` | query `cari` (LIKE pada `originalName`, di SQL karena berpaginasi) |
+
+### 12.4 Komponen baru
+
+| Berkas | Peran |
+|---|---|
+| `components/WaktuPicker.vue` | pemilih jam dua kolom, menit per 5, prop `minimal` |
+| `components/EventJadwal.vue` | dua baris jadwal di panel info event + penyuntingnya |
+| `components/PustakaMediaModal.vue` | pemilih berkas pustaka (dulu panel di dalam form) |
+| `components/GambarEditor.vue` | potong / putar / zoom satu gambar |
+| `components/GaleriUnggahModal.vue` | unggah banyak foto galeri sekaligus |
+| `utils/waktuEvent.ts` | pemformat jam & batas pendaftaran, dipakai tiga tempat |
+| `utils/potongGambar.ts` | model `PotonganGambar` + eksekutor `<canvas>` |
+
+`components/SesiPengaturan.vue` kini **autosave** (800 ms) tanpa tombol simpan, dan
+dipakai dua tempat: penyuntingan halaman publik dan tab Materi di
+`/admin/event/[id]` (dengan prop `tanpaTampil`).
+
+**Potongan gambar disimpan dalam piksel sumber setelah diputar, bukan koordinat
+layar.** Zoom dan geser murni alat lihat. Kalau bagian ini disentuh lagi, baca
+komentar kepala `utils/potongGambar.ts` lebih dulu — versi berbasis layar membuat
+hasil potongan bergantung pada lebar jendela browser.
+
+### 12.5 Catatan gaya
+
+Warna chip status di `AdminPesertaTab.vue` ditulis sebagai **kelas utuh** dalam
+sebuah peta, bukan disusun runtime (`bg-cc-${warna}-500`). Tailwind memindai berkas
+sebagai teks; kelas yang baru terbentuk saat runtime tidak pernah diterbitkan.
+Aturan yang sama berlaku untuk setiap kelas warna dinamis di project ini.
+
+Menu **Contributors dikomentari** di `layouts/admin.vue` — halamannya masih array
+literal dan belum menyentuh database. Rutenya sendiri tetap hidup.
+
+---
+
+*Badan dokumen (§1–§11) menggambarkan keadaan kode per 11 Agustus 2026; §12
+menambalnya untuk 12 Agustus 2026. Perbarui bersamaan dengan entri baru di
+`journal.md` bila struktur atau sistem gaya berubah.*

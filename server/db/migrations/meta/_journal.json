@@ -36,6 +36,13 @@
       "when": 1786432433027,
       "tag": "0004_status-peserta",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786481623645,
+      "tag": "0005_jam-kegiatan",
+      "breakpoints": true
     }
   ]
 }

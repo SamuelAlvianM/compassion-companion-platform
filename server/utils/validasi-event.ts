@@ -18,15 +18,50 @@ const teksAtauNull = (v: unknown) => {
 
 export const salah = (pesan: string) => createError({ statusCode: 400, statusMessage: pesan })
 
-/** Tanggal dari `YYYY-MM-DD` atau ISO; selalu ditafsirkan sebagai WIB. */
+/**
+ * Tanggal dari `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, atau ISO penuh; selalu
+ * ditafsirkan sebagai WIB.
+ *
+ * Bentuk `…THH:MM` tanpa zona ditambahi `+07:00` di sini, bukan dibiarkan dibaca
+ * `new Date()`: tanpa zona, JS memakai zona waktu SERVER. Di mesin pengembangan
+ * kebetulan sama-sama WIB, jadi kesalahannya baru muncul di server produksi yang
+ * berjalan UTC — batas pendaftaran akan bergeser tujuh jam tanpa galat apa pun.
+ */
 export const keTanggal = (v: unknown): Date | null => {
   const s = teks(v)
   if (!s) return null
-  const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00+07:00` : s
+  let iso = s
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) iso = `${s}T00:00:00+07:00`
+  else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(s)) iso = `${s}${s.length === 16 ? ':00' : ''}+07:00`
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) throw salah(`Tanggal tidak valid: ${s}`)
   return d
 }
+
+/**
+ * Jam `HH:MM` 24 jam dengan menit kelipatan 5.
+ *
+ * Kelipatan lima ditegakkan di server, bukan hanya di timepicker: pemilih jam di
+ * form memang hanya menawarkan kelipatan lima, tapi nilai yang tidak lewat form
+ * (mis. PATCH langsung) akan membuat halaman menampilkan jam yang tidak pernah
+ * bisa dipilih ulang oleh pemiliknya sendiri.
+ */
+export const keJam = (v: unknown): string | null => {
+  const s = teks(v)
+  if (!s) return null
+  const cocok = /^(\d{1,2}):(\d{2})$/.exec(s)
+  if (!cocok) throw salah(`Jam tidak valid: ${s}. Pakai bentuk HH:MM.`)
+  const jam = Number(cocok[1])
+  const menit = Number(cocok[2])
+  if (jam > 23 || menit > 59) throw salah(`Jam tidak valid: ${s}`)
+  if (menit % 5 !== 0) throw salah('Menit harus kelipatan 5')
+  return `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}`
+}
+
+/** `YYYY-MM-DD` sebuah tanggal menurut WIB — untuk membandingkan hari, bukan jam. */
+const hariWib = (d: Date) => new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Jakarta',
+}).format(d)
 
 /**
  * Slug unik. Bentrokan diselesaikan dengan menambah akhiran angka, bukan ditolak —
@@ -64,6 +99,8 @@ export interface BodyKegiatan {
   tautanDaring: string | null
   tanggalMulai: Date
   tanggalSelesai: Date | null
+  jamMulai: string | null
+  jamSelesai: string | null
   tutupPendaftaran: Date | null
   kuota: number | null
   harga: number
@@ -79,11 +116,27 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
   if (!tanggalMulai) throw salah('Tanggal mulai wajib diisi')
 
   const tanggalSelesai = keTanggal(body.tanggalSelesai)
+  // Boleh SAMA — event sehari memang begitu; yang ditolak hanya yang mundur.
   if (tanggalSelesai && tanggalSelesai < tanggalMulai) {
     throw salah('Tanggal selesai tidak boleh mendahului tanggal mulai')
   }
 
-  const status = teks(body.status) || 'draft'
+  const jamMulai = keJam(body.jamMulai)
+  const jamSelesai = keJam(body.jamSelesai)
+
+  // Urutan jam hanya bisa diperiksa pada event yang jatuh di SATU hari. Untuk
+  // event berhari-hari, "selesai 09.00" sesudah "mulai 16.00" justru normal:
+  // keduanya jam pada hari yang berbeda.
+  const sehari = !tanggalSelesai || hariWib(tanggalSelesai) === hariWib(tanggalMulai)
+  if (sehari && jamMulai && jamSelesai && jamSelesai <= jamMulai) {
+    throw salah('Jam selesai harus setelah jam mulai')
+  }
+
+  // Status tidak lagi diminta formulir mana pun — fase kini murni turunan tanggal.
+  // Bawaannya `terbit` supaya event yang baru dibuat langsung terlihat; nilainya
+  // masih diterima kalau memang dikirim, karena `batal` tetap dihormati
+  // faseKegiatan() dan suatu saat bisa perlu dipasang lewat API.
+  const status = teks(body.status) || 'terbit'
   if (!KEGIATAN_STATUS.includes(status as never)) throw salah(`Status tidak dikenal: ${status}`)
 
   const harga = Number(body.harga ?? 0)
@@ -134,6 +187,8 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
     tautanDaring: teksAtauNull(body.tautanDaring),
     tanggalMulai,
     tanggalSelesai,
+    jamMulai,
+    jamSelesai,
     tutupPendaftaran: keTanggal(body.tutupPendaftaran),
     kuota,
     harga: Math.round(harga),

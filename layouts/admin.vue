@@ -16,7 +16,11 @@ const menu = computed(() => {
     { to: '/admin/members', label: 'Member', icon: 'i-lucide-users' },
     { to: '/admin/events', label: 'Event', icon: 'i-lucide-calendar-days' },
     { to: '/admin/jurnal', label: 'Jurnal', icon: 'i-lucide-notebook-pen' },
-    { to: '/admin/contributors', label: 'Contributors', icon: 'i-lucide-pen-line' },
+    // Contributors disembunyikan dulu — halamannya masih array literal di dalam
+    // .vue dan belum menyentuh database sama sekali, jadi menu yang mengarah ke
+    // sana hanya menjanjikan sesuatu yang belum ada. Halamannya sendiri tetap
+    // hidup di /admin/contributors; kembalikan baris ini kalau sudah tersambung.
+    // { to: '/admin/contributors', label: 'Contributors', icon: 'i-lucide-pen-line' },
   ].filter(item => item.tampil !== false)
 })
 

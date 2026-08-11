@@ -42,10 +42,29 @@ export const ccKegiatan = sqliteTable(
     /** Tempat daring, mis. link Zoom. Kosong berarti kegiatan luring. */
     tautanDaring: text('tautan_daring', { length: 500 }),
 
-    /** Disimpan sebagai unix timestamp; dipasangkan dengan UI date + time picker. */
+    /**
+     * Tanggal saja — jamnya ditaruh di `jamMulai`/`jamSelesai`, bukan digabung ke
+     * timestamp ini. Alasannya fase: `faseKegiatan()` menganggap kegiatan
+     * berlangsung sepanjang HARI tanggalMulai, dan itu justru yang diminta
+     * ("kalau tanggal hari ini, ya berlangsung"). Kalau jam ikut masuk ke sini,
+     * event jam 14.00 akan tercatat "mendatang" sepanjang pagi di hari-H.
+     */
     tanggalMulai: integer('tanggal_mulai', { mode: 'timestamp' }).notNull(),
     tanggalSelesai: integer('tanggal_selesai', { mode: 'timestamp' }),
-    /** Batas akhir pendaftaran */
+
+    /**
+     * Jam acara, `HH:MM` 24 jam, menit kelipatan 5 (ditegakkan di validator).
+     * Terutama berarti untuk event sehari, yang tanggal selesainya tidak menambah
+     * informasi apa pun — jamnya yang menentukan orang bisa ikut atau tidak.
+     *
+     * Menggantikan kolom `waktu` yang berupa teks bebas ("09.00 – 16.30 WIB").
+     * `waktu` sengaja TIDAK dihapus: ia masih memuat isi event lama dan dipakai
+     * sebagai cadangan tampilan selama kedua jam ini masih kosong.
+     */
+    jamMulai: text('jam_mulai', { length: 5 }),
+    jamSelesai: text('jam_selesai', { length: 5 }),
+
+    /** Batas akhir pendaftaran — tanggal SEKALIGUS jam, jadi timestamp penuh. */
     tutupPendaftaran: integer('tutup_pendaftaran', { mode: 'timestamp' }),
 
     kuota: integer('kuota'),

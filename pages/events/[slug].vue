@@ -67,6 +67,15 @@ const simpanKolom = async (field: string, nilai: string) => {
 }
 
 /**
+ * Beberapa kolom sekaligus dalam satu PATCH — dipakai blok jadwal, yang jam acara
+ * dan batas pendaftarannya harus tersimpan bersama atau tidak sama sekali.
+ */
+const simpanBanyak = async (body: Record<string, unknown>) => {
+  await $fetch(`/api/admin/events/${e.value!.id}`, { method: 'PATCH', body })
+  await refresh()
+}
+
+/**
  * Testimoni memakai endpoint yang sama, tapi mengirim daftar utuh: ia satu kolom
  * JSON tanpa id per baris, jadi tidak ada yang bisa di-PATCH sepotong.
  */
@@ -173,14 +182,11 @@ const t = computed(() => isEn.value
             <div class="eyebrow">{{ t.info }}</div>
             <dl>
               <div><dt>{{ t.tanggal }}</dt><dd>{{ rentang }}</dd></div>
-              <div>
-                <dt>{{ t.waktu }}</dt>
-                <dd>
-                  <EditableText :model-value="e.waktu" field="waktu" label="Waktu acara" :simpan="simpanKolom">
-                    {{ e.waktu ?? '—' }}
-                  </EditableText>
-                </dd>
-              </div>
+
+              <!-- Jam acara & batas pendaftaran: nilainya terstruktur, jadi
+                   penyuntingannya memakai pemilih jam, bukan kotak teks bebas. -->
+              <EventJadwal :event="e" :is-en="isEn" :simpan="simpanBanyak" />
+
               <div>
                 <dt>{{ t.lokasi }}</dt>
                 <dd>

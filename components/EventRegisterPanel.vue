@@ -25,6 +25,9 @@ interface EventRingkas {
   sisaKuota: number | null
   pendaftaranTerbuka: boolean
   sudahTerdaftar?: boolean
+  /** Ditampilkan pada dua keadaan: sebagai tenggat saat masih terbuka, dan sebagai
+      alasan saat sudah tertutup. */
+  tutupPendaftaran?: string | null
 }
 
 const props = defineProps<{ event: EventRingkas, isEn: boolean }>()
@@ -93,6 +96,11 @@ const t = computed(() => props.isEn
       penuh: 'Kegiatan ini sudah penuh.', ditutup: 'Pendaftaran kegiatan ini sudah ditutup.',
       wajib: 'Nama lengkap, nomor WhatsApp, dan email wajib diisi.',
     })
+
+/** Tenggat pendaftaran, hanya untuk event yang pendaftarannya masih terbuka. */
+const tenggat = computed(() => props.event.pendaftaranTerbuka && props.event.tutupPendaftaran
+  ? `${props.isEn ? 'Register before' : 'Daftar sebelum'} ${tanggalJamSingkat(props.event.tutupPendaftaran, props.isEn)}`
+  : '')
 
 const judulEvent = computed(() =>
   props.isEn ? (props.event.judulEn ?? props.event.judul) : props.event.judul)
@@ -184,6 +192,11 @@ const keTamu = () => { mode.value = 'tamu'; galat.value = '' }
       <div class="eyebrow">{{ t.tutupEyebrow }}</div>
       <h2 class="section-title">{{ t.tutupJudul }}</h2>
       <p class="muted">{{ event.sisaKuota === 0 ? t.penuh : t.ditutup }}</p>
+      <!-- Tanggalnya disebutkan supaya "sudah ditutup" bisa dicocokkan orang dengan
+           ingatannya sendiri, bukan diterima begitu saja. -->
+      <p v-if="event.sisaKuota !== 0 && event.tutupPendaftaran" class="mt-1 text-sm text-cc-stone-500">
+        {{ isEn ? 'Closed on' : 'Ditutup pada' }} {{ tanggalJamSingkat(event.tutupPendaftaran, isEn) }}
+      </p>
     </div>
 
     <!-- Wajah 1: sudah ada sesi -> tinggal konfirmasi -->
@@ -212,6 +225,11 @@ const keTamu = () => { mode.value = 'tamu'; galat.value = '' }
       <div class="eyebrow">{{ t.daftarEyebrow }}</div>
       <h2 class="section-title">{{ t.daftarJudul }}</h2>
       <p class="muted">{{ t.daftarIsi }}</p>
+
+      <p v-if="tenggat" class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1 text-xs font-semibold text-cc-green-800">
+        <UIcon name="i-lucide-hourglass" class="size-3.5 text-cc-brown-500" />
+        {{ tenggat }}
+      </p>
 
       <UForm :state="form" class="mt-5 space-y-4" @submit="bukaKonfirmasi">
         <UFormField :label="t.nama" name="nama" required>

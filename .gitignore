@@ -23,6 +23,14 @@ data/*.db-wal
 .env.*
 !.env.example
 
+# Rahasia produksi + artefak deploy. Lihat deploy/.env.example.
+deploy/.env
+deploy/cc.db.snapshot
+
+# Snapshot database produksi (diambil sebelum tiap --migrasi). Isinya seluruh
+# situs: akun, email, hash password, dan BLOB media. Tidak pernah boleh ke repo.
+backup/
+
 # Log
 dev.log
 *.log

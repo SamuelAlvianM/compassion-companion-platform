@@ -1,12 +1,21 @@
 <script setup lang="ts">
-// Baris pengaturan satu sesi (judul, tanggal, tampil) di dalam panel sesi pada
-// halaman detail event — hanya tergambar saat mode sunting menyala.
+// Baris pengaturan satu sesi (judul, tanggal) — dipakai di panel sesi halaman
+// detail event maupun di tab "Materi" pada /admin/event/[id].
 //
-// Komponen sendiri, bukan blok di dalam EventResources: drafnya milik satu sesi,
-// dan menyimpannya di induk berarti sebuah peta `Record<id, draf>` yang harus
-// dijaga tetap selaras dengan daftar sesi setiap kali datanya dimuat ulang.
-// Dengan satu komponen per sesi, drafnya hidup dan mati bersama sesinya sendiri —
-// Vue yang mengurus pembuatan dan pembuangannya lewat `:key`.
+// Komponen sendiri, bukan blok di dalam induknya: drafnya milik satu sesi, dan
+// menyimpannya di induk berarti sebuah peta `Record<id, draf>` yang harus dijaga
+// tetap selaras dengan daftar sesi setiap kali datanya dimuat ulang. Dengan satu
+// komponen per sesi, drafnya hidup dan mati bersama sesinya sendiri — Vue yang
+// mengurus pembuatan dan pembuangannya lewat `:key`.
+//
+// TIDAK ADA TOMBOL SIMPAN. Perubahan disimpan sendiri 800 ms setelah pengetikan
+// berhenti. Alasannya: tiap tindakan lain di panel ini — tambah item, geser, hapus
+// — sudah menyimpan dirinya sendiri seketika, sehingga satu-satunya kotak yang
+// menuntut tombol justru yang paling mudah terlupakan. Judul sesi yang diketik lalu
+// ditinggalkan hilang tanpa tanda apa pun.
+//
+// Jeda 800 ms, bukan menyimpan tiap ketukan: menyimpan per huruf berarti satu
+// permintaan per karakter, dan tiap balasan memicu induk memuat ulang daftarnya.
 
 import type { SesiPublik } from './EventResources.vue'
 
@@ -17,6 +26,15 @@ const props = defineProps<{
   terakhir?: boolean
   /** Ada tindakan lain yang sedang berjalan di panel ini. */
   sibuk?: boolean
+  /**
+   * Sembunyikan sakelar "Tampil".
+   *
+   * Dipakai tab Materi di dashboard, tempat pengelola sedang menyiapkan isi dan
+   * bukan mengatur apa yang terbit. Sakelarnya tetap ada di penyuntingan halaman
+   * publik — di sana pengelola melihat langsung apa yang hilang saat dimatikan,
+   * yang di dalam formulir admin hanya berupa kata "Tampil" tanpa akibat terlihat.
+   */
+  tanpaTampil?: boolean
 }>()
 
 const emit = defineEmits<{ tersimpan: [], geser: ['naik' | 'turun'], hapus: [] }>()
@@ -37,24 +55,35 @@ const dari = (s: SesiPublik) => ({
 
 const draf = ref(dari(props.sesi))
 
+const sama = (a: ReturnType<typeof dari>, b: ReturnType<typeof dari>) =>
+  a.judul === b.judul && a.judulEn === b.judulEn
+  && a.tanggalYmd === b.tanggalYmd && a.tampil === b.tampil
+
 // Draf disusun ulang setiap barisnya berganti — termasuk sesudah disimpan, ketika
 // induk memuat ulang datanya. Yang sedang diketik tidak hilang karena `sesi` hanya
 // berubah kalau nilainya di server memang berbeda.
-watch(() => props.sesi, (baru) => { draf.value = dari(baru) })
-
-const berubah = computed(() => {
-  const asli = dari(props.sesi)
-  return draf.value.judul !== asli.judul
-    || draf.value.judulEn !== asli.judulEn
-    || draf.value.tanggalYmd !== asli.tanggalYmd
-    || draf.value.tampil !== asli.tampil
+watch(() => props.sesi, (baru) => {
+  const segar = dari(baru)
+  if (!sama(segar, draf.value)) draf.value = segar
 })
 
-const menyimpan = ref(false)
+type Keadaan = 'diam' | 'menunggu' | 'menyimpan' | 'tersimpan' | 'gagal'
+const keadaan = ref<Keadaan>('diam')
 const galat = ref('')
 
+let timer: ReturnType<typeof setTimeout> | undefined
+
 const simpan = async () => {
-  menyimpan.value = true
+  // Judul kosong ditolak server. Menahannya di sini bukan sekadar menghemat satu
+  // permintaan: dengan autosave, galat itu akan muncul di tengah pengetikan —
+  // tepat saat orang baru menghapus judul lama untuk menggantinya.
+  if (!draf.value.judul.trim()) {
+    keadaan.value = 'gagal'
+    galat.value = 'Judul sesi tidak boleh kosong.'
+    return
+  }
+
+  keadaan.value = 'menyimpan'
   galat.value = ''
   try {
     await $fetch(`/api/admin/sesi/${props.sesi.id}`, {
@@ -66,43 +95,73 @@ const simpan = async () => {
         tampil: draf.value.tampil,
       },
     })
+    keadaan.value = 'tersimpan'
     emit('tersimpan')
   }
   catch (e: any) {
+    keadaan.value = 'gagal'
     galat.value = e?.data?.statusMessage ?? e?.statusMessage ?? 'Gagal menyimpan sesi.'
   }
-  finally { menyimpan.value = false }
 }
+
+watch(draf, (nilai) => {
+  if (sama(nilai, dari(props.sesi))) return
+  clearTimeout(timer)
+  keadaan.value = 'menunggu'
+  timer = setTimeout(simpan, 800)
+}, { deep: true })
+
+// Perubahan yang masih menunggu jedanya harus tetap tersimpan saat panelnya
+// ditutup — menutup accordion atau berpindah tab membuang komponen ini, dan
+// bersamanya timer yang belum sempat berbunyi.
+onBeforeUnmount(() => {
+  if (keadaan.value !== 'menunggu') return
+  clearTimeout(timer)
+  simpan()
+})
+
+const penanda = computed(() => ({
+  diam: { teks: '', ikon: '' },
+  menunggu: { teks: 'Menyimpan…', ikon: 'i-lucide-ellipsis' },
+  menyimpan: { teks: 'Menyimpan…', ikon: 'i-lucide-loader' },
+  tersimpan: { teks: 'Tersimpan', ikon: 'i-lucide-check' },
+  gagal: { teks: 'Gagal', ikon: 'i-lucide-triangle-alert' },
+}[keadaan.value]))
 </script>
 
 <template>
   <div class="mb-5 rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
-    <div class="grid items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_auto]">
+    <div
+      class="grid items-end gap-3"
+      :class="tanpaTampil
+        ? 'md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]'
+        : 'md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_auto]'"
+    >
       <UFormField label="Judul sesi" size="sm">
         <UInput v-model="draf.judul" class="w-full" />
       </UFormField>
       <UFormField label="Judul (EN)" size="sm" hint="opsional">
         <UInput v-model="draf.judulEn" class="w-full" />
       </UFormField>
-      <UFormField label="Tanggal" size="sm">
+      <UFormField label="Tanggal sesi" size="sm">
         <UInput v-model="draf.tanggalYmd" type="date" class="w-full" />
       </UFormField>
-      <UTooltip text="Sembunyikan sesi ini dari halaman publik tanpa menghapus isinya">
+      <UTooltip v-if="!tanpaTampil" text="Sembunyikan sesi ini dari halaman publik tanpa menghapus isinya">
         <USwitch v-model="draf.tampil" label="Tampil" />
       </UTooltip>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
-      <UButton
-        color="secondary"
-        size="xs"
-        icon="i-lucide-save"
-        :disabled="!berubah"
-        :loading="menyimpan"
-        @click="simpan"
+      <!-- Penanda keadaan menggantikan tombol simpan. Ia harus ada: tanpa umpan
+           balik apa pun, autosave tidak bisa dibedakan dari tidak menyimpan. -->
+      <span
+        v-if="penanda.teks"
+        class="inline-flex items-center gap-1 text-xs"
+        :class="keadaan === 'gagal' ? 'text-red-700' : keadaan === 'tersimpan' ? 'text-cc-green-800' : 'text-cc-stone-500'"
       >
-        Simpan sesi
-      </UButton>
+        <UIcon :name="penanda.ikon" class="size-3.5" :class="keadaan === 'menyimpan' ? 'animate-spin' : ''" />
+        {{ penanda.teks }}
+      </span>
 
       <span class="flex-1" />
 

@@ -11,12 +11,25 @@ const router = useRouter()
 const id = computed(() => String(route.params.id))
 const baru = computed(() => id.value === 'new')
 
+// Harga dan status sengaja tidak ada di sini.
+//
+// Harga: event komunitas ini tidak menagih lewat situs — pembayaran diurus admin
+// lewat WhatsApp — jadi angka di formulir hanya menuntut diisi tanpa menentukan
+// apa pun. Kolomnya masih ada di database (default 0) untuk transaksi yang dicatat
+// terpisah.
+//
+// Status: fase kini murni turunan tanggal (server/utils/kegiatan.ts), jadi
+// "mendatang / berlangsung / selesai" tidak lagi bisa berselisih dengan
+// kalendernya. Server memasang `terbit` untuk setiap kegiatan yang disimpan dari
+// sini — lihat catatan di bacaKegiatan().
 const kosong = () => ({
   judul: '', judulEn: '', deskripsi: '', deskripsiEn: '',
   lokasi: '', tautanDaring: '',
-  tanggalMulai: '', tanggalSelesai: '', tutupPendaftaran: '',
-  kuota: '' as string | number, harga: 0,
-  status: 'draft', coverMediaId: '',
+  tanggalMulai: '', tanggalSelesai: '',
+  jamMulai: '', jamSelesai: '',
+  tutupTanggal: '', tutupJam: '23:55',
+  kuota: '' as string | number,
+  coverMediaId: '',
 })
 
 const form = ref(kosong())
@@ -34,6 +47,16 @@ const keYmd = (nilai: string | null) => {
   }).format(new Date(nilai))
 }
 
+/** Timestamp → `HH:MM` WIB, dibulatkan ke bawah ke kelipatan 5 menit supaya nilai
+    lama tetap bisa diperlihatkan kembali oleh WaktuPicker. */
+const keJamWib = (nilai: string | null) => {
+  if (!nilai) return ''
+  const [h, m] = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta',
+  }).format(new Date(nilai)).split(':')
+  return `${h}:${String(Math.floor(Number(m) / 5) * 5).padStart(2, '0')}`
+}
+
 const muat = async () => {
   if (baru.value) { form.value = kosong(); sesi.value = []; return }
   // Saat SSR, $fetch tidak ikut membawa cookie browser — tanpa penerusan ini,
@@ -46,9 +69,11 @@ const muat = async () => {
     deskripsi: d.deskripsi ?? '', deskripsiEn: d.deskripsiEn ?? '',
     lokasi: d.lokasi ?? '', tautanDaring: d.tautanDaring ?? '',
     tanggalMulai: keYmd(d.tanggalMulai), tanggalSelesai: keYmd(d.tanggalSelesai),
-    tutupPendaftaran: keYmd(d.tutupPendaftaran),
-    kuota: d.kuota ?? '', harga: d.harga ?? 0,
-    status: d.status ?? 'draft', coverMediaId: d.coverMediaId ?? '',
+    jamMulai: d.jamMulai ?? '', jamSelesai: d.jamSelesai ?? '',
+    tutupTanggal: keYmd(d.tutupPendaftaran),
+    tutupJam: keJamWib(d.tutupPendaftaran) || '23:55',
+    kuota: d.kuota ?? '',
+    coverMediaId: d.coverMediaId ?? '',
   }
   // `tanggalYmd` ditambahkan sebagai field terpisah supaya <input type="date">
   // punya sesuatu yang bisa di-v-model tanpa merusak `tanggal` asli dari server.
@@ -61,19 +86,52 @@ watch(id, muat)
 const pesan = (e: any, bawaan: string) =>
   e?.data?.statusMessage ?? e?.statusMessage ?? bawaan
 
+/** Event sehari — hanya di situ urutan jam bisa dibandingkan. Pada event
+    berhari-hari, "selesai 09.00" setelah "mulai 16.00" justru normal. */
+const sehari = computed(() =>
+  !form.value.tanggalSelesai || form.value.tanggalSelesai === form.value.tanggalMulai)
+
+/**
+ * Pemeriksaan yang bisa dijawab tanpa server, ditampilkan sebelum tombol simpan
+ * ditekan. Server tetap memeriksa hal yang sama — ini kenyamanan, bukan penjagaan.
+ */
+const peringatan = computed(() => {
+  if (form.value.tanggalSelesai && form.value.tanggalSelesai < form.value.tanggalMulai) {
+    return 'Tanggal selesai tidak boleh mendahului tanggal mulai.'
+  }
+  if (sehari.value && form.value.jamMulai && form.value.jamSelesai
+    && form.value.jamSelesai <= form.value.jamMulai) {
+    return 'Jam selesai harus setelah jam mulai.'
+  }
+  return ''
+})
+
+/** Body yang dikirim ke API: dua kotak batas pendaftaran dilebur jadi satu nilai,
+    dan kolom bantu (`tutupTanggal`, `tutupJam`) tidak ikut terkirim. */
+const payload = () => {
+  const { tutupTanggal, tutupJam, ...sisa } = form.value
+  return {
+    ...sisa,
+    // Jam tanpa tanggal bukan batas apa pun, jadi tanggal yang menentukan ada
+    // tidaknya nilai ini.
+    tutupPendaftaran: tutupTanggal ? `${tutupTanggal}T${tutupJam || '23:55'}` : null,
+  }
+}
+
 const simpan = async () => {
+  if (peringatan.value) { galat.value = peringatan.value; return }
   sibuk.value = true
   galat.value = ''
   sukses.value = ''
   try {
     if (baru.value) {
-      const res = await $fetch<any>('/api/admin/events', { method: 'POST', body: form.value })
+      const res = await $fetch<any>('/api/admin/events', { method: 'POST', body: payload() })
       // Berpindah ke halaman ubah supaya blok sesi langsung bisa dipakai — event
       // baru sudah dibekali satu sesi oleh server.
       await router.replace(`/admin/event/${res.data.id}`)
     }
     else {
-      await $fetch(`/api/admin/events/${id.value}`, { method: 'PATCH', body: form.value })
+      await $fetch(`/api/admin/events/${id.value}`, { method: 'PATCH', body: payload() })
       sukses.value = 'Perubahan tersimpan.'
       await muat()
     }
@@ -92,17 +150,8 @@ const tambahSesi = async () => {
   catch (e: any) { galat.value = pesan(e, 'Gagal menambah sesi.') }
 }
 
-const simpanSesi = async (s: any) => {
-  galat.value = ''
-  try {
-    await $fetch(`/api/admin/sesi/${s.id}`, {
-      method: 'PATCH',
-      body: { judul: s.judul, judulEn: s.judulEn, tanggal: s.tanggalYmd || null, tampil: s.tampil },
-    })
-    sukses.value = 'Sesi tersimpan.'
-  }
-  catch (e: any) { galat.value = pesan(e, 'Gagal menyimpan sesi.') }
-}
+// `simpanSesi` dihapus bersama tombolnya: SesiPengaturan.vue kini menyimpan
+// sendiri 800 ms setelah pengetikan berhenti.
 
 const hapusSesi = async (s: any) => {
   galat.value = ''
@@ -132,11 +181,17 @@ const itemSesiId = ref('')
 const itemBagian = ref<'materi' | 'galeri' | 'referensi'>('materi')
 const itemDiubah = ref<any>(null)
 
+// Galeri punya jalannya sendiri: belasan foto dari acara yang sama, dipilih
+// sekaligus lalu dipotong seperlunya. Form satu-item tetap dipakai untuk MENGUBAH
+// foto yang sudah ada — di sana yang diubah biasanya keterangannya, bukan berkasnya.
+const galeriModal = ref(false)
+
 const bukaItem = (sesiId: string, bagian: 'materi' | 'galeri' | 'referensi') => {
   itemSesiId.value = sesiId
   itemBagian.value = bagian
   itemDiubah.value = null
   galat.value = ''
+  if (bagian === 'galeri') { galeriModal.value = true; return }
   itemModal.value = true
 }
 
@@ -165,13 +220,6 @@ const hapusItem = async (itemId: string) => {
   }
   catch (e: any) { galat.value = pesan(e, 'Gagal menghapus item.') }
 }
-
-const statusOptions = [
-  { value: 'draft', label: 'Draft — belum tampil di halaman publik' },
-  { value: 'terbit', label: 'Terbit — tampil dan bisa didaftari' },
-  { value: 'selesai', label: 'Selesai — ditutup lebih awal' },
-  { value: 'batal', label: 'Batal' },
-]
 
 /**
  * Tiga tab. Pembagiannya mengikuti tiga pekerjaan yang berbeda waktunya:
@@ -271,18 +319,48 @@ const BAGIAN = [
         <UFormField label="Tanggal mulai" required>
           <UInput v-model="form.tanggalMulai" type="date" class="w-full" />
         </UFormField>
-        <UFormField label="Tanggal selesai" hint="opsional">
-          <UInput v-model="form.tanggalSelesai" type="date" class="w-full" />
+        <UFormField label="Tanggal selesai" hint="boleh sama dengan tanggal mulai">
+          <!-- `min` menutup kesalahan yang paling sering: memilih tanggal mundur.
+               Aturannya tetap diperiksa ulang di `peringatan` dan di server, karena
+               atribut ini tidak berlaku bagi tanggal yang diketik langsung. -->
+          <UInput
+            v-model="form.tanggalSelesai"
+            type="date"
+            :min="form.tanggalMulai || undefined"
+            class="w-full"
+          />
         </UFormField>
 
-        <UFormField label="Tutup pendaftaran">
+        <!-- Jam acara. Terutama berarti untuk event sehari, yang tanggal selesainya
+             tidak menambah informasi apa pun — jamnya yang menentukan. -->
+        <UFormField label="Jam mulai">
           <template #hint>
-            <UTooltip text="Kosongkan agar pendaftaran terbuka sampai event dimulai.">
+            <UTooltip text="Menit tersedia per 5 menit. Kosongkan bila jamnya belum pasti.">
               <UIcon name="i-lucide-info" class="size-4 text-cc-brown-500" />
             </UTooltip>
           </template>
-          <UInput v-model="form.tutupPendaftaran" type="date" class="w-full" />
+          <WaktuPicker v-model="form.jamMulai" placeholder="Belum ditentukan" />
         </UFormField>
+        <UFormField label="Jam selesai">
+          <WaktuPicker
+            v-model="form.jamSelesai"
+            placeholder="Belum ditentukan"
+            :minimal="sehari ? form.jamMulai : null"
+          />
+        </UFormField>
+
+        <UFormField label="Batas akhir pendaftaran" class="md:col-span-2">
+          <template #hint>
+            <UTooltip text="Kosongkan tanggalnya agar pendaftaran terbuka sampai event dimulai.">
+              <UIcon name="i-lucide-info" class="size-4 text-cc-brown-500" />
+            </UTooltip>
+          </template>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <UInput v-model="form.tutupTanggal" type="date" class="w-full" />
+            <WaktuPicker v-model="form.tutupJam" :disabled="!form.tutupTanggal" />
+          </div>
+        </UFormField>
+
         <UFormField label="Kuota">
           <template #hint>
             <UTooltip text="Kosongkan untuk tanpa batas peserta.">
@@ -291,14 +369,16 @@ const BAGIAN = [
           </template>
           <UInput v-model="form.kuota" type="number" min="1" class="w-full" placeholder="Tanpa batas" />
         </UFormField>
-
-        <UFormField label="Harga (Rp)" hint="0 = gratis">
-          <UInput v-model.number="form.harga" type="number" min="0" class="w-full" />
-        </UFormField>
-        <UFormField label="Status">
-          <USelect v-model="form.status" :items="statusOptions" value-key="value" class="w-full" />
-        </UFormField>
       </div>
+
+      <UAlert
+        v-if="peringatan"
+        color="warning"
+        variant="subtle"
+        class="mt-4"
+        icon="i-lucide-triangle-alert"
+        :description="peringatan"
+      />
     </UCard>
 
     <!-- Daftar peserta -->
@@ -341,31 +421,24 @@ const BAGIAN = [
       </div>
 
       <div v-for="s in sesi" :key="s.id" class="mb-4 rounded-xl border border-cc-stone-200 p-4 last:mb-0">
-        <div class="mb-4 grid items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto]">
-          <UFormField label="Judul sesi" size="sm">
-            <UInput v-model="s.judul" class="w-full" />
-          </UFormField>
-          <UFormField label="Tanggal" size="sm">
-            <UInput v-model="s.tanggalYmd" type="date" class="w-full" />
-          </UFormField>
-          <UTooltip text="Sembunyikan sesi ini dari halaman publik tanpa menghapus isinya">
-            <USwitch v-model="s.tampil" label="Tampil" />
-          </UTooltip>
-          <div class="flex gap-1">
-            <UButton
-              color="neutral" variant="ghost" size="sm" icon="i-lucide-chevron-up"
-              aria-label="Geser sesi ke atas" :disabled="sesi[0]?.id === s.id" @click="geserSesi(s, 'naik')"
-            />
-            <UButton
-              color="neutral" variant="ghost" size="sm" icon="i-lucide-chevron-down"
-              aria-label="Geser sesi ke bawah" :disabled="sesi[sesi.length - 1]?.id === s.id" @click="geserSesi(s, 'turun')"
-            />
-            <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-save" aria-label="Simpan sesi" @click="simpanSesi(s)" />
-            <UButton color="error" variant="ghost" size="sm" icon="i-lucide-trash-2" aria-label="Hapus sesi" @click="hapusSesi(s)" />
-          </div>
-        </div>
+        <!-- Judul & tanggal sesi menyimpan dirinya sendiri; komponen yang sama
+             dipakai penyuntingan di halaman event publik. -->
+        <SesiPengaturan
+          :key="s.id"
+          :sesi="s"
+          tanpa-tampil
+          :pertama="sesi[0]?.id === s.id"
+          :terakhir="sesi[sesi.length - 1]?.id === s.id"
+          @tersimpan="muat()"
+          @geser="(arah: 'naik' | 'turun') => geserSesi(s, arah)"
+          @hapus="hapusSesi(s)"
+        />
 
-        <div class="grid gap-4 lg:grid-cols-3">
+        <!-- Tiga bagian jadi tiga baris penuh, bukan tiga kolom sempit. Judul
+             materi hampir selalu panjang ("Rekaman sesi 2 — mendengarkan tanpa
+             menilai"), dan di kolom selebar sepertiga layar semuanya terpotong jadi
+             potongan yang tidak bisa dibedakan satu sama lain. -->
+        <div class="space-y-3">
           <div v-for="b in BAGIAN" :key="b.key" class="rounded-lg bg-cc-stone-50 p-3">
             <div class="mb-2 flex items-center gap-1.5">
               <UIcon :name="b.ikon" class="size-4 text-cc-brown-500" />
@@ -373,15 +446,39 @@ const BAGIAN = [
               <UTooltip :text="b.petunjuk">
                 <UIcon name="i-lucide-info" class="size-3.5 text-cc-stone-400" />
               </UTooltip>
-              <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">{{ s[b.key].length }}</UBadge>
+              <UBadge color="neutral" variant="subtle" size="sm" class="rounded-full">{{ s[b.key].length }}</UBadge>
+
+              <UButton
+                class="ml-auto"
+                color="neutral"
+                variant="soft"
+                size="xs"
+                icon="i-lucide-plus"
+                @click="bukaItem(s.id, b.key)"
+              >
+                {{ b.key === 'galeri' ? 'Tambah foto' : 'Tambah' }}
+              </UButton>
             </div>
 
-            <ul class="mb-2 space-y-1">
+            <p v-if="!s[b.key].length" class="py-1 text-xs text-cc-stone-500">
+              Belum ada isi.
+            </p>
+
+            <ul v-else class="space-y-1">
               <li
                 v-for="(item, i) in s[b.key]"
                 :key="item.id"
-                class="flex items-center gap-1 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
+                class="flex items-center gap-2 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
               >
+                <!-- Galeri diberi cuplikan gambarnya: satu daftar foto yang hanya
+                     berisi nama berkas praktis tidak bisa dibedakan isinya. -->
+                <img
+                  v-if="b.key === 'galeri' && (item.thumbnail || item.url)"
+                  :src="item.thumbnail ?? item.url"
+                  :alt="item.judul"
+                  class="size-8 shrink-0 rounded object-cover"
+                  loading="lazy"
+                >
                 <UIcon v-if="item.terkunci" name="i-lucide-lock" class="size-3 shrink-0 text-cc-stone-400" />
                 <span class="min-w-0 flex-1 truncate" :title="item.judul">{{ item.judul }}</span>
                 <UButton
@@ -402,10 +499,6 @@ const BAGIAN = [
                 />
               </li>
             </ul>
-
-            <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-plus" block @click="bukaItem(s.id, b.key)">
-              Tambah
-            </UButton>
           </div>
         </div>
       </div>
@@ -429,6 +522,13 @@ const BAGIAN = [
       :sesi-id="itemSesiId"
       :bagian="itemBagian"
       :item="itemDiubah"
+      @tersimpan="muat()"
+    />
+
+    <!-- Unggah banyak foto galeri sekaligus -->
+    <GaleriUnggahModal
+      v-model:open="galeriModal"
+      :sesi-id="itemSesiId"
       @tersimpan="muat()"
     />
   </div>

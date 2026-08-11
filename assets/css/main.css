@@ -1330,6 +1330,15 @@ a[href^="https://wa.me/"]::before {
     font-size: 12px
 }
 
+/* Baris batas pendaftaran. Hanya keadaan "sudah ditutup" yang berpindah ke merah,
+   supaya warna itu tetap berarti sesuatu dan tidak jadi hiasan yang selalu ada.
+   Warnanya dipasang di baris DAN keturunannya karena ikon Nuxt UI membawa kelas
+   warnanya sendiri; `color` yang cuma diwariskan akan kalah oleh kelas itu. */
+.event-line-tutup,
+.event-line-tutup * {
+    color: #a13a3a
+}
+
 .event-actions {
     display: flex;
     gap: 8px;

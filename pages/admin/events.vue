@@ -6,7 +6,12 @@ definePageMeta({ layout: 'admin' })
 const cari = ref('')
 // 'semua' sebagai sentinel: Reka UI memesan string kosong untuk keadaan "belum
 // dipilih" dan melempar error kalau ada item bernilai ''.
-const status = ref('semua')
+//
+// Yang disaring FASE, bukan kolom `status`. Status redaksional
+// (draft/terbit/selesai/batal) sudah tidak dipasang formulir mana pun sejak fase
+// dijadikan murni turunan tanggal, jadi menyaringnya hanya akan menawarkan
+// pembedaan yang tidak bisa lagi dibuat siapa pun.
+const fase = ref('semua')
 
 // Pencarian di-debounce supaya tiap ketikan tidak jadi satu permintaan.
 // Ditulis manual, mengikuti pola yang sama di pages/admin/members.vue — VueUse
@@ -22,31 +27,31 @@ watch(cari, (nilai) => {
 const { data, status: muat, refresh } = useFetch('/api/admin/events', {
   query: computed(() => ({
     cari: cariDebounce.value || undefined,
-    status: status.value === 'semua' ? undefined : status.value,
+    fase: fase.value === 'semua' ? undefined : fase.value,
   })),
 })
 
 const events = computed(() => data.value?.data ?? [])
+const perFase = computed(() => data.value?.meta?.perFase ?? ({} as Record<string, number>))
 
-const statusOptions = [
-  { value: 'semua', label: 'Semua status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'terbit', label: 'Terbit' },
-  { value: 'selesai', label: 'Selesai' },
-  { value: 'batal', label: 'Batal' },
-]
+const faseOptions = computed(() => [
+  { value: 'semua', label: 'Semua fase', icon: 'i-lucide-layers' },
+  { value: 'mendatang', label: 'Mendatang', icon: 'i-lucide-calendar-clock' },
+  { value: 'berlangsung', label: 'Berlangsung', icon: 'i-lucide-radio' },
+  { value: 'selesai', label: 'Selesai', icon: 'i-lucide-check' },
+  { value: 'batal', label: 'Dibatalkan', icon: 'i-lucide-x' },
+])
+
+const ikonFase = computed(() =>
+  faseOptions.value.find(o => o.value === fase.value)?.icon ?? 'i-lucide-layers')
 
 const tanggal = (nilai: string | null) => nilai
   ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(nilai))
   : '—'
 
-const rupiah = (n: number) => n === 0
-  ? 'Gratis'
-  : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
-
-const warnaStatus = (s: string) => ({
-  draft: 'neutral', terbit: 'primary', selesai: 'secondary', batal: 'error',
-}[s] ?? 'neutral') as 'neutral' | 'primary' | 'secondary' | 'error'
+const warnaFase = (f: string) => ({
+  mendatang: 'primary', berlangsung: 'secondary', selesai: 'neutral', batal: 'error',
+}[f] ?? 'neutral') as 'neutral' | 'primary' | 'secondary' | 'error'
 
 // ── Hapus ────────────────────────────────────────────────────────────────────
 const hapusTarget = ref<{ id: string, judul: string } | null>(null)
@@ -72,14 +77,17 @@ const hapus = async () => {
   }
 }
 
+// Kolom "Biaya" dan "Status" dihapus. Harga tidak lagi diisi di formulir mana pun,
+// dan status redaksional sudah digantikan fase yang dihitung dari tanggal — dua
+// kolom yang isinya tidak bisa lagi berbeda antarbaris hanya melebarkan tabel.
 const columns = [
   { accessorKey: 'judul', header: 'Nama Event' },
-  { accessorKey: 'tanggalMulai', header: 'Tanggal' },
+  { accessorKey: 'tanggalMulai', header: 'Tanggal & jam' },
+  { accessorKey: 'tutupPendaftaran', header: 'Batas daftar' },
   { accessorKey: 'lokasi', header: 'Lokasi' },
   { accessorKey: 'isi', header: 'Sesi & materi' },
   { accessorKey: 'terdaftar', header: 'Peserta' },
-  { accessorKey: 'harga', header: 'Biaya' },
-  { accessorKey: 'status', header: 'Status' },
+  { accessorKey: 'fase', header: 'Fase' },
   { accessorKey: 'aksi', header: '' },
 ]
 </script>
@@ -104,7 +112,24 @@ const columns = [
         placeholder="Cari judul atau slug…"
         class="w-72"
       />
-      <USelect v-model="status" :items="statusOptions" value-key="value" class="w-48" />
+      <USelect v-model="fase" :items="faseOptions" value-key="value" :icon="ikonFase" class="w-48" />
+
+      <!-- Hitungan per fase dipasang sebagai chip: ia menjawab "berapa yang sedang
+           berjalan" tanpa perlu mengganti filter satu per satu untuk membacanya. -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <UBadge
+          v-for="o in faseOptions.slice(1)"
+          :key="o.value"
+          :color="fase === o.value ? warnaFase(o.value) : 'neutral'"
+          :variant="fase === o.value ? 'solid' : 'subtle'"
+          size="sm"
+          class="cursor-pointer rounded-full"
+          @click="fase = fase === o.value ? 'semua' : o.value"
+        >
+          {{ o.label }} · {{ perFase[o.value] ?? 0 }}
+        </UBadge>
+      </div>
+
       <span class="ml-auto text-sm text-cc-stone-600">{{ events.length }} event</span>
     </div>
 
@@ -126,7 +151,28 @@ const columns = [
         </template>
 
         <template #tanggalMulai-cell="{ row }">
-          <span class="whitespace-nowrap">{{ tanggal(row.original.tanggalMulai) }}</span>
+          <div class="whitespace-nowrap">
+            {{ tanggal(row.original.tanggalMulai) }}
+            <template v-if="row.original.tanggalSelesai && row.original.tanggalSelesai !== row.original.tanggalMulai">
+              – {{ tanggal(row.original.tanggalSelesai) }}
+            </template>
+          </div>
+          <div v-if="rentangJam(row.original)" class="text-xs text-cc-stone-500">
+            {{ rentangJam(row.original) }}
+          </div>
+        </template>
+
+        <!-- Batas pendaftaran. Yang sudah lewat ditandai, karena baris seperti itu
+             masih menerima klik "Ubah" tapi tidak lagi menerima pendaftar. -->
+        <template #tutupPendaftaran-cell="{ row }">
+          <span
+            v-if="row.original.tutupPendaftaran"
+            class="whitespace-nowrap text-sm"
+            :class="batasLewat(row.original.tutupPendaftaran) ? 'text-red-700' : 'text-cc-stone-600'"
+          >
+            {{ tanggalJamSingkat(row.original.tutupPendaftaran) }}
+          </span>
+          <span v-else class="text-sm text-cc-stone-400">Sampai acara mulai</span>
         </template>
 
         <template #lokasi-cell="{ row }">
@@ -153,17 +199,12 @@ const columns = [
           </span>
         </template>
 
-        <template #harga-cell="{ row }">
-          <span class="whitespace-nowrap text-sm">{{ rupiah(row.original.harga) }}</span>
-        </template>
-
-        <template #status-cell="{ row }">
-          <div class="flex flex-col gap-1">
-            <UBadge :color="warnaStatus(row.original.status)" variant="subtle" size="sm">
-              {{ row.original.status }}
-            </UBadge>
-            <span class="text-[11px] uppercase tracking-wide text-cc-stone-400">{{ row.original.fase }}</span>
-          </div>
+        <!-- Fase, bukan status: dihitung dari tanggal setiap kali dibaca, jadi tidak
+             ada yang perlu diperbarui manual saat tanggalnya terlewat. -->
+        <template #fase-cell="{ row }">
+          <UBadge :color="warnaFase(row.original.fase)" variant="subtle" size="sm" class="rounded-full">
+            {{ row.original.fase }}
+          </UBadge>
         </template>
 
         <template #aksi-cell="{ row }">

@@ -41,6 +41,27 @@ const ikonFase = computed(() =>
 // ketikan hanya menambah jeda tanpa menambah ketepatan.
 const cari = ref('')
 
+// ── Urutan ───────────────────────────────────────────────────────────────────
+// Diurutkan di klien dengan alasan yang sama seperti pencarian: seluruh daftar
+// sudah ada di tangan, jadi mengurutkannya di server berarti satu perjalanan
+// tambahan untuk pekerjaan yang di sini memakan waktu tidak terukur.
+//
+// `terdekat` bukan sekadar bawaan melainkan urutan yang memang dikirim server;
+// menaruhnya lebih dulu membuat pilihan awal tidak mengubah apa pun.
+const urutan = ref('terdekat')
+
+const urutanOptions = computed(() => [
+  { value: 'terdekat', label: isEn.value ? 'Soonest first' : 'Terdekat dulu', icon: 'i-lucide-arrow-down-narrow-wide' },
+  { value: 'terjauh', label: isEn.value ? 'Furthest first' : 'Terjauh dulu', icon: 'i-lucide-arrow-up-narrow-wide' },
+  { value: 'terbaru', label: isEn.value ? 'Recently added' : 'Terbaru ditambahkan', icon: 'i-lucide-sparkles' },
+  { value: 'batas', label: isEn.value ? 'Closing soonest' : 'Batas daftar terdekat', icon: 'i-lucide-hourglass' },
+  { value: 'az', label: isEn.value ? 'Title A–Z' : 'Judul A–Z', icon: 'i-lucide-arrow-down-a-z' },
+  { value: 'za', label: isEn.value ? 'Title Z–A' : 'Judul Z–A', icon: 'i-lucide-arrow-up-a-z' },
+])
+
+const ikonUrutan = computed(() =>
+  urutanOptions.value.find(o => o.value === urutan.value)?.icon ?? 'i-lucide-arrow-down-narrow-wide')
+
 // Satu tanggal, bukan rentang. Artinya "mulai dari tanggal ini" — bukan "tepat di
 // tanggal ini", yang untuk daftar sepanjang belasan event hampir selalu kosong.
 //
@@ -79,23 +100,56 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
 const semuaEvent = computed(() => data.value?.data ?? [])
 const perFase = computed(() => data.value?.meta.perFase ?? {})
 
-const events = computed(() => {
+const tersaring = computed(() => {
   const kata = cari.value.trim().toLowerCase()
   if (!kata) return semuaEvent.value
   return semuaEvent.value.filter((e: any) => [e.judul, e.judulEn, e.deskripsi, e.deskripsiEn, e.lokasi]
     .some(nilai => String(nilai ?? '').toLowerCase().includes(kata)))
 })
 
+const waktuDari = (nilai: string | null) => nilai ? new Date(nilai).getTime() : 0
+
+/** Judul menurut bahasa yang sedang dibuka — mengurutkan /en menurut judul
+    Indonesia akan menghasilkan abjad yang tidak terbaca di layar. */
+const judulUrut = (e: any) => String((isEn.value ? e.judulEn ?? e.judul : e.judul) ?? '')
+
+const events = computed(() => {
+  const daftar = [...tersaring.value]
+  switch (urutan.value) {
+    case 'terjauh':
+      return daftar.sort((a, b) => waktuDari(b.tanggalMulai) - waktuDari(a.tanggalMulai))
+    case 'terbaru':
+      return daftar.sort((a, b) => waktuDari(b.createdAt) - waktuDari(a.createdAt))
+    case 'batas':
+      // Event tanpa batas pendaftaran diletakkan di belakang, bukan di depan.
+      // Tanpa penanganan khusus, `null` jadi 0 dan justru merebut posisi teratas —
+      // padahal urutan ini dipakai orang untuk mencari yang paling mendesak.
+      return daftar.sort((a, b) => {
+        const ka = a.tutupPendaftaran ? waktuDari(a.tutupPendaftaran) : Infinity
+        const kb = b.tutupPendaftaran ? waktuDari(b.tutupPendaftaran) : Infinity
+        return ka - kb
+      })
+    case 'az':
+      return daftar.sort((a, b) => judulUrut(a).localeCompare(judulUrut(b), isEn.value ? 'en' : 'id'))
+    case 'za':
+      return daftar.sort((a, b) => judulUrut(b).localeCompare(judulUrut(a), isEn.value ? 'en' : 'id'))
+    default:
+      return daftar.sort((a, b) => waktuDari(a.tanggalMulai) - waktuDari(b.tanggalMulai))
+  }
+})
+
 // Render bertahap. `events` sudah tersaring, jadi pencarian tetap menjangkau
 // seluruh data meski baru sebagian kartu yang tergambar.
 const { items: eventsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfiniteList(events, { awal: 9, tambah: 6 })
 
-const adaFilter = computed(() => fase.value !== 'semua' || Boolean(cari.value.trim()) || Boolean(dari.value))
+const adaFilter = computed(() =>
+  fase.value !== 'semua' || Boolean(cari.value.trim()) || Boolean(dari.value) || urutan.value !== 'terdekat')
 
 const resetFilter = () => {
   fase.value = 'semua'
   cari.value = ''
   tanggalPilih.value = undefined
+  urutan.value = 'terdekat'
 }
 
 // ── Tampilan ─────────────────────────────────────────────────────────────────
@@ -150,19 +204,29 @@ const hariSama = (a: string | null, b: string | null) => {
  *                  sehingga satu jam tunggal malah menyesatkan; rinciannya ada
  *                  di halaman detail.
  */
-const barisTanggal = (e: { tanggalMulai: string, tanggalSelesai: string | null, waktu: string | null }) => {
+const barisTanggal = (e: any) => {
   if (!hariSama(e.tanggalMulai, e.tanggalSelesai)) {
     return `${tanggal(e.tanggalMulai)} – ${tanggal(e.tanggalSelesai)}`
   }
   const tgl = tanggal(e.tanggalMulai, true)
-  return e.waktu ? `${tgl} · ${e.waktu}` : tgl
+  const jam = rentangJam(e, isEn.value)
+  return jam ? `${tgl} · ${jam}` : tgl
 }
+
+/**
+ * Baris batas pendaftaran pada kartu.
+ *
+ * Hanya digambar untuk event yang belum lewat: pada event yang sudah selesai,
+ * "pendaftaran ditutup" mengulang apa yang sudah dikatakan badge di sampulnya.
+ */
+const batasDaftar = (e: any) =>
+  e.fase === 'selesai' || e.fase === 'batal' ? '' : labelBatasDaftar(e, isEn.value)
 
 const t = computed(() => isEn.value
   ? {
       eyebrow: 'Programs & gatherings', judul: 'Compassionate Companion Events',
       intro: 'A space for learning, reflection, and encounter for those who are sent.',
-      filterCari: 'Search events…', filterKategori: 'Category',
+      filterCari: 'Search events…', filterKategori: 'Category', filterUrutan: 'Sort events',
       filterTanggal: 'Any date', filterTanggalAria: 'Show events starting from a date',
       reset: 'Reset', hitung: (n: number) => `${n} event${n === 1 ? '' : 's'}`,
       kosong: 'No event matches this filter.', semua: 'Showing all events',
@@ -171,7 +235,7 @@ const t = computed(() => isEn.value
   : {
       eyebrow: 'Program & Perjumpaan', judul: 'Event Compassionate Companion',
       intro: 'Ruang belajar, refleksi, dan perjumpaan bagi para utusan.',
-      filterCari: 'Cari event…', filterKategori: 'Kategori',
+      filterCari: 'Cari event…', filterKategori: 'Kategori', filterUrutan: 'Urutkan event',
       filterTanggal: 'Semua tanggal', filterTanggalAria: 'Tampilkan event mulai dari tanggal tertentu',
       reset: 'Reset', hitung: (n: number) => `${n} event`,
       kosong: 'Tidak ada event yang cocok dengan filter ini.', semua: 'Menampilkan semua event',
@@ -228,6 +292,19 @@ const t = computed(() => isEn.value
             <UCalendar v-model="tanggalPilih" class="p-2" :locale="isEn ? 'en-GB' : 'id-ID'" />
           </template>
         </UPopover>
+
+        <!-- Urutan duduk sebaris dengan penyaring, bukan di atas daftar: keduanya
+             mengubah apa yang terlihat, dan memisahkannya membuat orang mencari
+             sortir di tempat yang salah. -->
+        <USelect
+          v-model="urutan"
+          :items="urutanOptions"
+          value-key="value"
+          :icon="ikonUrutan"
+          :aria-label="t.filterUrutan"
+          class="w-56"
+          :ui="{ base: 'rounded-full' }"
+        />
 
         <UButton
           v-if="adaFilter"
@@ -297,6 +374,17 @@ const t = computed(() => isEn.value
             <div class="event-line">
               <UIcon :name="e.daring ? 'i-lucide-video' : 'i-lucide-map-pin'" class="size-4 shrink-0 text-cc-brown-500" />
               <span class="event-lokasi">{{ e.lokasi }}</span>
+            </div>
+
+            <!-- Batas pendaftaran. Ditandai merah begitu terlewat: yang berubah
+                 bukan cuma kalimatnya melainkan artinya — tombol "Detail event"
+                 di bawahnya tidak lagi menuju formulir yang bisa diisi. -->
+            <div v-if="batasDaftar(e)" class="event-line" :class="e.tutupPendaftaran && batasLewat(e.tutupPendaftaran) ? 'event-line-tutup' : ''">
+              <UIcon
+                :name="e.tutupPendaftaran && batasLewat(e.tutupPendaftaran) ? 'i-lucide-lock' : 'i-lucide-hourglass'"
+                class="size-4 shrink-0 text-cc-brown-500"
+              />
+              <span>{{ batasDaftar(e) }}</span>
             </div>
 
             <!-- Event yang sudah selesai tidak menawarkan aksi apa pun — badge di

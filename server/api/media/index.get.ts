@@ -2,7 +2,7 @@
 // Daftar media dengan paginasi. fileData sengaja TIDAK ikut diseleksi —
 // menarik blob untuk sebuah listing akan sangat boros memori.
 
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, like, sql } from 'drizzle-orm'
 import { db } from '../../db'
 import { ccMedia, MEDIA_KINDS, type MediaKind } from '../../db/schema'
 import { wajibRole } from '../../utils/session'
@@ -21,7 +21,17 @@ export default defineEventHandler(async (event) => {
     ? (q.kind as MediaKind)
     : undefined
 
-  const where = kind ? eq(ccMedia.kind, kind) : undefined
+  // Pencarian dikerjakan di SQL, bukan di klien seperti daftar event: pustaka media
+  // tumbuh setiap unggahan dan sudah berpaginasi, jadi menyaring di klien hanya akan
+  // menyaring satu halaman — berkas yang dicari justru sering ada di halaman lain.
+  const cari = typeof q.cari === 'string' ? q.cari.trim() : ''
+
+  const syarat = [
+    kind ? eq(ccMedia.kind, kind) : undefined,
+    cari ? like(ccMedia.originalName, `%${cari}%`) : undefined,
+  ].filter(Boolean)
+
+  const where = syarat.length ? and(...syarat) : undefined
 
   const rows = await db
     .select({

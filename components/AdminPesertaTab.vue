@@ -12,13 +12,28 @@
 
 const props = defineProps<{ kegiatanId: string }>()
 
+// Tiap status membawa ikonnya sendiri supaya chip terbaca sekilas tanpa membaca
+// labelnya — lima tombol yang bentuknya identik menuntut dibaca satu per satu.
 const STATUS = [
-  { key: 'semua', label: 'Semua', warna: 'neutral' as const },
-  { key: 'baru', label: 'Baru', warna: 'warning' as const },
-  { key: 'proses', label: 'Proses', warna: 'secondary' as const },
-  { key: 'konfirmasi', label: 'Konfirmasi', warna: 'primary' as const },
-  { key: 'batal', label: 'Batal', warna: 'neutral' as const },
+  { key: 'semua', label: 'Semua', warna: 'neutral' as const, ikon: 'i-lucide-users' },
+  { key: 'baru', label: 'Baru', warna: 'warning' as const, ikon: 'i-lucide-inbox' },
+  { key: 'proses', label: 'Proses', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
+  { key: 'konfirmasi', label: 'Konfirmasi', warna: 'primary' as const, ikon: 'i-lucide-check' },
+  { key: 'batal', label: 'Batal', warna: 'neutral' as const, ikon: 'i-lucide-x' },
 ]
+
+/**
+ * Warna chip aktif, ditulis sebagai kelas utuh — bukan disusun dari potongan
+ * seperti `bg-cc-${warna}-500`. Tailwind memindai berkas sebagai teks; nama kelas
+ * yang baru terbentuk saat runtime tidak pernah ikut diterbitkan, dan chipnya jadi
+ * transparan tanpa satu pun galat.
+ */
+const warnaChip: Record<string, string> = {
+  neutral: 'bg-cc-stone-700 text-white',
+  warning: 'bg-cc-brown-500 text-white',
+  secondary: 'bg-cc-brown-600 text-white',
+  primary: 'bg-cc-green-800 text-white',
+}
 
 const warnaStatus = (s: string) => STATUS.find(x => x.key === s)?.warna ?? 'neutral'
 const labelStatus = (s: string) => STATUS.find(x => x.key === s)?.label ?? s
@@ -75,20 +90,37 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
 
 <template>
   <div>
+    <!-- Filter status sebagai chip, bukan lima tombol persegi berjajar.
+         Yang berubah bukan cuma bentuknya:
+           · hitungannya menyatu di dalam chip, bukan badge terpisah yang membuat
+             tiap tombol terbaca sebagai dua elemen;
+           · yang tidak aktif dibuat rata dan tenang, sehingga satu yang aktif
+             benar-benar menonjol — sebelumnya lima garis tepi bersaing sama kuat;
+           · statusnya berwarna sendiri-sendiri, jadi warnanya ikut jadi penanda,
+             bukan sekadar hiasan. -->
     <div class="mb-4 flex flex-wrap items-center gap-2">
-      <UButton
-        v-for="s in STATUS"
-        :key="s.key"
-        :color="tab === s.key ? 'primary' : 'neutral'"
-        :variant="tab === s.key ? 'solid' : 'outline'"
-        size="sm"
-        @click="tab = s.key"
-      >
-        {{ s.label }}
-        <UBadge :color="tab === s.key ? 'neutral' : 'neutral'" variant="subtle" size="sm" class="ml-1">
-          {{ hitung[s.key] ?? 0 }}
-        </UBadge>
-      </UButton>
+      <div class="flex flex-wrap items-center gap-1.5 rounded-full bg-cc-stone-100 p-1">
+        <button
+          v-for="s in STATUS"
+          :key="s.key"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
+          :class="tab === s.key
+            ? warnaChip[s.warna]
+            : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'"
+          :aria-pressed="tab === s.key"
+          @click="tab = s.key"
+        >
+          <UIcon :name="s.ikon" class="size-3.5" />
+          {{ s.label }}
+          <span
+            class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
+            :class="tab === s.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'"
+          >
+            {{ hitung[s.key] ?? 0 }}
+          </span>
+        </button>
+      </div>
 
       <UInput
         v-model="cari"

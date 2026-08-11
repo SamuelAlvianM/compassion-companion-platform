@@ -13,11 +13,15 @@ export default defineEventHandler(async (event) => {
 
   const q = getQuery(event)
   const cari = typeof q.cari === 'string' ? q.cari.trim() : ''
-  const status = typeof q.status === 'string' ? q.status.trim() : ''
+  // Penyaringan sekarang memakai FASE, bukan kolom `status`: formulir admin tidak
+  // lagi punya pilihan status, jadi menyaringnya hanya akan menawarkan pembedaan
+  // yang tidak bisa lagi dibuat siapa pun. Fase adalah turunan tanggal
+  // (server/utils/kegiatan.ts) dan bukan kolom, jadi disaring di JS setelah baris
+  // dipetakan — sama seperti di /api/events publik.
+  const fase = typeof q.fase === 'string' ? q.fase.trim() : ''
 
   const filters = []
   if (cari) filters.push(or(like(ccKegiatan.judul, `%${cari}%`), like(ccKegiatan.slug, `%${cari}%`))!)
-  if (status) filters.push(eq(ccKegiatan.status, status as never))
 
   const rows = await db
     .select()
@@ -47,25 +51,39 @@ export default defineEventHandler(async (event) => {
   const sesiPer = new Map(sesi.map(s => [s.kegiatanId, s]))
 
   const sekarang = new Date()
+  const data = rows.map((row) => {
+    const hitungan = sesiPer.get(row.id)
+    return {
+      id: row.id,
+      slug: row.slug,
+      judul: row.judul,
+      judulEn: row.judulEn,
+      lokasi: row.lokasi,
+      tanggalMulai: row.tanggalMulai,
+      tanggalSelesai: row.tanggalSelesai,
+      jamMulai: row.jamMulai,
+      jamSelesai: row.jamSelesai,
+      tutupPendaftaran: row.tutupPendaftaran,
+      harga: row.harga,
+      kuota: row.kuota,
+      status: row.status,
+      fase: faseKegiatan(row, sekarang),
+      terdaftar: pesertaPer.get(row.id) ?? 0,
+      jumlahSesi: hitungan?.sesi ?? 0,
+      jumlahItem: hitungan?.item ?? 0,
+    }
+  })
+
   return {
-    data: rows.map((row) => {
-      const hitungan = sesiPer.get(row.id)
-      return {
-        id: row.id,
-        slug: row.slug,
-        judul: row.judul,
-        judulEn: row.judulEn,
-        lokasi: row.lokasi,
-        tanggalMulai: row.tanggalMulai,
-        tanggalSelesai: row.tanggalSelesai,
-        harga: row.harga,
-        kuota: row.kuota,
-        status: row.status,
-        fase: faseKegiatan(row, sekarang),
-        terdaftar: pesertaPer.get(row.id) ?? 0,
-        jumlahSesi: hitungan?.sesi ?? 0,
-        jumlahItem: hitungan?.item ?? 0,
-      }
-    }),
+    data: fase ? data.filter(row => row.fase === fase) : data,
+    meta: {
+      // Hitungan per fase dikirim TANPA memedulikan filter yang sedang aktif,
+      // supaya angka di samping tiap pilihan tidak ikut menyusut jadi 0.
+      perFase: data.reduce<Record<string, number>>((acc, row) => {
+        acc[row.fase] = (acc[row.fase] ?? 0) + 1
+        return acc
+      }, {}),
+      total: data.length,
+    },
   }
 })

@@ -5,6 +5,510 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-12 — Sesi 9: Jadwal event berjam, status dicabut, editor galeri
+
+### Status redaksional dicabut — dan itu memang membuang sesuatu
+
+Sesi 3 memisahkan dua hal yang mudah tertukar: `status` (kolom, ditentukan admin)
+dan **fase** (turunan tanggal). Sesi ini mencabut yang pertama dari seluruh
+antarmuka. Fase kini satu-satunya keadaan yang dilihat siapa pun, dan ia selalu
+benar tanpa ada yang perlu memutakhirkannya.
+
+Yang hilang bersamanya: **draft**. Tidak ada lagi cara menyembunyikan event yang
+belum siap dari halaman publik. Migrasi `0005` menerbitkan lima baris `draft` yang
+tertinggal, karena baris seperti itu tidak akan pernah tampil sementara formulir
+yang bisa menerbitkannya sudah tidak ada — dibiarkan, ia jadi data yang tak
+terjangkau. Kalau "simpan dulu, terbitkan nanti" ternyata dibutuhkan, kembalikan
+sebagai satu sakelar "Tampilkan di publik", bukan sebagai empat pilihan status.
+
+Kolomnya sendiri **tidak dihapus**: `batal` masih dihormati `faseKegiatan()`, dan
+menghapus kolom di SQLite menuntut menulis ulang seluruh tabel.
+
+Harga ikut dicabut dari tabel dan formulir dengan alasan berbeda: pembayaran diurus
+admin lewat WhatsApp, jadi angkanya tidak pernah menentukan apa pun di situs.
+Kolomnya tetap ada (default 0) untuk transaksi yang dicatat terpisah.
+
+### Jam disimpan terpisah dari tanggal — bukan digabung jadi satu timestamp
+
+Migrasi `0005` menambah `jam_mulai` dan `jam_selesai` (`HH:MM`, menit kelipatan 5).
+
+Godaan pertamanya adalah menggabungkan jam ke `tanggal_mulai` yang sudah berupa
+timestamp. Itu akan merusak permintaan yang justru jadi alasan pekerjaan ini:
+*"kalau tanggal hari ini, ya berlangsung."* `faseKegiatan()` menganggap kegiatan
+berlangsung sepanjang **hari** `tanggalMulai`; begitu jam ikut masuk, event jam
+14.00 tercatat "mendatang" sepanjang pagi di hari-H.
+
+`waktu` — teks bebas "09.00 – 16.30 WIB" dari Sesi 6 — **tidak dihapus**. Ia masih
+memuat isi lima event lama dan kini jadi cadangan tampilan selama kedua kolom jam
+kosong (`rentangJam()` di `utils/waktuEvent.ts`). Dua sumber untuk satu hal memang
+utang; yang dihindari adalah menulis ulang isi lima event dalam migrasi yang tidak
+bisa membaca maksudnya.
+
+`tutup_pendaftaran` sudah timestamp sejak awal, jadi jam batas pendaftaran tidak
+butuh kolom baru — hanya UI yang mengisinya.
+
+### `keTanggal()` dan zona waktu yang baru berbahaya di produksi
+
+Bentuk `YYYY-MM-DDTHH:MM` (yang dikirim formulir batas pendaftaran) kini ditambahi
+`+07:00` secara eksplisit. Tanpa itu `new Date()` memakai zona **mesin yang
+membaca**. Di mesin pengembangan ini kebetulan WIB, jadi salahnya tidak pernah
+terlihat; di server produksi yang berjalan UTC, setiap batas pendaftaran bergeser
+tujuh jam tanpa satu pun galat.
+
+### Aturan jam: hanya berlaku untuk event sehari
+
+`jamSelesai <= jamMulai` ditolak — tapi **hanya** kalau tanggal mulai dan selesai
+jatuh di hari yang sama. Pada event berhari-hari, "selesai 09.00" sesudah "mulai
+16.00" justru normal: keduanya jam pada hari yang berbeda. Tanggal selesai boleh
+**sama** dengan tanggal mulai; yang ditolak hanya yang mundur.
+
+Diuji lewat API: menit 09:03 ditolak, tanggal selesai mundur ditolak, jam selesai
+lebih awal **lolos** pada event dua hari lalu **ditolak** begitu keduanya disamakan.
+
+### `WaktuPicker` — dua kolom, bukan 288 pilihan
+
+`<input type="time">` ditolak karena dua hal: tampilannya ditentukan browser
+(alasan yang sama yang memindahkan filter tanggal ke `UCalendar` di Sesi 4), dan
+kelipatan lima menit tidak bisa ditegakkan dengan cara yang terlihat — atribut
+`step` hanya memvalidasi, orang tetap bisa mengetik 09:03 lalu menerima galat.
+
+Satu daftar berisi 288 kombinasi juga ditolak: mencari 16.45 di dalamnya berarti
+menggulir jauh. Yang dipakai dua kolom bergulir, dan pilihan yang aktif digulirkan
+ke tengah saat dibuka. Prop `minimal` membuat jam yang mendahului jam mulai mati
+di tempat — bukan menerima klik lalu menolak.
+
+Kelipatan lima tetap **diperiksa ulang di server**: nilai yang tidak lewat form
+akan membuat halaman menampilkan jam yang tidak pernah bisa dipilih ulang oleh
+pemiliknya sendiri.
+
+### Halaman event: enam urutan, semuanya di klien
+
+Diurutkan di klien dengan alasan yang sama seperti pencarian sejak Sesi 6 — daftar
+event komunitas berukuran puluhan, dan seluruhnya sudah ada di tangan.
+
+Satu yang tidak sepele: **"batas daftar terdekat" harus menaruh event tanpa batas
+di belakang.** Tanpa penanganan khusus `null` jadi 0 dan justru merebut posisi
+teratas — persis kebalikan dari yang dicari orang saat memilih urutan itu.
+
+Kartu event dapat baris batas pendaftaran, dan barisnya berubah merah begitu
+terlewat. Event yang sudah `selesai`/`batal` tidak menampilkannya sama sekali: di
+sana "pendaftaran ditutup" cuma mengulang badge di sampulnya.
+
+### Batas pendaftaran bisa disunting di halaman, tapi bukan lewat `EditableText`
+
+`<EditableText>` menyunting satu kolom teks bebas. Jam `HH:MM` berkelipatan lima
+dan tanggal+jam yang harus jadi satu timestamp bukan itu — dibiarkan diketik
+bebas, server menolak apa yang tampak sah di layar dan pengetiknya tidak tahu
+bentuk mana yang benar.
+
+`EventJadwal.vue` menggantikan dua baris `<dl>` di panel "Informasi acara". Mode
+bacanya sama persis dengan baris lain; mode suntingnya memakai `WaktuPicker` dan
+menyimpan **jam acara dan batas pendaftaran dalam satu PATCH** — keduanya menjawab
+pertanyaan yang sama, dan menyimpannya terpisah membuat setengah jadwal tersimpan
+sementara setengah lagi tidak.
+
+### Tab materi: autosave, dan tiga bagian jadi tiga baris
+
+Tombol "Simpan sesi" dan sakelar "Tampil" dicabut dari tab Materi.
+
+Autosave-nya bukan kenyamanan melainkan perbaikan ketidakkonsistenan: setiap
+tindakan lain di panel itu — tambah item, geser, hapus — sudah menyimpan dirinya
+sendiri seketika, sehingga satu-satunya kotak yang menuntut tombol justru yang
+paling mudah terlupakan. Judul sesi yang diketik lalu ditinggalkan hilang tanpa
+tanda apa pun.
+
+Jedanya 800 ms setelah pengetikan berhenti, bukan per ketukan: satu permintaan per
+huruf berarti tiap balasan memicu induk memuat ulang daftarnya. Yang masih
+menunggu jedanya ikut disimpan di `onBeforeUnmount` — menutup panel atau berpindah
+tab membuang komponennya bersama timer yang belum berbunyi. Judul kosong ditahan
+di klien, karena dengan autosave galat itu akan muncul tepat saat orang baru
+menghapus judul lama untuk menggantinya.
+
+`SesiPengaturan.vue` kini dipakai **dua tempat** — tab admin dan penyuntingan di
+halaman publik — dengan prop `tanpaTampil` untuk yang pertama. Sakelar "Tampil"
+sengaja ditinggalkan di halaman publik: di sana pengelola melihat langsung apa yang
+hilang saat dimatikan, yang di dalam formulir admin hanya berupa kata tanpa akibat
+terlihat.
+
+Materi/galeri/referensi berhenti jadi tiga kolom sempit. Judul materi hampir selalu
+panjang ("Rekaman sesi 2 — mendengarkan tanpa menilai"), dan di kolom selebar
+sepertiga layar semuanya terpotong jadi potongan yang tidak bisa dibedakan satu
+sama lain. Sekarang tiga baris penuh, dan baris galeri membawa cuplikan fotonya.
+
+### Pustaka media pindah ke modalnya sendiri
+
+Panel yang mekar di dalam `SesiItemModal` punya dua masalah yang bukan selera: ia
+mendorong tombol Simpan keluar dari layar (form sudah setinggi modal), dan tidak
+punya cara mencari — pustaka tumbuh tiap unggahan, dan memilih berarti menggulir
+kisi 24 petak sambil membaca nama yang terpotong.
+
+`PustakaMediaModal.vue` memakai lebar penuh, punya kotak pencarian (`?cari=`
+ditambahkan ke `GET /api/media`, disaring di **SQL** karena daftarnya berpaginasi —
+menyaring di klien hanya menyaring satu halaman), dan menutup diri begitu satu
+berkas dipilih.
+
+### Editor galeri: potongan disimpan dalam piksel sumber
+
+Ini bagian yang paling mudah dibuat salah. Percobaan pertama menyimpan transform
+tampilan (geser, skala, putar) lalu menghitung ulang potongannya dari ukuran
+panggung saat diekspor. Akibatnya hasil potongan **bergantung pada lebar jendela
+browser saat tombol ditekan**: panggung yang lebih sempit menghasilkan berkas yang
+lebih kecil, dan potongan yang tersimpan tidak bisa diperlihatkan ulang di layar
+berukuran lain.
+
+Yang dipakai: potongan disimpan dalam **piksel sumber setelah diputar**. Zoom dan
+geser jadi murni alat lihat — mengubahnya tidak mengubah hasil sama sekali — dan
+keluarannya selalu setajam aslinya. Satu-satunya tempat kedua sistem koordinat
+bertemu adalah pembagian selisih layar dengan skala tampilan saat sudut ditarik.
+
+Rincian yang layak dicatat:
+
+- **Memutar mengembalikan potongan ke penuh.** Memetakannya ke ruang baru bisa
+  dihitung, tapi hasilnya membingungkan: setelah 90°, kotak yang tadi "kepala
+  orangnya" mendarat di tempat lain dan harus dibetulkan dari nol.
+- **PNG dan WebP dipertahankan; sisanya jadi JPEG.** Bukan soal mutu — PNG
+  satu-satunya yang menyimpan transparansi, dan memaksanya jadi JPEG mengubah latar
+  tembus pandang jadi hitam pekat. Yang jadi JPEG diberi latar putih lebih dulu.
+- **Berkas yang tidak berubah dikembalikan apa adanya**, melewatkan canvas: untuk
+  JPEG, pengodean ulang selalu menurunkan mutu meski gambarnya sama persis.
+- **Potongan diterapkan tepat sebelum unggah**, bukan saat disunting — kalau tidak,
+  tiap tarikan sudut menghasilkan satu berkas baru di memori.
+- **Object URL dilepas manual.** Browser tidak melakukannya sendiri; tanpa itu,
+  memilih ratusan foto dalam satu sesi kerja menahan semuanya sampai halaman
+  ditutup.
+
+`GaleriUnggahModal.vue` mengunggah foto **satu per satu** meski endpoint media
+menerima banyak berkas sekaligus. Unggahan sepuluh foto ponsel bisa puluhan MB dan
+satu permintaan sebesar itu lebih mudah putus di tengah; lebih penting lagi,
+kegagalan pada foto keenam tidak boleh membatalkan lima yang sudah berhasil.
+
+Bagian galeri di **kedua** tempat (tab admin dan penyuntingan halaman publik) kini
+membuka modal ini; materi dan referensi tetap lewat form satu-item, dan form itu
+tetap dipakai untuk **mengubah** foto yang sudah ada — di sana yang diubah biasanya
+keterangannya, bukan berkasnya.
+
+### Filter pendaftar jadi chip
+
+Lima tombol persegi berjajar diganti satu kelompok chip di dalam bantalan. Yang
+berubah bukan cuma bentuknya: hitungannya menyatu ke dalam chip (sebelumnya badge
+terpisah yang membuat tiap tombol terbaca sebagai dua elemen), yang tidak aktif
+dibuat rata dan tenang sehingga satu yang aktif benar-benar menonjol, dan tiap
+status punya ikon serta warnanya sendiri.
+
+Warnanya ditulis sebagai **kelas utuh** dalam sebuah peta, bukan disusun dari
+potongan seperti `bg-cc-${warna}-500`. Tailwind memindai berkas sebagai teks; nama
+kelas yang baru terbentuk saat runtime tidak pernah ikut diterbitkan, dan chipnya
+jadi transparan tanpa satu pun galat.
+
+### Contributors disembunyikan dari sidebar
+
+Atas permintaan. Halamannya masih array literal di dalam `.vue` dan belum menyentuh
+database, jadi menu yang mengarah ke sana menjanjikan sesuatu yang belum ada.
+Barisnya dikomentari di `layouts/admin.vue`, halamannya sendiri tetap hidup di
+`/admin/contributors`.
+
+### Yang dikerjakan sesi ini
+
+- [x] Migrasi `0005_jam-kegiatan`: `jam_mulai`, `jam_selesai`, `draft` → `terbit`
+- [x] `keJam()` + aturan jam sehari + `keTanggal()` sadar zona untuk bentuk `T HH:MM`
+- [x] `utils/waktuEvent.ts` — pemformat jam & batas dipakai kartu, detail, tabel admin
+- [x] `components/WaktuPicker.vue` (dua kolom, menit per 5, prop `minimal`)
+- [x] Halaman event: 6 pilihan urutan + baris batas pendaftaran di kartu
+- [x] `EventJadwal.vue` — jam & batas bisa disunting di halaman detail
+- [x] Panel pendaftaran menyebut tenggat (terbuka) dan tanggal penutupan (tertutup)
+- [x] `/admin/events`: kolom Biaya & Status dihapus, filter jadi fase + chip hitungan,
+      kolom "Batas daftar" ditambah
+- [x] `/admin/event/[id]`: harga & status dicabut, jam mulai/selesai, batas
+      tanggal+jam, peringatan sebelum simpan
+- [x] Tab materi autosave, tanpa tombol simpan & sakelar tampil; tiga bagian jadi
+      tiga baris penuh dengan cuplikan galeri
+- [x] `PustakaMediaModal.vue` + `?cari=` di `GET /api/media`
+- [x] `GambarEditor.vue` + `utils/potongGambar.ts` + `GaleriUnggahModal.vue`
+- [x] Chip filter pendaftar; Contributors disembunyikan dari sidebar
+- [x] Diuji: 5 aturan validasi lewat API, `meta.perFase` tetap utuh saat difilter,
+      buat event tanpa status/harga → `terbit`/0, unggah galeri + buat item,
+      pencarian pustaka, 6 rute SSR 200 tanpa penanda galat, typecheck kembali
+      persis ke baseline (33 galat lama, nol tambahan)
+
+### Task lanjutan: daftar galeri di tab materi masih salah bentuk
+
+Ditolak saat ditinjau (12 Agu, setelah deploy). Yang dibuat sesi ini menyamakan
+galeri dengan materi dan referensi: baris teks berjudul, dengan cuplikan 32px di
+kirinya. Untuk daftar foto itu keliru — **fotonya sendiri yang jadi isi**, bukan
+namanya. Cuplikan seukuran itu tidak membantu siapa pun mengenali foto mana yang
+sedang dilihat.
+
+Yang diminta:
+
+- **Gambar penuh, tersusun satu baris** (pita cuplikan), bukan daftar baris teks.
+- **Bisa diklik untuk fokus** — tampilan detail dengan zoom in / zoom out.
+- Di tampilan fokus itu: **ganti gambar** dan **hapus**.
+- **Judul saja** sebagai isian; tidak perlu field lain.
+- **Gambar diambil dari media saja** — pemilih "pustaka media" tidak perlu ada di
+  jalur galeri.
+
+Catatan untuk yang mengerjakan: bahan-bahannya sudah ada dan tinggal disusun ulang,
+bukan dibuat dari nol. `GaleriLightbox.vue` sudah punya zoom/geser/putar dan
+navigasi antarfoto; `GambarEditor.vue` sudah punya zoom + ganti gambar;
+`GaleriUnggahModal.vue` sudah punya pita cuplikan satu baris yang bentuknya persis
+seperti yang diminta. Yang belum ada: pita itu dipakai sebagai **daftar galeri di
+tab materi** (bukan hanya di modal unggah), dan tampilan fokusnya membawa tombol
+ganti + hapus.
+
+Perlu diputuskan saat mengerjakan: apakah "ganti gambar" di sana mengunggah berkas
+baru lalu mem-PATCH `mediaId` item itu, atau membuat item baru dan membuang yang
+lama. Yang pertama mempertahankan urutan dan judulnya — kemungkinan besar itu yang
+diharapkan, karena mengganti foto biasanya berarti "yang ini salah", bukan "yang
+ini tidak jadi ada".
+
+### Catatan / risiko
+
+**Draft benar-benar hilang.** Lihat bagian pertama. Ini pelonggaran yang disengaja
+dan disetujui, bukan kelalaian.
+
+**Daftar galeri di tab materi ditolak saat ditinjau** — lihat bagian di atas. Yang
+sudah live sekarang bentuknya belum benar.
+
+**Dua sumber untuk jam acara.** `waktu` (teks bebas) dan `jamMulai`/`jamSelesai`
+hidup berdampingan; yang kedua menang bila terisi. Lima event lama masih memakai
+yang pertama. Membereskannya berarti menyalin isi `waktu` ke kolom jam secara
+manual per event — tidak bisa ditebak mesin karena bentuk teksnya berbeda-beda
+("16.00 WIB (hari 1) – …").
+
+**Editor galeri belum diuji di browser sungguhan.** Pratinjau dalam aplikasi
+menjawab **426 Upgrade Required** untuk setiap permintaan ke `localhost:3009` —
+termasuk PNG statis — sementara `curl` ke URL yang sama menjawab 200. Itu proxy
+pratinjaunya, bukan aplikasinya (satu tangkapan layar pertama sempat berhasil
+sebelum macet). Jalur datanya sudah diuji lewat API sampai item galeri benar-benar
+terbentuk, tapi **penarikan sudut, putaran, dan hasil `canvas.toBlob` belum pernah
+disaksikan.** Ini yang paling perlu dicoba manual sebelum dipakai sungguhan.
+
+**Menghapus sesi dari tab materi masih tanpa konfirmasi** — perilaku lama yang
+ikut terbawa. Penyuntingan di halaman publik sudah punya dialognya.
+
+**`harga` masih dikirim API dan masih ada di skema**, hanya tidak lagi bisa diisi.
+Kalau pembayaran suatu saat masuk ke situs, kolomnya sudah siap.
+
+---
+
+## 2026-08-11 — Sesi 8: Deployment ke compassionate-companion.com — LIVE
+
+Tidak ada perubahan fitur. Sesi ini membangun jalur rilis ke server
+`104.64.212.19` dan **menjalankannya sampai situs hidup** di
+`https://compassionate-companion.com`. Polanya mengikuti `deploy/` milik
+orbita-platform: kirim `.output` lewat SSH lalu restart PM2 — **bukan** git
+push, dan server tidak menjalankan `npm install`.
+
+Server: Ubuntu 24.04.4, x86_64, **1 vCPU / 961 MB RAM**, 20 GB kosong, swap 496 MB
+sudah ada. Spesifikasi itu ikut membenarkan keputusan build di lokal: mesin
+sekecil ini tidak nyaman menjalankan `nuxt build` (di lokal saja hasilnya 48 MB).
+
+Berkas baru semuanya di `deploy/`: `deploy.sh`, `server-setup.sh`,
+`tunnel-setup.sh`, `ecosystem.config.cjs`, `migrate.mjs`, `snapshot-db.mjs`,
+`.env.example`, dan `DEPLOY.md` sebagai panduannya.
+
+### Build produksi pertama — dan satu peringatan yang bukan sekadar peringatan
+
+`npm run build` sukses (48 MB, 19,8 MB gzip), tapi menutupnya dengan:
+
+> `sharp binaries have been included in your build for win32-x64`
+
+Itu bukan catatan informatif. Nitro hanya menyertakan binary native untuk
+arsitektur mesin yang mem-build, dan mesin ini Windows sementara servernya
+Linux. Kalau `.output` dikirim apa adanya, `@nuxt/image` mati pada permintaan
+gambar pertama — sisa situsnya tetap normal, jadi gejalanya muncul belakangan
+dan tidak jelas asalnya.
+
+Dua dependensi native, dan ternyata nasibnya beda:
+
+| Paket | Isi `.output` | Kesimpulan |
+|---|---|---|
+| better-sqlite3 | `prebuilds/` berisi 8 platform, **linux-x64 ikut** | aman apa adanya |
+| sharp | hanya `@img/sharp-win32-x64` | harus ditambal |
+
+`deploy.sh` menambal yang kedua dengan memasang `@img/sharp-linux-x64` **di
+server** lalu menyalin isinya ke `.output/server/node_modules/@img/`. Dipasang di
+server, bukan diunduh lintas-platform dari lokal, supaya npm yang menentukan
+binary mana yang cocok — bukan tebakan skrip ini.
+
+`SHARP_VERSION` di `deploy.sh` dipatok ke `0.34.5` mengikuti versi lokal. Ini
+memang tempat yang bisa basi diam-diam saat sharp naik versi; dicatat di
+`DEPLOY.md` supaya tidak jadi kejutan.
+
+### Database: satu berkas yang isinya seluruh situs
+
+Media di project ini disimpan sebagai BLOB di dalam SQLite (`cc_media_gambar`,
+`_video`, `_etc`), bukan sebagai berkas di `public/`. Konsekuensinya
+menyenangkan sekaligus berbahaya: tidak ada folder upload yang perlu di-rsync —
+`data/cc.db` **adalah** seluruh isi situs — tapi juga tidak ada satu pun
+salinannya di repo.
+
+Karena itu:
+
+- **cwd PM2 = `/root/ccwebsite`, bukan `.output/`.** `server/db/index.ts`
+  me-resolve `DATABASE_URL` terhadap `process.cwd()`. Kalau cwd-nya di dalam
+  `.output`, database produksi akan terhapus oleh deploy berikutnya yang menimpa
+  folder itu. Ini satu baris di `ecosystem.config.cjs` yang menentukan data
+  hilang atau tidak.
+- **`--kirim-db` menolak jalan kalau server sudah punya `data/cc.db`**, dan
+  memeriksanya *sebelum* apa pun terkirim. Menimpanya bukan "reset" melainkan
+  kehilangan permanen.
+- **Yang dikirim bukan `cp cc.db`.** Database jalan dalam mode WAL; saat ini
+  `cc.db` 262 KB dan `cc.db-wal` 120 KB. Menyalin `cc.db` mentah berarti
+  mengirim database yang kehilangan perubahan terakhir, tanpa error apa pun.
+  `snapshot-db.mjs` pakai `VACUUM INTO` — satu berkas utuh yang sudah menyertakan
+  WAL, tanpa mengunci database sumber. Diuji: hasilnya 249 KB, `cc_user=4`,
+  `cc_kegiatan=5`. Skripnya berhenti kalau `cc_user` nol, karena database tanpa
+  akun berarti server yang mustahil dimasuki.
+
+### Migrasi: runtime migrator, bukan `drizzle-kit push`
+
+`data/cc.db` lokal sudah punya `__drizzle_migrations`, jadi riwayatnya terlacak
+dan migrator runtime bisa melanjutkan dari sana.
+
+`deploy/migrate.mjs` memakai `drizzle-orm/better-sqlite3/migrator`, bukan
+`drizzle-kit`. Migrator runtime hanya menjalankan `.sql` yang sudah ada lalu
+mencatatnya; ia tidak pernah membandingkan skema lalu bertanya interaktif
+seperti `push`. Di orbita hal itu diakali dengan `ssh -t` supaya ada TTY —
+di sini masalahnya dihindari, bukan diakali. Server juga jadi tidak perlu punya
+`drizzle-kit`: `better-sqlite3` dan `drizzle-orm` sudah ada di `.output`, jadi
+`migrate.mjs` dititipkan ke `.output/server/` agar ter-resolve dari sana.
+
+### Cloudflare Tunnel, bukan nginx
+
+Orbita mengandalkan TLS yang diterminasi upstream ke origin `:3500` yang
+terbuka. Di sini dipilih tunnel: `cloudflared` di server membuka koneksi
+**keluar** ke Cloudflare, jadi tidak ada port masuk yang perlu dibuka untuk web
+sama sekali. `ufw` hanya mengizinkan SSH, dan Nitro mendengarkan
+`127.0.0.1:3010` — bukan `0.0.0.0`.
+
+DNS-nya CNAME ke `<uuid>.cfargotunnel.com`, **tanpa A record**. IP origin
+`104.64.212.19` tidak pernah muncul di DNS publik.
+
+`cloudflared tunnel login` sudah dijalankan; `~/.cloudflared/cert.pem` ada.
+`tunnel-setup.sh` sengaja dijalankan dari mesin lokal: pembuatan tunnel dan
+penulisan DNS butuh `cert.pem`, kredensial tingkat akun yang bisa menyentuh
+seluruh zona. Yang disalin ke server hanya credentials JSON milik satu tunnel
+ini — `cert.pem` tidak pernah ikut.
+
+### SSH
+
+Kunci yang dipakai `~/.ssh/id_rsa` (RSA 3072, `Viole@MSI`,
+`SHA256:GbwRHpj1rdt1RyBYq4xip2IoGzcyJw5HFaO7NEvdIc4`) — satu-satunya kunci RSA
+yang ada; dua lainnya ed25519 dan milik project lain. Alias `Host cc`
+ditambahkan ke `~/.ssh/config` dengan `IdentitiesOnly yes`, supaya SSH tidak
+menawarkan ketiga kunci berurutan dan kena batas percobaan autentikasi.
+
+### Dua kegagalan nyata saat deploy pertama
+
+Skripnya lolos `bash -n` dan uji lokal, lalu tetap gagal dua kali di server.
+Keduanya tidak mungkin ketahuan tanpa benar-benar menjalankannya.
+
+**1. `npm init -y` menolak folder berawalan titik.** Langkah penambal sharp
+memasang paketnya di `$REMOTE_DIR/.sharp-linux`, dan `npm init -y` memakai nama
+folder sebagai nama paket: `Invalid name: ".sharp-linux"`. Foldernya diganti
+jadi `sharp-linux`.
+
+**2. Nitro membuat symlink dengan target absolut — dan targetnya path Windows.**
+Ini yang mahal. Tiga paket (`entities`, `css-tree`, `mdn-data`) tidak disalin
+utuh ke `.output/server/node_modules` melainkan di-symlink ke
+`node_modules/.nitro/<paket>@<versi>`, dengan target **absolut**:
+
+```
+entities -> /c/sam/COSMOS/ccwebsite/.output/server/node_modules/.nitro/entities@7.0.1
+```
+
+`tar` mengirimkannya apa adanya, jadi di server ketiganya menggantung. App
+start, PM2 melaporkan `online`, lalu prosesnya mati:
+
+```
+Error: Cannot find module 'entities/decode'
+```
+
+Perbaikannya `tar czhf` — `-h` mendereferensi symlink sehingga isinya yang
+terkirim. `.output` di server juga dihapus dulu sebelum extract, karena `tar`
+tidak menimpa symlink lama dengan direktori.
+
+Yang perlu diingat dari kejadian ini: **PM2 `online` bukan berarti aplikasi
+hidup.** Statusnya diberikan begitu proses ter-spawn; crash sesudahnya baru
+terlihat di `pm2 logs`. Smoke test yang membaca status PM2 saja akan lulus di
+sini padahal situsnya mati total.
+
+### Smoke test deploy sempat memberi kegagalan palsu
+
+Versi pertama `deploy.sh` menutup dengan satu `curl` tepat setelah restart, dan
+selalu melaporkan `Failed to connect` — Nitro baru mengikat port satu-dua detik
+setelah PM2 bilang `online`. Kegagalan palsu semacam itu melatih orang
+mengabaikan hasil smoke test, jadi diganti percobaan berulang sampai 15 detik.
+Sekarang jawabannya `HTTP 302 setelah 1s`.
+
+### Verifikasi
+
+Diuji dari server (bukan dari lokal — lihat catatan curl di bawah):
+
+| Yang diuji | Hasil |
+|---|---|
+| `/` | 302 → `/id` |
+| `/id`, `/en`, `/id/jurnal` | 200 (20.4 KB / 20.3 KB / 27.7 KB) |
+| `/admin` tanpa sesi | 302 → `/id/login?redirect=/admin` |
+| `www.compassionate-companion.com` | 200 |
+| Sertifikat | Google Trust Services WE1, berlaku s.d. 8 Nov 2026 |
+| `/api/events` | 200, data dari SQLite yang diangkut |
+| IPX resize + WebP | 200 `image/webp` — **sharp linux jalan** |
+| `pm2 status` | online, restart 1 (crash pertama itu) |
+| Port publik di server | hanya `127.0.0.1:3010`; ufw cuma SSH |
+| DNS | CNAME proxied; `104.64.212.19` **tidak muncul** |
+| Browser | semua request 200, tidak ada error konsol |
+
+**Uji yang paling penting: data selamat.** Setelah satu deploy penuh yang
+`rm -rf .output`, isi database tidak berubah — `cc_user` 4, `cc_kegiatan` 5,
+`cc_sesi` 9, `cc_media` 1, `cc_refleksi` 2, `cc_peserta` 1. Keputusan menaruh
+`data/` di luar `.output` terbukti benar, bukan cuma masuk akal di atas kertas.
+
+Autostart setelah reboot: `pm2-root` dan `cloudflared` dua-duanya `enabled`, dan
+`dump.pm2` sudah memuat `cwd`, `PORT`, `DATABASE_URL`, serta session password
+(64 karakter) — jadi `pm2 resurrect` punya semua yang dibutuhkan. **Belum diuji
+dengan reboot sungguhan.**
+
+### Temuan yang bukan masalah deployment
+
+`pm2 logs` memuat `[Icon] failed to load icon 'lucide:lock'` dan sekawan.
+Ditelusuri sampai tuntas dan hasilnya: **bukan** akibat deployment, dan **tidak**
+terlihat pengguna.
+
+- Koleksi lucide sebenarnya lengkap di bundle — `.output/server/chunks/_/icons.mjs`
+  berisi 1836 ikon, termasuk semua yang "gagal".
+- `.output` yang sama dijalankan di Windows lokal memunculkan peringatan yang
+  persis sama. Jadi ini sifat build-nya, bukan servernya.
+- Di browser, kelima ikon tergambar normal 16×16 dengan data URI. Endpoint
+  `/api/_nuxt_icon/lucide.json` menjawab 200 dengan body ikon asli — klien yang
+  menyelesaikannya setelah SSR menyerah.
+
+Kosmetik, tapi tetap layak dibereskan supaya log error tidak berisik oleh hal
+yang tidak perlu.
+
+### Catatan / risiko
+
+- **`curl` di Git Bash mesin ini rusak untuk semua situs**, bukan cuma domain
+  ini: ada env var yang menunjuk `CAfile: C:\Program Files\PostgreSQL\16\bin`,
+  sehingga setiap HTTPS gagal dengan `error setting certificate verify
+  locations`. Sempat terbaca seolah sertifikat produksi bermasalah, padahal
+  sertifikatnya baik-baik saja. Uji domain dari server saja.
+- **Reboot belum pernah diuji.** Konfigurasinya sudah benar di atas kertas;
+  buktinya belum ada.
+- **`SHARP_VERSION` dipatok manual di `deploy.sh`** (`0.34.5`). Ini akan basi
+  diam-diam saat sharp naik versi.
+- **Backup belum otomatis.** `DEPLOY.md` menaruhnya sebagai langkah manual
+  sebelum tiap `--migrasi`. Untuk situs yang seluruh isinya satu berkas, cron
+  harian yang menyalin keluar server layak menyusul — sekarang jadi mendesak
+  karena `data/cc.db` di server sudah jadi satu-satunya salinan yang hidup.
+- **6 vulnerabilities dari Sesi 1 masih belum diputuskan** — sekarang bukan lagi
+  soal teoretis: kodenya sudah menghadap publik.
+- **RAM 961 MB dengan 1 vCPU.** Aplikasinya duduk di ~90 MB, jadi lapang untuk
+  sekarang, tapi tidak ada ruang untuk menjalankan build di server.
+
+---
+
 ## 2026-08-11 — Sesi 7: Testimoni & sesi bisa disunting, pemulihan password
 
 ### Isi tiga halaman lama akhirnya masuk seed

@@ -97,10 +97,16 @@ export default defineEventHandler(async (event) => {
         cover: row.coverMediaId ? coverPer.get(row.coverMediaId) ?? null : null,
         tanggalMulai: row.tanggalMulai,
         tanggalSelesai: row.tanggalSelesai,
-        // Teks bebas ("09.00 – 16.30 WIB"). Dipakai kartu untuk event sehari, yang
-        // tanggal selesainya tidak menambah informasi apa pun.
+        // `jamMulai`/`jamSelesai` adalah bentuk barunya; `waktu` teks bebas
+        // ("09.00 – 16.30 WIB") tetap dikirim sebagai cadangan untuk event lama
+        // yang kedua kolom jamnya masih kosong.
+        jamMulai: row.jamMulai,
+        jamSelesai: row.jamSelesai,
         waktu: row.waktu,
         tutupPendaftaran: row.tutupPendaftaran,
+        // Untuk pilihan urutan "terbaru ditambahkan", yang berbeda dari tanggal
+        // acaranya: event yang baru dimasukkan bisa saja acaranya paling lama.
+        createdAt: row.createdAt,
         harga: row.harga,
         kuota: row.kuota,
         terdaftar,

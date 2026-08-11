@@ -39,6 +39,8 @@ export default defineEventHandler(async (event) => {
     tautanDaring: lama.tautanDaring,
     tanggalMulai: lama.tanggalMulai.toISOString(),
     tanggalSelesai: lama.tanggalSelesai?.toISOString() ?? null,
+    jamMulai: lama.jamMulai,
+    jamSelesai: lama.jamSelesai,
     tutupPendaftaran: lama.tutupPendaftaran?.toISOString() ?? null,
     kuota: lama.kuota,
     harga: lama.harga,

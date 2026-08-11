@@ -52,6 +52,7 @@ watch(() => props.open, (terbuka) => {
   galat.value = ''
   berkas.value = null
   pustakaTerbuka.value = false
+  namaDariPustaka.value = ''
 
   form.value = props.item
     ? {
@@ -104,42 +105,27 @@ const berkasLama = computed(() =>
   mengubah.value && props.item?.mediaId ? props.item.namaBerkas ?? props.item.mediaId : '')
 
 // ── Pustaka media ────────────────────────────────────────────────────────────
-// Dimuat malas: daftarnya hanya diambil kalau panelnya benar-benar dibuka, supaya
-// membuka form untuk menempel satu tautan tidak ikut menarik seluruh pustaka.
+// Kisinya tinggal di PustakaMediaModal.vue — modal sendiri, bukan panel yang mekar
+// di dalam form ini. Alasannya ada di berkas itu.
 const pustakaTerbuka = ref(false)
-const { data: pustaka, status: statusPustaka, refresh: muatPustaka } = useFetch('/api/media', {
-  query: { limit: 24 },
-  immediate: false,
-  watch: false,
-})
 
-const bukaPustaka = async () => {
-  pustakaTerbuka.value = true
-  if (!pustaka.value) await muatPustaka()
-}
+/** Nama berkas yang sedang terpasang, diingat sendiri: setelah pustakanya ditutup
+    daftarnya tidak lagi ada di sini untuk dicocokkan ulang. */
+const namaDariPustaka = ref('')
 
 const pilihDariPustaka = (media: { id: string, originalName: string }) => {
   form.value.mediaId = media.id
+  namaDariPustaka.value = media.originalName
   berkas.value = null
   if (!form.value.judul) form.value.judul = media.originalName
-  pustakaTerbuka.value = false
 }
 
-/** Nama berkas pilihan dari pustaka, untuk ditampilkan setelah dipilih. */
+/** Berkas yang akan tersimpan: unggahan baru, pilihan pustaka, atau yang lama. */
 const namaPilihan = computed(() => {
   if (berkas.value) return berkas.value.name
   if (!form.value.mediaId) return ''
-  const dari = (pustaka.value?.data ?? []).find((m: any) => m.id === form.value.mediaId)
-  return dari?.originalName ?? berkasLama.value
+  return namaDariPustaka.value || berkasLama.value
 })
-
-const ukuranBerkas = (bytes: number) => {
-  const satuan = ['B', 'KB', 'MB', 'GB']
-  let n = bytes
-  let i = 0
-  while (n >= 1024 && i < satuan.length - 1) { n /= 1024; i++ }
-  return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${satuan[i]}`
-}
 
 // ── Simpan ───────────────────────────────────────────────────────────────────
 const pesan = (e: any, bawaan: string) => e?.data?.statusMessage ?? e?.statusMessage ?? bawaan
@@ -215,65 +201,41 @@ const simpan = async () => {
         </UFormField>
 
         <template v-if="pakaiBerkas">
+          <!-- Dua jalan menuju berkas yang sama, jadi ditawarkan berdampingan
+               dengan bobot yang sama — bukan satu isian besar dan satu tombol kecil
+               di bawahnya yang terbaca seperti catatan kaki. -->
           <UFormField label="Berkas" :hint="`maksimal ${batasBerkas}`">
-            <UInput
-              type="file"
-              class="w-full"
-              @change="berkas = ($event.target as HTMLInputElement).files?.[0] ?? null; form.mediaId = ''"
-            />
+            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <UInput
+                type="file"
+                class="w-full"
+                @change="berkas = ($event.target as HTMLInputElement).files?.[0] ?? null; form.mediaId = ''; namaDariPustaka = ''"
+              />
+              <UButton
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-folder-open"
+                class="shrink-0"
+                @click="pustakaTerbuka = true"
+              >
+                Pilih dari pustaka
+              </UButton>
+            </div>
           </UFormField>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <UButton size="xs" color="neutral" variant="soft" icon="i-lucide-folder-open" @click="bukaPustaka">
-              Pilih dari pustaka media
-            </UButton>
-            <span v-if="namaPilihan" class="min-w-0 flex-1 truncate text-xs text-cc-stone-600" :title="namaPilihan">
-              {{ berkas ? 'Akan diunggah:' : 'Terpasang:' }} {{ namaPilihan }}
+          <!-- Yang akan tersimpan disebutkan sekali, apa pun jalannya. -->
+          <div
+            v-if="namaPilihan"
+            class="flex items-center gap-2 rounded-lg border border-cc-stone-200 bg-cc-stone-50 px-3 py-2"
+          >
+            <UIcon
+              :name="berkas ? 'i-lucide-upload' : 'i-lucide-paperclip'"
+              class="size-4 shrink-0 text-cc-brown-500"
+            />
+            <span class="min-w-0 flex-1 truncate text-xs text-cc-stone-700" :title="namaPilihan">
+              <strong class="font-semibold">{{ berkas ? 'Akan diunggah:' : 'Terpasang:' }}</strong>
+              {{ namaPilihan }}
             </span>
-          </div>
-
-          <!-- Pustaka media: kisi kecil, bukan tabel. Yang dicari orang di sini
-               adalah berkasnya, dan untuk gambar itu berarti melihatnya. -->
-          <div v-if="pustakaTerbuka" class="rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
-            <div v-if="statusPustaka === 'pending'" class="grid grid-cols-3 gap-2">
-              <USkeleton v-for="n in 6" :key="n" class="aspect-square w-full rounded" />
-            </div>
-
-            <p v-else-if="!pustaka?.data?.length" class="py-4 text-center text-xs text-cc-stone-500">
-              Pustaka media masih kosong.
-            </p>
-
-            <div v-else class="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto">
-              <button
-                v-for="m in pustaka.data"
-                :key="m.id"
-                type="button"
-                class="overflow-hidden rounded border text-left transition-colors"
-                :class="form.mediaId === m.id ? 'border-cc-brown-500 bg-white' : 'border-cc-stone-200 bg-white hover:border-cc-brown-300'"
-                @click="pilihDariPustaka(m)"
-              >
-                <img
-                  v-if="m.kind === 'gambar'"
-                  :src="m.publicUrl"
-                  :alt="m.originalName"
-                  class="aspect-square w-full object-cover"
-                  loading="lazy"
-                >
-                <div v-else class="grid aspect-square w-full place-items-center bg-cc-stone-100">
-                  <UIcon name="i-lucide-file" class="size-6 text-cc-stone-400" />
-                </div>
-                <div class="p-1.5">
-                  <p class="truncate text-[11px] font-semibold text-cc-green-800" :title="m.originalName">
-                    {{ m.originalName }}
-                  </p>
-                  <p class="text-[10px] text-cc-stone-500">{{ ukuranBerkas(m.fileSize) }}</p>
-                </div>
-              </button>
-            </div>
-
-            <UButton class="mt-2" size="xs" color="neutral" variant="ghost" block @click="pustakaTerbuka = false">
-              Tutup pustaka
-            </UButton>
           </div>
 
           <p v-if="mengubah && berkasLama && !berkas" class="text-xs text-cc-stone-500">
@@ -307,6 +269,15 @@ const simpan = async () => {
 
         <UAlert v-if="galat" color="error" variant="subtle" icon="i-lucide-triangle-alert" :description="galat" />
       </div>
+
+      <!-- Modal di atas modal. Nuxt UI menumpuknya dengan benar; yang penting ia
+           tidak lagi mengubah tinggi form di baliknya. -->
+      <PustakaMediaModal
+        v-model:open="pustakaTerbuka"
+        :hanya-kind="form.jenis === 'gambar' ? 'gambar' : form.jenis === 'video' ? 'video' : undefined"
+        :terpilih-id="form.mediaId || null"
+        @pilih="pilihDariPustaka"
+      />
     </template>
 
     <template #footer>
