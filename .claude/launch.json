@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3009
+    },
+    {
+      "name": "ccwebsite-dev-alt",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3011"],
+      "port": 3011
     }
   ]
 }
