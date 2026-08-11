@@ -1,0 +1,161 @@
+/* assets/css/tailwind.css — entry tunggal untuk seluruh CSS situs.
+ *
+ * Font harus di paling atas: aturan @import wajib mendahului aturan lain.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+/* main.css dimasukkan ke layer `utilities`, TEPAT SETELAH utility Tailwind.
+ *
+ * Ini meniru persis perilaku lama. Dulu (Tailwind v3 lewat @nuxtjs/tailwindcss)
+ * semua CSS tidak berlayer, sehingga bentrokan diputuskan dua tahap:
+ * spesifisitas dulu, baru urutan sumber. Contohnya:
+ *   - `.text-slate-500` (0,1,0) menang atas `p` (0,0,1)          -> spesifisitas
+ *   - `.container` main.css menang atas `.container` Tailwind    -> urutan sumber
+ *
+ * Di v4 utility berada di @layer utilities. Kalau main.css ditaruh di layer lain
+ * (atau tanpa layer), urutan menangnya berubah dan tampilan ikut bergeser:
+ *   - tanpa layer  -> `h1` mengalahkan `.font-serif`, halaman /admin rusak
+ *   - components   -> `.container` Tailwind mengalahkan main.css, lebar melar
+ * Menempatkannya di layer yang sama, setelah utility, mengembalikan kedua aturan
+ * pemenang di atas sekaligus tanpa perlu tambalan per-kelas.
+ */
+@import './main.css' layer(utilities);
+
+@source '../../pages/**/*.vue';
+@source '../../layouts/**/*.vue';
+@source '../../components/**/*.vue';
+@source '../../app.vue';
+
+/* ── Palet: kembalikan nilai Tailwind v3 ─────────────────────────────────────
+ * v4 memindahkan palet ke oklch. Warnanya setara secara visual, tapi bukan nilai
+ * yang identik. Hanya warna yang benar-benar dipakai di template yang di-override,
+ * memakai heksadesimal persis dari Tailwind v3.
+ */
+@theme {
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-stone-50: #fafaf9;
+  --color-stone-200: #e7e5e4;
+  --color-stone-600: #57534e;
+  --color-red-700: #b91c1c;
+}
+
+/* ── Ramp brand untuk komponen Nuxt UI ─────────────────────────────────────
+ * WAJIB `@theme static`, bukan `@theme` biasa.
+ *
+ * Tailwind v4 hanya menerbitkan nilai @theme yang benar-benar dipakai sebuah utility
+ * class di source. Nuxt UI tidak memakai class seperti `bg-cc-green-300`; ia merujuk
+ * variabelnya lewat CSS (`--ui-color-primary-300: var(--color-cc-green-300)`), dan
+ * rujukan itu tidak terbaca sebagai "pemakaian". Akibatnya dengan @theme biasa hanya
+ * shade yang kebetulan dipakai di template yang muncul, sisanya kosong — tombol dan
+ * badge primary jadi transparan.
+ *
+ * `static` memaksa seluruh 11 tingkat selalu diterbitkan.
+ */
+@theme static {
+  /*
+   * Titik jangkarnya adalah warna brand yang sudah dipakai di main.css:
+   *   cc-green-800  = #2B4028  (--color-primary)
+   *   cc-brown-500  = #AC8158  (--color-secondary)
+   *   cc-brown-600  = #92704d  (warna hover yang sudah dipakai di halaman admin)
+   * Tingkat lain adalah turunan yang lebih terang/gelap dari jangkar itu.
+   */
+  --color-cc-green-50: #f2f6f1;
+  --color-cc-green-100: #e2ebe0;
+  --color-cc-green-200: #c5d7c2;
+  --color-cc-green-300: #9dba98;
+  --color-cc-green-400: #6f966a;
+  --color-cc-green-500: #4d7748;
+  --color-cc-green-600: #3a5e37;
+  --color-cc-green-700: #2f4a2c;
+  --color-cc-green-800: #2b4028;
+  --color-cc-green-900: #223320;
+  --color-cc-green-950: #131d11;
+
+  --color-cc-brown-50: #faf6f2;
+  --color-cc-brown-100: #f3ebe1;
+  --color-cc-brown-200: #e6d5c2;
+  --color-cc-brown-300: #d5b99b;
+  --color-cc-brown-400: #c39a76;
+  --color-cc-brown-500: #ac8158;
+  --color-cc-brown-600: #92704d;
+  --color-cc-brown-700: #785a40;
+  --color-cc-brown-800: #614a37;
+  --color-cc-brown-900: #503e2f;
+  --color-cc-brown-950: #2b2018;
+
+  /* Netral hangat, diselaraskan dengan --color-surface / --color-line. */
+  --color-cc-stone-50: #fbf4eb;
+  --color-cc-stone-100: #f3e8da;
+  --color-cc-stone-200: #e4d7c6;
+  --color-cc-stone-300: #d9cbb8;
+  --color-cc-stone-400: #b4a894;
+  --color-cc-stone-500: #8d8271;
+  --color-cc-stone-600: #687064;
+  --color-cc-stone-700: #4f5449;
+  --color-cc-stone-800: #3a3d36;
+  --color-cc-stone-900: #263524;
+  --color-cc-stone-950: #171c16;
+}
+
+/* ── Kompatibilitas preflight v3 → v4 ────────────────────────────────────────
+ * Situs ini sebelumnya memakai @nuxtjs/tailwindcss v6, yang otomatis menyuntikkan
+ * preflight Tailwind v3. Jadi reset heading/paragraf SUDAH aktif sejak awal dan
+ * TIDAK boleh dikembalikan ke default browser — desainnya dibangun di atas reset itu.
+ *
+ * Yang perlu ditambal hanyalah perubahan default bawaan Tailwind v4:
+ *   1. border-color  : gray-200 -> currentColor
+ *   2. placeholder   : gray-400 -> currentColor 50%
+ *   3. button cursor : pointer  -> default
+ *   4. padding       : v4 me-reset `*` universal, v3 hanya sebagian elemen
+ *   5. input         : v4 membuat latar input transparan, v3 membiarkan putih bawaan
+ */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* v4 menghapus padding bawaan <option>; v3 membiarkannya. */
+  option {
+    padding-block: 0 1px;
+    padding-inline: 2px;
+  }
+
+  /* v4 membuat kontrol input transparan; kembalikan latar putih bawaan browser. */
+  input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not(
+      [type='reset']
+    ),
+  textarea {
+    background-color: #fff;
+  }
+}
+
+/* v4 memakai calc(infinity * 1px) untuk rounded-full; v3 memakai 9999px.
+ * Bentuk akhirnya sama-sama kapsul, tapi disamakan supaya nilainya benar-benar identik.
+ * Ditulis sebagai aturan biasa di akhir layer utilities agar menang lewat urutan sumber. */
+@layer utilities {
+  .rounded-full {
+    border-radius: 9999px;
+  }
+}
+
+/* Tidak perlu meng-override `container`: karena main.css berada di layer yang sama
+ * dan diletakkan sesudahnya, `.container` milik main.css sudah menang lewat urutan
+ * sumber — persis seperti sebelum migrasi. */

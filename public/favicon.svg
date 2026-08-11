@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Compassionate Companion">
+  <rect width="64" height="64" rx="14" fill="#2B4028"/>
+  <g fill="none" stroke="#E1B032" stroke-width="5" stroke-linecap="round">
+    <path d="M28.8 25.1 A9 9 0 1 0 28.8 38.9"/>
+    <path d="M46.8 25.1 A9 9 0 1 0 46.8 38.9"/>
+  </g>
+</svg>

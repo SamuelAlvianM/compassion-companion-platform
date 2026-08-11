@@ -1,0 +1,34 @@
+{
+  "name": "compassionate-companion-poc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx --env-file-if-exists=.env server/db/seed.ts"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.123",
+    "@nuxt/image": "2.0.0",
+    "@nuxt/ui": "^4.10.0",
+    "@nuxtjs/i18n": "^10.2.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.2",
+    "nuxt": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.2.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.9"
+  }
+}

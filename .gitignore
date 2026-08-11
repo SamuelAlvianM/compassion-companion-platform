@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Hasil build & cache Nuxt
+.nuxt/
+.output/
+.nitro/
+.cache/
+dist/
+
+# Artefak salah ketik: `nuxt dev --port` tanpa nilai membuat folder bernama "--port"
+--port/
+
+# Database lokal. Bisa dibangun ulang dari migrasi + `npm run db:seed`,
+# dan isinya data pengembangan — tidak perlu ikut ke repo.
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Rahasia. Lihat .env.example untuk daftar kunci yang dibutuhkan.
+.env
+.env.*
+!.env.example
+
+# Log
+dev.log
+*.log
+logs/
+
+# Sistem operasi & editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

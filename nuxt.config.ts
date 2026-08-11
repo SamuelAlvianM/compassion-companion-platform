@@ -1,0 +1,60 @@
+export default defineNuxtConfig({
+  compatibilityDate: '2026-07-25',
+  devtools: { enabled: true },
+  // Port lokal dipatok di sini supaya `npm run dev` / `yarn dev` / `pnpm dev` sama-sama pakai 3009.
+  devServer: { port: 3009 },
+  // Satu entry saja: tailwind.css meng-import main.css sebagai layer `components`.
+  // Lihat komentar di berkas itu — urutan layer menentukan siapa yang menang.
+  css: ['~/assets/css/tailwind.css'],
+  modules: ['@nuxtjs/i18n', '@nuxt/ui', '@nuxt/image'],
+
+  // Situs ini hanya punya mode terang. Tanpa penguncian ini Nuxt UI bisa
+  // menyalakan kelas `.dark` dan mengubah seluruh warna.
+  colorMode: { preference: 'light', fallback: 'light' },
+
+  // Font sudah dimuat manual lewat @import Google Fonts di main.css.
+  // Pemetaan warna brand ada di app.config.ts — Nuxt UI membaca `ui.colors` dari sana,
+  // bukan dari berkas ini.
+  ui: { fonts: false },
+
+  // Transisi halaman & layout. Kelasnya ada di assets/css/main.css dan otomatis
+  // dinonaktifkan saat pengguna memilih "reduce motion" di sistemnya.
+  app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
+    layoutTransition: { name: 'layout', mode: 'out-in' },
+  },
+
+  icon: { serverBundle: { collections: ['lucide'] } },
+
+  runtimeConfig: {
+    // Kunci enkripsi cookie sesi, diisi dari env NUXT_SESSION_PASSWORD (lihat .env.example).
+    // Sengaja dibiarkan kosong di sini: nilai bawaan di source code berarti setiap
+    // salinan repo memakai kunci yang sama, dan siapa pun yang membacanya bisa
+    // memalsukan cookie sesi siapa saja. server/utils/session.ts menolak jalan
+    // kalau nilainya masih kosong.
+    sessionPassword: '',
+  },
+
+  i18n: {
+    defaultLocale: 'id',
+    strategy: 'prefix',
+    customRoutes: 'config',
+    pages: {
+      admin: false,
+      'admin-registrations': false,
+      'admin-members': false,
+      'admin-events': false,
+      'admin-jurnal': false,
+      'admin-jurnal-id': false,
+      'admin-contributors': false,
+      'admin-section': false,
+      'admin-event-id': false,
+      'admin-member-id': false,
+      'admin-petunjuk': false,
+    },
+    locales: [
+      { code: 'id', language: 'id-ID', name: 'Indonesia' },
+      { code: 'en', language: 'en-US', name: 'English' },
+    ],
+  },
+})

@@ -1,0 +1,13 @@
+# Simpan semua teks dengan LF di dalam repo, apa pun sistem operasi yang dipakai.
+# Tanpa ini, checkout di Windows menulis CRLF dan setiap berkas terlihat "berubah
+# seluruhnya" saat dibuka di mesin lain.
+* text=auto eol=lf
+
+# Berkas biner — jangan disentuh normalisasi baris.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.db  binary
