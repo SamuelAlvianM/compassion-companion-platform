@@ -113,85 +113,48 @@ const hapusSesi = async (s: any) => {
   catch (e: any) { galat.value = pesan(e, 'Gagal menghapus sesi.') }
 }
 
+const geserSesi = async (s: any, arah: 'naik' | 'turun') => {
+  galat.value = ''
+  try {
+    await $fetch(`/api/admin/sesi/${s.id}/geser`, { method: 'POST', body: { arah } })
+    await muat()
+  }
+  catch (e: any) { galat.value = pesan(e, 'Gagal menggeser sesi.') }
+}
+
 // ── Item sesi ────────────────────────────────────────────────────────────────
+// Formnya tinggal di components/SesiItemModal.vue, dipakai bersama penyuntingan di
+// tempat pada halaman event publik. Aturan bentuk form — jenis apa untuk bagian
+// mana, mana yang butuh berkas, kapan sakelar "khusus peserta" muncul — hanya ada
+// di satu tempat, jadi keduanya tidak bisa menyimpang.
 const itemModal = ref(false)
 const itemSesiId = ref('')
-const itemForm = ref({ bagian: 'materi', jenis: 'pdf', judul: '', judulEn: '', url: '', mediaId: '', terkunci: true })
-const berkas = ref<File | null>(null)
+const itemBagian = ref<'materi' | 'galeri' | 'referensi'>('materi')
+const itemDiubah = ref<any>(null)
 
-const bukaItem = (sesiId: string, bagian: string) => {
+const bukaItem = (sesiId: string, bagian: 'materi' | 'galeri' | 'referensi') => {
   itemSesiId.value = sesiId
-  itemForm.value = {
-    bagian,
-    jenis: bagian === 'galeri' ? 'gambar' : bagian === 'referensi' ? 'tautan' : 'pdf',
-    judul: '', judulEn: '', url: '', mediaId: '',
-    terkunci: bagian === 'materi',
-  }
-  berkas.value = null
+  itemBagian.value = bagian
+  itemDiubah.value = null
   galat.value = ''
   itemModal.value = true
 }
 
-const jenisOptions = computed(() => {
-  if (itemForm.value.bagian === 'galeri') return [{ value: 'gambar', label: 'Gambar' }]
-  if (itemForm.value.bagian === 'referensi') {
-    return [
-      { value: 'tautan', label: 'Tautan web' },
-      { value: 'youtube', label: 'YouTube' },
-      { value: 'pdf', label: 'PDF (unggah)' },
-    ]
-  }
-  return [
-    { value: 'pdf', label: 'PDF' },
-    { value: 'dokumen', label: 'Dokumen (Word/Excel/PPT)' },
-    { value: 'video', label: 'Video (unggah)' },
-    { value: 'youtube', label: 'YouTube (boleh unlisted)' },
-    { value: 'gambar', label: 'Gambar' },
-    { value: 'tautan', label: 'Tautan web' },
-  ]
-})
+const bukaUbahItem = (sesiId: string, item: any) => {
+  itemSesiId.value = sesiId
+  itemBagian.value = item.bagian
+  itemDiubah.value = item
+  galat.value = ''
+  itemModal.value = true
+}
 
-/** Jenis yang isinya berupa berkas unggahan, bukan tautan luar. */
-const pakaiBerkas = computed(() => ['pdf', 'dokumen', 'video', 'gambar'].includes(itemForm.value.jenis))
-
-// Angka-angka ini cermin MEDIA_LIMITS di server/utils/media-services.ts —
-// ditampilkan supaya batasnya diketahui sebelum unggahan gagal, bukan sesudah.
-const batasBerkas = computed(() => {
-  if (itemForm.value.jenis === 'gambar') return '10 MB'
-  if (itemForm.value.jenis === 'video') return '100 MB'
-  return '25 MB'
-})
-
-const simpanItem = async () => {
-  sibuk.value = true
+const geserItem = async (itemId: string, arah: 'naik' | 'turun') => {
   galat.value = ''
   try {
-    let mediaId = itemForm.value.mediaId
-
-    // Berkas diunggah lebih dulu ke pustaka media, baru itemnya dibuat menunjuk
-    // ke sana — supaya satu berkas bisa dipakai ulang di sesi lain.
-    if (pakaiBerkas.value && berkas.value) {
-      const fd = new FormData()
-      fd.append('file', berkas.value)
-      const naik = await $fetch<any>('/api/media/upload', { method: 'POST', body: fd })
-      mediaId = naik.data[0].id
-      if (!itemForm.value.judul) itemForm.value.judul = berkas.value.name
-    }
-
-    await $fetch('/api/admin/sesi-item', {
-      method: 'POST',
-      body: {
-        ...itemForm.value,
-        sesiId: itemSesiId.value,
-        mediaId: mediaId || null,
-        url: itemForm.value.url || null,
-      },
-    })
-    itemModal.value = false
+    await $fetch(`/api/admin/sesi-item/${itemId}/geser`, { method: 'POST', body: { arah } })
     await muat()
   }
-  catch (e: any) { galat.value = pesan(e, 'Gagal menambah item.') }
-  finally { sibuk.value = false }
+  catch (e: any) { galat.value = pesan(e, 'Gagal menggeser item.') }
 }
 
 const hapusItem = async (itemId: string) => {
@@ -389,6 +352,14 @@ const BAGIAN = [
             <USwitch v-model="s.tampil" label="Tampil" />
           </UTooltip>
           <div class="flex gap-1">
+            <UButton
+              color="neutral" variant="ghost" size="sm" icon="i-lucide-chevron-up"
+              aria-label="Geser sesi ke atas" :disabled="sesi[0]?.id === s.id" @click="geserSesi(s, 'naik')"
+            />
+            <UButton
+              color="neutral" variant="ghost" size="sm" icon="i-lucide-chevron-down"
+              aria-label="Geser sesi ke bawah" :disabled="sesi[sesi.length - 1]?.id === s.id" @click="geserSesi(s, 'turun')"
+            />
             <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-save" aria-label="Simpan sesi" @click="simpanSesi(s)" />
             <UButton color="error" variant="ghost" size="sm" icon="i-lucide-trash-2" aria-label="Hapus sesi" @click="hapusSesi(s)" />
           </div>
@@ -407,19 +378,27 @@ const BAGIAN = [
 
             <ul class="mb-2 space-y-1">
               <li
-                v-for="item in s[b.key]"
+                v-for="(item, i) in s[b.key]"
                 :key="item.id"
-                class="flex items-center gap-2 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
+                class="flex items-center gap-1 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
               >
                 <UIcon v-if="item.terkunci" name="i-lucide-lock" class="size-3 shrink-0 text-cc-stone-400" />
                 <span class="min-w-0 flex-1 truncate" :title="item.judul">{{ item.judul }}</span>
                 <UButton
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  icon="i-lucide-x"
-                  aria-label="Hapus item"
-                  @click="hapusItem(item.id)"
+                  color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-up"
+                  aria-label="Geser ke atas" :disabled="i === 0" @click="geserItem(item.id, 'naik')"
+                />
+                <UButton
+                  color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-down"
+                  aria-label="Geser ke bawah" :disabled="i === s[b.key].length - 1" @click="geserItem(item.id, 'turun')"
+                />
+                <UButton
+                  color="neutral" variant="ghost" size="xs" icon="i-lucide-pencil"
+                  aria-label="Ubah item" @click="bukaUbahItem(s.id, item)"
+                />
+                <UButton
+                  color="error" variant="ghost" size="xs" icon="i-lucide-x"
+                  aria-label="Hapus item" @click="hapusItem(item.id)"
                 />
               </li>
             </ul>
@@ -444,61 +423,13 @@ const BAGIAN = [
       description="Simpan event ini dulu. Server akan langsung membuatkan satu sesi sebagai titik mulai, lalu tab Daftar peserta dan Materi ikut terbuka."
     />
 
-    <!-- Tambah item -->
-    <UModal v-model:open="itemModal" title="Tambah item">
-      <template #body>
-        <div class="space-y-4">
-          <UFormField label="Jenis">
-            <USelect v-model="itemForm.jenis" :items="jenisOptions" value-key="value" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Judul" :required="!pakaiBerkas">
-            <UInput
-              v-model="itemForm.judul"
-              class="w-full"
-              :placeholder="pakaiBerkas ? 'Kosongkan untuk memakai nama berkas' : ''"
-            />
-          </UFormField>
-
-          <UFormField v-if="pakaiBerkas" label="Berkas" :hint="`maksimal ${batasBerkas}`">
-            <UInput
-              type="file"
-              class="w-full"
-              @change="berkas = ($event.target as HTMLInputElement).files?.[0] ?? null"
-            />
-          </UFormField>
-
-          <UFormField
-            v-else
-            :label="itemForm.jenis === 'youtube' ? 'Tautan YouTube' : 'Alamat tautan'"
-            required
-          >
-            <template #hint>
-              <UTooltip
-                v-if="itemForm.jenis === 'youtube'"
-                text="Video unlisted boleh — ia tetap bisa di-embed selama izin embed tidak dimatikan di YouTube. Video privat tidak bisa."
-              >
-                <UIcon name="i-lucide-info" class="size-4 text-cc-brown-500" />
-              </UTooltip>
-            </template>
-            <UInput
-              v-model="itemForm.url"
-              class="w-full"
-              :placeholder="itemForm.jenis === 'youtube' ? 'https://youtu.be/… atau youtube.com/watch?v=…' : 'https://…'"
-            />
-          </UFormField>
-
-          <UFormField v-if="itemForm.bagian === 'materi'" help="Matikan hanya jika materi ini boleh dibuka siapa saja, misalnya silabus.">
-            <USwitch v-model="itemForm.terkunci" label="Khusus peserta event" />
-          </UFormField>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="itemModal = false">Batal</UButton>
-          <UButton color="secondary" :loading="sibuk" @click="simpanItem">Tambah</UButton>
-        </div>
-      </template>
-    </UModal>
+    <!-- Tambah / ubah item -->
+    <SesiItemModal
+      v-model:open="itemModal"
+      :sesi-id="itemSesiId"
+      :bagian="itemBagian"
+      :item="itemDiubah"
+      @tersimpan="muat()"
+    />
   </div>
 </template>

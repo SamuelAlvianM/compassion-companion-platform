@@ -7,7 +7,7 @@
 
 import { eq } from 'drizzle-orm'
 import { db } from '../../../db'
-import { ccKegiatan } from '../../../db/schema'
+import { ccKegiatan, hasAtLeast } from '../../../db/schema'
 import { userSaatIni } from '../../../utils/session'
 import { bolehBukaMateri } from '../../../utils/sesi'
 import { susunSesi } from '../../../utils/sesi-payload'
@@ -29,8 +29,14 @@ export default defineEventHandler(async (event) => {
   const user = await userSaatIni(event)
   const boleh = await bolehBukaMateri(user, kegiatan.id)
 
+  // Pengelola level <= 3 menyunting sesi langsung di halaman publik ini, jadi sesi
+  // yang `tampil = false` ikut dikirim kepadanya — kalau tidak, sesi yang baru saja
+  // ia sembunyikan lenyap dari layar dan tidak ada jalan untuk menampilkannya lagi
+  // selain lewat form admin. Bagi pengunjung biasa penyaringannya tidak berubah.
+  const pengelola = Boolean(user && hasAtLeast(user.role, 'editor'))
+
   return {
-    data: await susunSesi(kegiatan.id, boleh),
-    meta: { bolehBukaMateri: boleh, masuk: Boolean(user) },
+    data: await susunSesi(kegiatan.id, boleh, pengelola),
+    meta: { bolehBukaMateri: boleh, masuk: Boolean(user), pengelola },
   }
 })

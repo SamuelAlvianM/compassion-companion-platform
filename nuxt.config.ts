@@ -2,7 +2,14 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-07-25',
   devtools: { enabled: true },
   // Port lokal dipatok di sini supaya `npm run dev` / `yarn dev` / `pnpm dev` sama-sama pakai 3009.
-  devServer: { port: 3009 },
+  //
+  // `host` dipatok ke loopback supaya dev server TIDAK mendengarkan di 0.0.0.0.
+  // Bind ke semua antarmuka berarti dua hal yang sama-sama tidak diinginkan di sini:
+  // Windows memunculkan permintaan izin firewall tiap kali server dijalankan, dan
+  // situs yang belum jadi ikut terbuka bagi siapa pun yang sejaringan.
+  // Kalau suatu saat perlu diuji dari ponsel, jalankan sekali dengan
+  // `npm run dev -- --host` — flag CLI menang atas nilai di sini.
+  devServer: { port: 3009, host: '127.0.0.1' },
   // Satu entry saja: tailwind.css meng-import main.css sebagai layer `components`.
   // Lihat komentar di berkas itu — urutan layer menentukan siapa yang menang.
   css: ['~/assets/css/tailwind.css'],

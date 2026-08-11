@@ -5,6 +5,159 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-11 — Sesi 7: Testimoni & sesi bisa disunting, pemulihan password
+
+### Isi tiga halaman lama akhirnya masuk seed
+
+Sesi 6 memindahkan **kolomnya** ke database, tapi tidak isinya: `waktu`, `ajakan*`,
+`ajakanIsi*`, dan `testimoni` tidak pernah ditulis seeder, jadi database yang baru
+di-seed memuat halaman detail yang setengah jadi — dan blok testimoni tidak pernah
+muncul sama sekali karena dijaga `v-if="testimoni.length"`.
+
+Isinya diangkat dari tiga berkas di `.arsip/` ke `server/db/seed.ts`. Testimoni hanya
+diberikan ke `listening-as-leadership`, satu-satunya yang halaman lamanya memang
+punya; empat event lain dibiarkan kosong karena mengarang kesaksian untuk acara yang
+belum berjalan berarti menaruh testimoni palsu di halaman publik.
+
+### Testimoni
+
+`components/EventTestimoni.vue` — satu komponen untuk mode baca dan mode sunting,
+bukan dua. Markup yang dibaca pengunjung dan yang disunting pengelola harus sama
+persis, dan itu paling mudah dijamin kalau keduanya memang blok yang sama.
+
+Setiap tindakan mengirim **seluruh daftar**, bukan satu barisnya: testimoni adalah
+satu kolom JSON tanpa id per baris, jadi tidak ada yang bisa di-PATCH sepotong.
+Urutannya digeser dengan tombol naik/turun — posisinya adalah indeks di dalam larik,
+bukan kolom tersendiri.
+
+Panel testimoni aslinya `height:530px` + `position:sticky`. Benar untuk daftar yang
+hanya dibaca, tapi begitu ada kotak isian di dalamnya tombol Simpan terpotong dan
+tidak bisa dicapai. Kelas `is-editing` melepas keduanya.
+
+### Sesi bisa disunting di halaman event
+
+Blok "Materi & dokumentasi" yang sama kini memperoleh tambah/ubah/hapus/geser untuk
+sesi maupun isinya — termasuk **ubah item yang sudah dibuat**, yang endpointnya
+(`PATCH /api/admin/sesi-item/[id]`) sudah ada sejak Sesi 5 tapi tidak pernah punya
+antarmuka.
+
+Formnya `components/SesiItemModal.vue`, dipakai bersama oleh penyuntingan di tempat
+**dan** halaman `/admin/event/[id]` — yang sebelumnya punya salinan formnya sendiri.
+Aturan bentuk form (jenis apa untuk bagian mana, mana yang butuh berkas, kapan
+sakelar "khusus peserta" muncul) sekarang hanya ada di satu tempat.
+
+Pemilih dari pustaka media ikut ditambahkan di form itu; sebelumnya setiap unggahan
+selalu berkas baru.
+
+**Baris pengaturan sesi jadi komponennya sendiri** (`SesiPengaturan.vue`) setelah
+percobaan pertama menyimpannya sebagai `Record<id, draf>` di induk. Peta seperti itu
+harus dijaga tetap selaras dengan daftar sesi setiap kali datanya dimuat ulang;
+dengan satu komponen per sesi, drafnya hidup dan mati bersama sesinya lewat `:key`.
+
+**Geser dibuat endpoint sendiri** (`POST …/geser`), bukan PATCH `urutan`. Klien jadi
+tidak perlu tahu angka urutan tetangganya, dan pertukarannya dihitung dari keadaan
+database saat itu juga. Yang ditulis bukan tukar dua nilai melainkan seluruh daftar
+dinormalkan jadi 0..n-1: `urutan` tidak dijamin rapat maupun unik, dan pada dua baris
+bernilai sama menukar nilainya tidak mengubah apa pun — tombolnya tampak rusak tanpa
+galat sama sekali.
+
+`GET /api/events/[slug]/sesi` kini mengirim sesi `tampil = false` **kepada pengelola**.
+Tanpa itu, sesi yang baru saja disembunyikan lenyap dari layar dan tidak ada jalan
+menampilkannya lagi selain lewat form admin.
+
+### Pemulihan password
+
+Akun di situs ini tidak pernah dibuat sendiri oleh pemakainya — semuanya didaftarkan
+admin, passwordnya dikirim lewat WhatsApp. Artinya "lupa password lama" bukan kejadian
+langka melainkan keadaan normal, sementara satu-satunya jalan keluar sebelum ini
+adalah menghubungi admin yang juga tidak punya cara memasangkan yang baru.
+
+Dua jalur:
+
+| Jalur | Endpoint | Password lama |
+|---|---|---|
+| Pengelola memasangkan untuk orang lain | `POST /api/admin/users/[id]/password` | tidak pernah diminta |
+| Ganti password sendiri | `POST /api/users/password` | **opsional** |
+
+Yang kedua **melonggarkan perlindungan yang sebelumnya ada**, dan itu perlu tercatat:
+password lama dulu diminta supaya perangkat yang tertinggal dalam keadaan masuk tidak
+bisa dipakai orang lain mengunci pemiliknya keluar. Sekarang yang menjaga tinggal
+sesinya sendiri. Ditukar secara sadar dengan alasan di paragraf atas; kalau situs ini
+suatu saat dipakai di perangkat bersama, kembalikan kewajibannya dan sandarkan
+pemulihan pada jalur admin yang sudah ada.
+
+Yang diisi tetap diperiksa — menerimanya diam-diam akan membuat orang mengira password
+lamanya benar padahal salah ketik.
+
+**Penjagaan wewenang** ada di `server/utils/wewenang-akun.ts`: pengelola hanya boleh
+menyentuh akun yang wewenangnya **benar-benar lebih rendah**, bukan setara. Dua admin
+yang bisa saling mereset password berarti masing-masing memegang akun yang lain.
+Master dikecualikan — tanpa itu master yang lupa passwordnya tidak bisa dipulihkan
+siapa pun. Aturan yang sama dipakai tiga endpoint sekaligus, karena satu saja yang
+lupa memeriksanya sudah cukup membuka jalan naik pangkat.
+
+### `/admin/member/new` berhenti jadi mockup
+
+Reset password butuh akun yang bisa dibuat, dan formnya masih menampilkan badge
+"Tersimpan (mockup)" tanpa pernah menyentuh database. Kini `POST /api/admin/users` +
+`PATCH /api/admin/users/[id]`, dengan username disusun otomatis dari email kalau
+dikosongkan dan bentrokan diselesaikan lewat akhiran angka. Email bentrok **ditolak**,
+bukan diberi akhiran: ia dipakai untuk masuk dan untuk mencocokkan pendaftaran tamu ke
+akun.
+
+Password akun baru ditampilkan terang-terangan — admin harus menyalinnya ke WhatsApp,
+dan sesudah halaman ditinggalkan tidak ada tempat lain untuk membacanya.
+
+### Dev server tidak lagi mendengarkan di 0.0.0.0
+
+`devServer.host` dipatok ke `127.0.0.1`. Bind ke semua antarmuka memunculkan permintaan
+izin firewall tiap kali server dijalankan, sekaligus membuka situs yang belum jadi bagi
+siapa pun yang sejaringan. Untuk menguji dari ponsel: `npm run dev -- --host` sekali —
+flag CLI menang atas nilai di config.
+
+### Yang dikerjakan sesi ini
+
+- [x] `waktu`, `ajakan*`, `ajakanIsi*`, `testimoni` masuk `seed.ts` dari `.arsip/`
+- [x] `EventTestimoni.vue`: tambah, ubah, hapus, geser; baris kosong dibuang server
+- [x] `EventResources.vue` jadi penyunting sesi sekaligus tampilan bacanya
+- [x] `SesiItemModal.vue` dipakai bersama halaman publik & `/admin/event/[id]`
+- [x] Ubah item yang sudah dibuat + pemilih pustaka media
+- [x] `POST /api/admin/sesi/[id]/geser` & `…/sesi-item/[id]/geser`, urutan dinormalkan
+- [x] Sesi tersembunyi terkirim ke pengelola, tetap disaring untuk pengunjung
+- [x] `POST /api/admin/users/[id]/password` + `wewenang-akun.ts`
+- [x] `passwordLama` jadi opsional + pilihan "Saya lupa password lama" di profil
+- [x] `POST`/`PATCH /api/admin/users`; `/admin/member/[id]` menulis ke database
+- [x] `devServer.host = 127.0.0.1`
+- [x] Diuji: typecheck kembali persis ke baseline (33 galat lama, nol tambahan);
+      28 pemeriksaan API; alur browser sungguhan (Chromium) untuk sunting di tempat,
+      testimoni, sesi, dan pembuatan akun; mode baca tidak menyisakan satu pun
+      penanda sunting di HTML pengunjung
+
+### Catatan / risiko
+
+**Ganti password sendiri tanpa password lama adalah pelonggaran yang disengaja.**
+Lihat tabel di atas dan catatan panjang di `server/api/users/password.post.ts`.
+
+**Sesi tidak dicabut setelah password direset.** Sesi disimpan di cookie terenkripsi,
+bukan di tabel, jadi tidak ada daftar yang bisa dicabut. Perangkat yang sudah masuk
+tetap masuk sampai cookienya kedaluwarsa.
+
+**Menyeret untuk mengurutkan masih belum ada** — yang tersedia tombol naik/turun.
+Untuk daftar sependek ini cukup, dan tombol tetap bisa dipakai lewat papan tik.
+
+**Halaman publik selain detail event masih teks tetap di `.vue`** — sesuai permintaan,
+tidak dikerjakan sesi ini.
+
+**`.arsip/` masih berisi lima berkas.** Isinya sudah pindah ke database; lihat
+pembahasan di bawah entri ini sebelum menghapusnya.
+
+**Backlog Sesi 1 yang masih terbuka:** `.gitignore` sudah ada, `--port/` sudah tidak
+ada di repo ini, tapi `tsconfig.json` masih belum ada (sehingga `npm run typecheck`
+gagal dan harus dijalankan lewat `npx vue-tsc -p .nuxt/tsconfig.json`), dua lockfile
+masih berdampingan, dan 33 galat tipe lama belum disentuh.
+
+---
+
 ## 2026-08-11 — Sesi 6: Penyuntingan di tempat, konten event masuk database
 
 ### Tiga halaman hardcoded dilebur jadi satu

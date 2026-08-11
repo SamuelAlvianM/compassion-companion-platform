@@ -1610,6 +1610,40 @@ a[href^="https://wa.me/"]::before {
     color: #b3261e
 }
 
+/* Panel testimoni saat mode sunting: tinggi tetap & sticky dilepas supaya form
+   tambah/ubah punya ruang. Lihat komentar di components/EventTestimoni.vue. */
+.testimonials.is-editing {
+    position: static;
+    height: auto
+}
+
+.testimonials.is-editing .testimonial-list {
+    overflow: visible
+}
+
+.testimonial-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: 8px
+}
+
+.testimonial-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px
+}
+
+/* Baris tombol di bawah tiap kartu materi/foto/referensi saat mode sunting.
+   Hanya tergambar kalau mode sunting menyala, jadi tinggi kartu di halaman yang
+   dibaca pengunjung tidak berubah sama sekali. */
+.item-tools {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    margin-top: 4px
+}
+
 /* ── Tinggi pita hijau kepala halaman ────────────────────────────────────────
    Latar .event-page adalah gradien dengan henti KERAS di satu titik: hijau dari
    0 sampai titik itu, krem sesudahnya. Titiknya tidak mengikuti isi, jadi halaman

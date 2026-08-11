@@ -37,7 +37,10 @@ const t = computed(() => isEn.value
       simpan: 'Save changes', tersimpan: 'Profile updated',
       gantiPass: 'Change password', passLama: 'Current password', passBaru: 'New password',
       passUlang: 'Repeat new password', gantiTombol: 'Update password', passTersimpan: 'Password changed',
-      tidakCocok: 'New passwords do not match', minimal: 'At least 8 characters',
+      tidakCocok: 'New passwords do not match', minimal: 'At least 6 characters',
+      lupaLama: 'I forgot my current password',
+      lupaLamaIsi: 'Your current password will not be asked for. Anyone using this device while you are signed in could change it, so sign out when you are done.',
+      pakaiLama: 'Enter my current password instead',
       tulis: 'Write a reflection', tulisIsi: 'What did you take away?', kirim: 'Publish',
       kegiatan: 'Related event', tanpaKegiatan: 'Not tied to an event',
       visibilitas: 'Visibility', publik: 'Public', peserta: 'Participants only', pribadi: 'Private',
@@ -51,7 +54,10 @@ const t = computed(() => isEn.value
       simpan: 'Simpan perubahan', tersimpan: 'Profil diperbarui',
       gantiPass: 'Ganti password', passLama: 'Password saat ini', passBaru: 'Password baru',
       passUlang: 'Ulangi password baru', gantiTombol: 'Ubah password', passTersimpan: 'Password berhasil diubah',
-      tidakCocok: 'Password baru tidak sama', minimal: 'Minimal 8 karakter',
+      tidakCocok: 'Password baru tidak sama', minimal: 'Minimal 6 karakter',
+      lupaLama: 'Saya lupa password lama',
+      lupaLamaIsi: 'Password lama tidak akan ditanyakan. Siapa pun yang memakai perangkat ini selagi Anda masih masuk bisa ikut menggantinya, jadi keluar dari akun setelah selesai.',
+      pakaiLama: 'Isi password lama saja',
       tulis: 'Tulis refleksi', tulisIsi: 'Apa yang Anda bawa pulang?', kirim: 'Terbitkan',
       kegiatan: 'Kegiatan terkait', tanpaKegiatan: 'Tidak terkait kegiatan',
       visibilitas: 'Visibilitas', publik: 'Publik', peserta: 'Khusus peserta', pribadi: 'Pribadi',
@@ -101,6 +107,19 @@ const capsPass = ref(false)
 const cekCaps = (e: KeyboardEvent) => { capsPass.value = e.getModifierState?.('CapsLock') ?? false }
 const pesanPass = reactive({ ok: '', galat: '' })
 
+/**
+ * Jalan keluar untuk yang benar-benar lupa password lamanya.
+ *
+ * Password akun di situs ini dibuatkan admin dan dikirim lewat WhatsApp, jadi lupa
+ * adalah keadaan yang lazim — dan sebelum ini satu-satunya jalannya adalah minta
+ * admin. Servernya menerima `passwordLama` kosong (lihat catatan panjang di
+ * server/api/users/password.post.ts soal apa yang ditukar di sini).
+ *
+ * Sengaja dibuat pilihan yang harus diklik, bukan kolom yang boleh dikosongkan
+ * begitu saja: peringatannya perlu terbaca sekali sebelum dipakai.
+ */
+const lupaLama = ref(false)
+
 const gantiPassword = async () => {
   pesanPass.ok = ''
   pesanPass.galat = ''
@@ -111,10 +130,16 @@ const gantiPassword = async () => {
   try {
     await $fetch('/api/users/password', {
       method: 'POST',
-      body: { passwordLama: formPass.passwordLama, passwordBaru: formPass.passwordBaru },
+      body: {
+        // Dikirim sebagai string kosong saat "lupa" dipilih — server memeriksanya
+        // hanya kalau ada isinya.
+        passwordLama: lupaLama.value ? '' : formPass.passwordLama,
+        passwordBaru: formPass.passwordBaru,
+      },
     })
     pesanPass.ok = t.value.passTersimpan
     Object.assign(formPass, { passwordLama: '', passwordBaru: '', ulangi: '' })
+    lupaLama.value = false
   } catch (e: any) {
     pesanPass.galat = e?.data?.statusMessage || 'Gagal'
   }
@@ -342,7 +367,7 @@ const inisial = computed(() =>
             </template>
 
             <UForm :state="formPass" class="space-y-4" @submit="gantiPassword">
-              <UFormField :label="t.passLama" name="passwordLama" required>
+              <UFormField v-if="!lupaLama" :label="t.passLama" name="passwordLama" required>
                 <UInput
                   v-model="formPass.passwordLama"
                   :type="lihatPass.lama ? 'text' : 'password'"
@@ -362,6 +387,36 @@ const inisial = computed(() =>
                   </template>
                 </UInput>
               </UFormField>
+
+              <!-- Jalur "lupa password lama". Tombolnya kecil dan di bawah kolom
+                   password lama, bukan di sebelahnya: yang ingat passwordnya tidak
+                   perlu memutuskan apa pun, ia tinggal mengetik seperti biasa. -->
+              <UButton
+                v-if="!lupaLama"
+                color="neutral"
+                variant="link"
+                size="xs"
+                class="-mt-2 -ml-2"
+                icon="i-lucide-help-circle"
+                @click="lupaLama = true; formPass.passwordLama = ''"
+              >
+                {{ t.lupaLama }}
+              </UButton>
+
+              <UAlert
+                v-else
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-shield-alert"
+                :title="t.lupaLama"
+                :description="t.lupaLamaIsi"
+              >
+                <template #actions>
+                  <UButton color="neutral" variant="outline" size="xs" @click="lupaLama = false">
+                    {{ t.pakaiLama }}
+                  </UButton>
+                </template>
+              </UAlert>
 
               <UFormField :label="t.passBaru" name="passwordBaru" :hint="t.minimal" required>
                 <UInput

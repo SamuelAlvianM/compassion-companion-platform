@@ -16,7 +16,7 @@ const isEn = computed(() => base.value === '/en')
 // lama keluar dulu lalu yang baru ditahan — itulah layar kosong yang terlihat saat
 // berpindah ID/EN atau keluar akun. Tanpa await, rangkanya langsung tergambar.
 const { data, status, error, refresh } = useFetch(() => `/api/events/${slug.value}/detail`)
-const { data: sesiData } = useFetch(() => `/api/events/${slug.value}/sesi`)
+const { data: sesiData, refresh: refreshSesi } = useFetch(() => `/api/events/${slug.value}/sesi`)
 
 const e = computed(() => data.value?.data ?? null)
 const sesi = computed(() => sesiData.value?.data ?? [])
@@ -51,7 +51,7 @@ watch([status, error], () => {
   }
 })
 
-const { bolehSunting } = useEditMode()
+const { aktif, bolehSunting } = useEditMode()
 
 /**
  * Penyimpan untuk seluruh <EditableText> di halaman ini. PATCH-nya parsial —
@@ -62,6 +62,18 @@ const simpanKolom = async (field: string, nilai: string) => {
   await $fetch(`/api/admin/events/${e.value!.id}`, {
     method: 'PATCH',
     body: { [field]: nilai },
+  })
+  await refresh()
+}
+
+/**
+ * Testimoni memakai endpoint yang sama, tapi mengirim daftar utuh: ia satu kolom
+ * JSON tanpa id per baris, jadi tidak ada yang bisa di-PATCH sepotong.
+ */
+const simpanTestimoni = async (daftar: { nama: string, teks: string }[]) => {
+  await $fetch(`/api/admin/events/${e.value!.id}`, {
+    method: 'PATCH',
+    body: { testimoni: daftar },
   })
   await refresh()
 }
@@ -122,16 +134,11 @@ const sampul = computed(() =>
   e.value?.cover || SAMPUL[e.value?.slug ?? ''] || '/images/event-gallery-placeholder.png')
 
 // Label pendaftaran (biaya, kuota, keadaan tombol) tinggal di EventRegisterPanel
-// bersama markup-nya, supaya tidak ada dua tempat yang harus diubah bersamaan.
+// bersama markup-nya, dan label testimoni di EventTestimoni — supaya tidak ada dua
+// tempat yang harus diubah bersamaan.
 const t = computed(() => isEn.value
-  ? {
-      kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location',
-      testimoniJudul: 'What they said', testimoniEyebrow: 'Participant testimonies',
-    }
-  : {
-      kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi',
-      testimoniJudul: 'Apa kata mereka', testimoniEyebrow: 'Testimoni peserta',
-    })
+  ? { kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location' }
+  : { kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi' })
 </script>
 
 <template>
@@ -201,20 +208,21 @@ const t = computed(() => isEn.value
         <div>
           <EventRegisterPanel :event="e" :is-en="isEn" @berhasil="refresh()" />
 
-          <aside v-if="testimoni.length" class="testimonials panel mt-5">
-            <div class="eyebrow">{{ t.testimoniEyebrow }}</div>
-            <h2 class="section-title">{{ t.testimoniJudul }}</h2>
-            <div class="testimonial-list">
-              <div v-for="(k, i) in testimoni" :key="i" class="comment">
-                <strong>{{ k.nama }}</strong>
-                <p>“{{ k.teks }}”</p>
-              </div>
-            </div>
-          </aside>
+          <EventTestimoni :daftar="testimoni" :is-en="isEn" :simpan="simpanTestimoni" />
         </div>
       </div>
 
-      <EventResources v-if="sesi.length" :sesi="sesi" :is-en="isEn" :masuk="masuk" />
+      <!-- Saat mode sunting menyala, blok ini tetap tergambar meski belum ada satu
+           sesi pun — kalau tidak, event baru tidak punya tempat untuk menekan
+           "Tambah sesi". -->
+      <EventResources
+        v-if="sesi.length || aktif"
+        :sesi="sesi"
+        :is-en="isEn"
+        :masuk="masuk"
+        :kegiatan-id="e.id"
+        @ubah="refreshSesi()"
+      />
     </div>
 
     <AdminEditBar v-if="bolehSunting" :admin-path="`/admin/event/${e.id}`" />

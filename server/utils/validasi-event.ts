@@ -119,11 +119,17 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
     ajakanIsiEn: teksAtauNull(body.ajakanIsiEn),
     // Testimoni hanya diterima sebagai larik objek {nama, teks}; bentuk lain
     // diabaikan supaya kolom JSON tidak menampung apa saja.
+    //
+    // Baris yang kedua kolomnya kosong dibuang di sini, bukan cuma dicegah di form:
+    // ia tidak menampilkan apa pun di halaman tapi tetap terhitung oleh
+    // `v-if="testimoni.length"`, sehingga panel testimoni bisa terbuka berisi kotak
+    // kosong tanpa ada yang tahu dari mana asalnya.
     testimoni: Array.isArray(body.testimoni)
       ? (body.testimoni as unknown[])
           .filter((k): k is { nama: string, teks: string } =>
             Boolean(k) && typeof k === 'object' && 'nama' in k! && 'teks' in k!)
           .map(k => ({ nama: String(k.nama).trim(), teks: String(k.teks).trim() }))
+          .filter(k => k.nama !== '' || k.teks !== '')
       : null,
     tautanDaring: teksAtauNull(body.tautanDaring),
     tanggalMulai,

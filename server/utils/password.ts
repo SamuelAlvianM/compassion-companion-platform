@@ -23,6 +23,26 @@ const PARAMS = { N: 16384, r: 8, p: 1 }
 const KEY_LENGTH = 64
 const SALT_LENGTH = 16
 
+/**
+ * Panjang minimal password baru, dipakai semua jalur yang memasang password:
+ * ganti password sendiri, reset oleh pengelola, dan pembuatan akun baru.
+ *
+ * 6, bukan 8: kredensial pengembangan yang sudah beredar (mis. `user123`, 7
+ * karakter) harus tetap bisa dipasang ulang lewat form. Naikkan ke 12 begitu
+ * kredensial produksi ditetapkan — tinggal satu angka di berkas ini.
+ */
+export const PANJANG_MINIMAL = 6
+
+/** Melempar 400 kalau password baru terlalu pendek. */
+export const wajibPanjang = (password: string) => {
+  if (password.length < PANJANG_MINIMAL) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Password baru minimal ${PANJANG_MINIMAL} karakter`,
+    })
+  }
+}
+
 export const hashPassword = async (plain: string) => {
   const salt = randomBytes(SALT_LENGTH)
   const derived = await scryptAsync(plain, salt, KEY_LENGTH, PARAMS)

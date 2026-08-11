@@ -14,6 +14,59 @@ const { data, status } = useFetch(() => `/api/users/${props.userId}`, {
 })
 
 const u = computed(() => data.value?.user)
+
+// ── Reset password ───────────────────────────────────────────────────────────
+// Jalur pemulihan untuk akun yang dibuat admin: passwordnya disampaikan lewat
+// WhatsApp, jadi kalau pemiliknya lupa, tidak ada siapa pun selain pengelola yang
+// bisa memasangkan yang baru.
+//
+// Syarat yang sama ditegakkan ulang di server (wajibKelolaAkun). Yang di sini
+// hanya menyembunyikan tombol yang pasti ditolak — bukan penjaganya.
+const { user: aktor } = useAuth()
+
+const bolehReset = computed(() => {
+  const saya = aktor.value
+  const sasaran = u.value
+  if (!saya || !sasaran) return false
+  if (saya.level > 2) return false
+  if (saya.id === sasaran.id) return true
+  if (saya.role === 'master') return true
+  return saya.level < sasaran.level
+})
+
+const resetModal = ref(false)
+const passwordBaru = ref('')
+const lihatPassword = ref(false)
+const sibukReset = ref(false)
+const galatReset = ref('')
+const sesudahReset = ref('')
+
+const bukaReset = () => {
+  passwordBaru.value = ''
+  lihatPassword.value = true
+  galatReset.value = ''
+  sesudahReset.value = ''
+  resetModal.value = true
+}
+
+const kirimReset = async () => {
+  sibukReset.value = true
+  galatReset.value = ''
+  try {
+    await $fetch(`/api/admin/users/${props.userId}/password`, {
+      method: 'POST',
+      body: { passwordBaru: passwordBaru.value },
+    })
+    // Passwordnya ditahan di layar setelah berhasil, bukan dikosongkan: admin harus
+    // menyalinnya ke WhatsApp, dan tidak ada tempat lain untuk membacanya lagi —
+    // yang tersimpan di database hanya hash-nya.
+    sesudahReset.value = passwordBaru.value
+  }
+  catch (e: any) {
+    galatReset.value = e?.data?.statusMessage ?? e?.statusMessage ?? 'Gagal mengubah password.'
+  }
+  finally { sibukReset.value = false }
+}
 const riwayat = computed(() => data.value?.riwayat ?? [])
 const ringkas = computed(() => data.value?.ringkas)
 
@@ -169,15 +222,107 @@ const tanggal = (nilai: string | null, jam = false) => nilai
         </p>
       </div>
 
-      <UButton
-        :to="`/id/profil?id=${u.id}`"
-        color="secondary"
-        variant="outline"
-        block
-        trailing-icon="i-lucide-arrow-right"
-      >
-        Buka profil lengkap
-      </UButton>
+      <div class="space-y-2">
+        <UButton
+          :to="`/id/profil?id=${u.id}`"
+          color="secondary"
+          variant="outline"
+          block
+          trailing-icon="i-lucide-arrow-right"
+        >
+          Buka profil lengkap
+        </UButton>
+
+        <template v-if="bolehReset">
+          <UButton
+            :to="`/admin/member/${u.id}`"
+            color="neutral"
+            variant="outline"
+            block
+            icon="i-lucide-pencil"
+          >
+            Ubah akun
+          </UButton>
+
+          <UButton color="neutral" variant="soft" block icon="i-lucide-key-round" @click="bukaReset">
+            Reset password
+          </UButton>
+        </template>
+      </div>
     </div>
+
+    <UModal v-model:open="resetModal" title="Reset password">
+      <template #body>
+        <!-- Sesudah berhasil: passwordnya diperlihatkan supaya bisa disalin ke WA. -->
+        <div v-if="sesudahReset" class="space-y-3">
+          <UAlert
+            color="primary"
+            variant="subtle"
+            icon="i-lucide-check"
+            :description="`Password ${u?.fullName ?? 'akun ini'} sudah diganti.`"
+          />
+          <div class="rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
+            <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Password baru</p>
+            <p class="mt-1 font-mono text-lg break-all text-cc-green-800">{{ sesudahReset }}</p>
+          </div>
+          <p class="text-xs text-cc-stone-500">
+            Salin sekarang lalu kirimkan lewat WhatsApp. Yang tersimpan di database hanya hash-nya,
+            jadi setelah jendela ini ditutup password ini tidak bisa dibaca lagi dari mana pun.
+          </p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <p class="text-sm text-cc-stone-600">
+            Password lama tidak diperlukan. Pemilik akun bisa langsung masuk dengan password baru ini,
+            dan sesi yang sedang berjalan di perangkatnya tidak ikut terputus.
+          </p>
+
+          <div class="rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
+            <p class="font-semibold text-cc-green-800">{{ u?.fullName }}</p>
+            <p class="text-sm text-cc-stone-500">@{{ u?.username }} · {{ u?.roleLabel }}</p>
+          </div>
+
+          <UFormField label="Password baru" hint="minimal 6 karakter" required>
+            <UInput
+              v-model="passwordBaru"
+              :type="lihatPassword ? 'text' : 'password'"
+              autocomplete="new-password"
+              class="w-full"
+              placeholder="Password yang akan dikirim ke pemilik akun"
+              @keyup.enter="passwordBaru && kirimReset()"
+            >
+              <template #trailing>
+                <UButton
+                  color="neutral" variant="link" size="sm" tabindex="-1"
+                  :icon="lihatPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  aria-label="Tampilkan password"
+                  @click="lihatPassword = !lihatPassword"
+                />
+              </template>
+            </UInput>
+          </UFormField>
+
+          <UAlert v-if="galatReset" color="error" variant="subtle" icon="i-lucide-triangle-alert" :description="galatReset" />
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="resetModal = false">
+            {{ sesudahReset ? 'Tutup' : 'Batal' }}
+          </UButton>
+          <UButton
+            v-if="!sesudahReset"
+            color="secondary"
+            icon="i-lucide-key-round"
+            :loading="sibukReset"
+            :disabled="!passwordBaru"
+            @click="kirimReset"
+          >
+            Ubah password
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </UCard>
 </template>
