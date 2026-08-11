@@ -65,7 +65,16 @@ const query = computed(() => ({
   dari: dari.value || undefined,
 }))
 
-const { data, status } = await useFetch('/api/events', { query })
+// Sengaja TANPA `await`. Dengan await, <script setup> jadi async dan Vue menahan
+// seluruh komponen sampai fetch selesai; digabung pageTransition mode 'out-in',
+// halaman lama keluar dulu lalu yang baru ditahan — itu yang membuat layar kosong
+// beberapa saat saat berpindah bahasa atau keluar akun. Tanpa await, kerangka
+// halaman langsung tergambar dan hanya isinya yang dirangkai.
+const { data, status } = useFetch('/api/events', { query })
+
+/** Muat pertama: belum ada data sama sekali. Muat ulang karena filter tidak
+    dihitung di sini — kartu yang sudah ada lebih baik tetap terlihat. */
+const memuatAwal = computed(() => status.value === 'pending' && !data.value)
 
 const semuaEvent = computed(() => data.value?.data ?? [])
 const perFase = computed(() => data.value?.meta.perFase ?? {})
@@ -171,8 +180,7 @@ const t = computed(() => isEn.value
 </script>
 
 <template>
-  <NuxtPage v-if="$route.path !== '/id/events' && $route.path !== '/en/events'" />
-  <main v-else class="event-page">
+  <main class="event-page">
     <div class="container">
       <div class="page-head">
         <div class="eyebrow">{{ t.eyebrow }}</div>
@@ -239,10 +247,10 @@ const t = computed(() => isEn.value
         </span>
       </div>
 
-      <!-- Daftar event -->
-      <div v-if="status === 'pending'" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        <USkeleton v-for="n in 3" :key="n" class="h-72 w-full" />
-      </div>
+      <!-- Daftar event. Rangka hanya dipasang saat belum ada data sama sekali;
+           saat menyaring, kartu yang sudah tergambar dibiarkan tetap terlihat
+           supaya menyaring tidak terasa seperti memuat ulang halaman. -->
+      <SkeletonKartuEvent v-if="memuatAwal" :jumlah="6" />
 
       <UAlert
         v-else-if="!events.length"

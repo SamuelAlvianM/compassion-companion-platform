@@ -46,8 +46,7 @@ const columns = [
 </script>
 
 <template>
-  <NuxtPage v-if="$route.path !== '/admin/jurnal'" />
-  <div v-else class="mx-auto max-w-6xl">
+  <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Konten</p>

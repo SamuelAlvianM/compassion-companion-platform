@@ -19,7 +19,7 @@ watch(cari, (nilai) => {
   timer = setTimeout(() => { cariDebounce.value = nilai }, 300)
 })
 
-const { data, status: muat, refresh } = await useFetch('/api/admin/events', {
+const { data, status: muat, refresh } = useFetch('/api/admin/events', {
   query: computed(() => ({
     cari: cariDebounce.value || undefined,
     status: status.value === 'semua' ? undefined : status.value,

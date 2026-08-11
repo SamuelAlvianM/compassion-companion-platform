@@ -24,7 +24,7 @@ const query = computed(() => ({
   aktif: aktif.value || undefined,
 }))
 
-const { data, status } = await useFetch('/api/users', { query })
+const { data, status } = useFetch('/api/users', { query })
 
 const users = computed(() => data.value?.data ?? [])
 const roleOptions = computed(() => [

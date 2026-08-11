@@ -28,7 +28,7 @@ const cari = ref('')
 const galat = ref('')
 const sibukId = ref('')
 
-const { data, refresh, status: muatStatus } = await useFetch(
+const { data, refresh, status: muatStatus } = useFetch(
   () => `/api/admin/events/${props.kegiatanId}/peserta`,
   {
     query: { status: tab, cari },
@@ -40,6 +40,11 @@ const { data, refresh, status: muatStatus } = await useFetch(
 
 const peserta = computed(() => data.value?.data ?? [])
 const hitung = computed(() => data.value?.meta.perStatus ?? ({} as Record<string, number>))
+
+/** Rangka hanya saat belum ada data sama sekali. Berganti tab atau mengetik di
+    kotak cari membiarkan baris yang sudah tergambar tetap terlihat — kalau tidak,
+    tiap huruf yang diketik mengosongkan daftarnya. */
+const memuatAwal = computed(() => muatStatus.value === 'pending' && !data.value)
 
 const tanggal = (nilai: string | null) => nilai
   ? new Intl.DateTimeFormat('id-ID', {
@@ -96,8 +101,19 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
 
     <UAlert v-if="galat" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
 
-    <div v-if="muatStatus === 'pending'" class="py-10 text-center text-sm text-cc-stone-500">
-      Memuat…
+    <div v-if="memuatAwal" class="space-y-2" aria-hidden="true">
+      <div
+        v-for="n in 4"
+        :key="n"
+        class="flex items-center gap-3 rounded-xl border border-cc-stone-200 p-3"
+      >
+        <div class="min-w-0 flex-1 space-y-2">
+          <USkeleton class="h-4 w-48" />
+          <USkeleton class="h-3 w-64" />
+          <USkeleton class="h-3 w-40" />
+        </div>
+        <USkeleton class="h-8 w-28 shrink-0 rounded-md" />
+      </div>
     </div>
 
     <div v-else-if="!peserta.length" class="py-10 text-center text-sm text-cc-stone-500">

@@ -3,7 +3,7 @@ definePageMeta({ layout: 'admin' })
 
 // Halaman admin pertama yang mengambil data sungguhan dari database, bukan angka
 // yang ditulis di template. Angka nol berarti tabelnya memang masih kosong.
-const { data: stats, status, error, refresh } = await useFetch('/api/admin/stats')
+const { data: stats, status, error, refresh } = useFetch('/api/admin/stats')
 
 const { user } = useAuth()
 const hanyaMaster = computed(() => user.value?.level === 1)

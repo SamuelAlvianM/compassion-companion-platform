@@ -11,16 +11,45 @@ const slug = computed(() => String(route.params.slug))
 const base = computed(() => route.path.startsWith('/en') ? '/en' : '/id')
 const isEn = computed(() => base.value === '/en')
 
-const { data, refresh } = await useFetch(() => `/api/events/${slug.value}/detail`)
-const { data: sesiData } = await useFetch(() => `/api/events/${slug.value}/sesi`)
+// Sengaja TANPA `await`. Dengan await, <script setup> jadi async dan Vue menahan
+// komponennya sampai fetch selesai; digabung pageTransition mode 'out-in', halaman
+// lama keluar dulu lalu yang baru ditahan — itulah layar kosong yang terlihat saat
+// berpindah ID/EN atau keluar akun. Tanpa await, rangkanya langsung tergambar.
+const { data, status, error, refresh } = useFetch(() => `/api/events/${slug.value}/detail`)
+const { data: sesiData } = useFetch(() => `/api/events/${slug.value}/sesi`)
 
 const e = computed(() => data.value?.data ?? null)
 const sesi = computed(() => sesiData.value?.data ?? [])
 const masuk = computed(() => Boolean(sesiData.value?.meta.masuk))
 
-if (!e.value) {
-  throw createError({ statusCode: 404, statusMessage: 'Event tidak ditemukan', fatal: true })
-}
+/**
+ * Rangka tampil selama belum ada event yang bisa digambar.
+ *
+ * Sengaja TIDAK diikat ke `status === 'pending'`. Saat kunci fetch berganti —
+ * yang terjadi tiap berpindah /id ↔ /en — status sempat bernilai `idle` sebelum
+ * menjadi `pending`, dan pada jendela itu tidak ada satu pun cabang yang benar:
+ * datanya sudah kosong, tapi rangkanya belum menyala. Itulah kedipan yang
+ * terlihat. Menanyakan "sudah ada datanya belum" tidak punya celah itu.
+ *
+ * Saat menyimpan suntingan, `data` tetap terisi sehingga halaman tidak berkedip
+ * tiap satu kolom disimpan.
+ */
+const memuatAwal = computed(() => !e.value && !error.value)
+
+// 404 tidak bisa lagi diputuskan di setup karena datanya belum ada di sana.
+//
+// Dipakai `showError()`, bukan `throw createError()`. Melempar dari dalam watcher
+// tidak sampai ke penangan galat Nuxt — errornya menggantung di luar siklus render
+// dan komponennya berhenti tergambar sama sekali, menyisakan header dan footer
+// tanpa isi. `showError` memang dirancang untuk dipanggil dari luar setup.
+//
+// Syaratnya `success`, bukan "bukan pending": pada keadaan `idle` datanya juga
+// kosong, dan mem-404-kan di situ akan menolak event yang sebenarnya ada.
+watch([status, error], () => {
+  if (error.value || (status.value === 'success' && !e.value)) {
+    showError({ statusCode: 404, statusMessage: 'Event tidak ditemukan' })
+  }
+})
 
 const { bolehSunting } = useEditMode()
 
@@ -106,7 +135,9 @@ const t = computed(() => isEn.value
 </script>
 
 <template>
-  <main v-if="e" class="event-page">
+  <SkeletonDetailEvent v-if="memuatAwal" />
+
+  <main v-else-if="e" class="event-page">
     <div class="container">
       <div class="page-head">
         <nav class="breadcrumb">

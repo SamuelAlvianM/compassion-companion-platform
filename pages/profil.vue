@@ -17,7 +17,12 @@ if (!sesi.value) {
 }
 
 const targetId = computed(() => (typeof route.query.id === 'string' ? route.query.id : 'me'))
-const { data, refresh } = await useFetch(() => `/api/users/${targetId.value}`)
+// Tanpa `await`: await membuat komponen ini suspense, sehingga saat keluar akun
+// atau berpindah bahasa halaman lama sudah hilang sementara yang baru belum boleh
+// tergambar. Rangkanya sekarang muncul lebih dulu.
+const { data, status, refresh } = useFetch(() => `/api/users/${targetId.value}`)
+
+const memuatAwal = computed(() => status.value === 'pending' && !data.value)
 
 const profil = computed(() => data.value?.user)
 const sendiri = computed(() => data.value?.sendiri ?? false)
@@ -116,14 +121,21 @@ const gantiPassword = async () => {
 }
 
 // ── Tulis refleksi ───────────────────────────────────────────────────────────
-const formRefleksi = reactive({ isi: '', kegiatanSlug: '', visibilitas: 'publik' })
+// Sentinel 'tanpa', bukan string kosong. Reka UI (penyokong USelect) memesan ''
+// untuk keadaan "belum dipilih" dan melempar galat begitu ada item bernilai kosong —
+// galat render yang menjatuhkan seluruh halaman jadi 500, bukan sekadar merusak
+// select-nya. Jebakan yang sama sudah dicatat untuk filter di halaman event.
+const TANPA_KEGIATAN = 'tanpa'
+
+const formRefleksi = reactive({ isi: '', kegiatanSlug: TANPA_KEGIATAN, visibilitas: 'publik' })
 const kirimRefleksi = async () => {
   if (!formRefleksi.isi.trim()) return
   await $fetch('/api/refleksi', {
     method: 'POST',
     body: {
       isi: formRefleksi.isi,
-      kegiatanSlug: formRefleksi.kegiatanSlug || undefined,
+      // Sentinel diterjemahkan balik di sini; server tidak perlu tahu soal itu.
+      kegiatanSlug: formRefleksi.kegiatanSlug === TANPA_KEGIATAN ? undefined : formRefleksi.kegiatanSlug,
       visibilitas: formRefleksi.visibilitas,
     },
   })
@@ -137,7 +149,7 @@ const hapusRefleksi = async (id: string) => {
 }
 
 const opsiKegiatan = computed(() => [
-  { value: '', label: t.value.tanpaKegiatan },
+  { value: TANPA_KEGIATAN, label: t.value.tanpaKegiatan },
   ...riwayat.value.map((r: any) => ({ value: r.slug, label: r.judul })),
 ])
 
@@ -167,7 +179,36 @@ const inisial = computed(() =>
 <template>
   <main class="event-page">
     <div class="container">
-      <div v-if="profil" class="mx-auto max-w-4xl">
+      <!-- Rangka profil: avatar bulat + identitas + baris statistik + bilah tab,
+           mengikuti tata letak yang sesungguhnya supaya tidak ada lompatan saat
+           datanya datang. -->
+      <div v-if="memuatAwal" class="mx-auto max-w-4xl" aria-hidden="true">
+        <div class="page-head">
+          <div class="flex flex-wrap items-center gap-6">
+            <USkeleton class="size-24 shrink-0 rounded-full" />
+            <div class="min-w-0 flex-1">
+              <USkeleton class="h-3 w-20" />
+              <USkeleton class="mt-3 h-9 w-64" />
+              <USkeleton class="mt-3 h-4 w-32" />
+              <USkeleton class="mt-3 h-6 w-40 rounded-full" />
+            </div>
+          </div>
+          <div class="mt-6 flex gap-8">
+            <div v-for="n in 3" :key="n">
+              <USkeleton class="h-3 w-24" />
+              <USkeleton class="mt-2 h-8 w-12" />
+            </div>
+          </div>
+        </div>
+
+        <USkeleton class="mb-6 h-10 w-full max-w-md" />
+
+        <div class="grid gap-4 sm:grid-cols-3">
+          <USkeleton v-for="n in 6" :key="n" class="aspect-square w-full rounded-xl" />
+        </div>
+      </div>
+
+      <div v-else-if="profil" class="mx-auto max-w-4xl">
         <UButton
           v-if="!sendiri"
           to="/admin/members"
