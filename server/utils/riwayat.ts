@@ -47,9 +47,11 @@ export const riwayatKegiatan = async (userId: string, email: string | null) => {
     data,
     ringkas: {
       total: data.length,
-      hadir: data.filter(d => d.status === 'hadir').length,
-      terkonfirmasi: data.filter(d => d.status === 'terkonfirmasi').length,
-      menunggu: data.filter(d => d.status === 'menunggu').length,
+      // `hadir` sekarang diturunkan dari kolom hadir_pada, bukan dari status —
+      // status hanya menceritakan perjalanan pendaftaran, bukan kehadiran.
+      hadir: data.filter(d => Boolean(d.hadirPada)).length,
+      konfirmasi: data.filter(d => d.status === 'konfirmasi').length,
+      diproses: data.filter(d => d.status === 'baru' || d.status === 'proses').length,
       selesai: data.filter(d => d.fase === 'selesai').length,
     },
   }

@@ -75,8 +75,11 @@ export default defineEventHandler(async (event) => {
         noHp: body?.noHp?.trim() || null,
         institusi: body?.institusi?.trim() || null,
         catatan: body?.catatan?.trim() || null,
-        // Kegiatan gratis langsung terkonfirmasi; yang berbayar menunggu verifikasi admin.
-        status: kegiatan.harga === 0 ? 'terkonfirmasi' : 'menunggu',
+        // Pendaftar berakun mulai dari `proses`, bukan `baru`: nama dan emailnya
+        // datang dari akun yang sudah terverifikasi, jadi langkah "periksa dulu
+        // orangnya siapa" sudah lewat — yang tersisa tinggal konfirmasi admin.
+        // Pendaftar tamu mulai dari `baru` karena datanya belum diperiksa siapa pun.
+        status: user ? 'proses' : 'baru',
       })
       .returning()
       .all()

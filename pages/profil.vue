@@ -152,7 +152,12 @@ const tanggal = (nilai: string | null) => nilai
   : '—'
 
 const warnaStatus = (s: string) =>
-  ({ hadir: 'primary', terkonfirmasi: 'secondary', menunggu: 'warning', batal: 'neutral' })[s] ?? 'neutral'
+  ({ konfirmasi: 'primary', proses: 'secondary', baru: 'warning', batal: 'neutral' })[s] ?? 'neutral'
+
+/** Label status pendaftaran, dwibahasa. Nilai di database tetap bahasa Indonesia. */
+const labelStatus = (s: string) => (isEn.value
+  ? { baru: 'New', proses: 'In process', konfirmasi: 'Confirmed', batal: 'Cancelled' }
+  : { baru: 'Baru', proses: 'Diproses', konfirmasi: 'Terkonfirmasi', batal: 'Dibatalkan' })[s] ?? s
 
 const inisial = computed(() =>
   (profil.value?.fullName ?? '?').split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase(),
@@ -245,7 +250,7 @@ const inisial = computed(() =>
                 <p class="font-semibold text-cc-green-800">{{ isEn ? (r.judulEn ?? r.judul) : r.judul }}</p>
                 <p class="text-xs text-cc-stone-500">{{ tanggal(r.tanggalMulai) }} · {{ r.lokasi }}</p>
               </div>
-              <UBadge :color="warnaStatus(r.status)" variant="subtle" size="sm">{{ r.status }}</UBadge>
+              <UBadge :color="warnaStatus(r.status)" variant="subtle" size="sm">{{ labelStatus(r.status) }}</UBadge>
               <UBadge color="neutral" variant="outline" size="sm">{{ r.fase }}</UBadge>
             </li>
           </ul>

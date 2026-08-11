@@ -7,8 +7,31 @@ import { generateCcId } from '../../utils/randomId'
 import { ccUser } from './users'
 import { ccKegiatan } from './kegiatan'
 
-export const PESERTA_STATUS = ['menunggu', 'terkonfirmasi', 'hadir', 'batal'] as const
+/**
+ * Alur pendaftaran, dijalankan manual oleh admin — tidak ada perpindahan otomatis.
+ *
+ *   baru ──► proses ──► konfirmasi
+ *     └─────────┴───────────┴──────► batal
+ *                                      │
+ *              dipulihkan ke status sebelumnya
+ *
+ * `batal` berarti orangnya benar-benar tidak jadi ikut. Karena itu ia bukan ujung
+ * yang mati: yang membatalkan lalu berubah pikiran dikembalikan ke status terakhir
+ * sebelum batal, bukan diulang dari awal — kerja admin yang sudah dilakukan
+ * (menghubungi, memverifikasi pembayaran) tidak perlu diulang.
+ */
+export const PESERTA_STATUS = ['baru', 'proses', 'konfirmasi', 'batal'] as const
 export type PesertaStatus = (typeof PESERTA_STATUS)[number]
+
+/** Urutan maju. Dipakai server untuk memvalidasi transisi, bukan hanya UI. */
+export const PESERTA_ALUR = ['baru', 'proses', 'konfirmasi'] as const
+
+/** Status berikutnya dalam alur maju, atau null kalau sudah di ujung. */
+export const statusBerikutnya = (status: PesertaStatus): PesertaStatus | null => {
+  const i = PESERTA_ALUR.indexOf(status as (typeof PESERTA_ALUR)[number])
+  if (i === -1 || i === PESERTA_ALUR.length - 1) return null
+  return PESERTA_ALUR[i + 1]
+}
 
 export const ccPeserta = sqliteTable(
   'cc_peserta',
@@ -30,7 +53,15 @@ export const ccPeserta = sqliteTable(
     institusi: text('institusi', { length: 200 }),
     catatan: text('catatan'),
 
-    status: text('status', { enum: PESERTA_STATUS }).notNull().default('menunggu'),
+    status: text('status', { enum: PESERTA_STATUS }).notNull().default('baru'),
+
+    /**
+     * Status sebelum dibatalkan, supaya pembatalan bisa dianulir tanpa menebak.
+     * Disimpan sebagai kolom, bukan diturunkan dari riwayat: tidak ada tabel
+     * riwayat status di sini, dan menambahkannya hanya demi satu langkah mundur
+     * berarti setiap perubahan status menulis dua baris seumur hidup tabel ini.
+     */
+    statusSebelumBatal: text('status_sebelum_batal', { enum: PESERTA_STATUS }),
 
     terdaftarPada: integer('terdaftar_pada', { mode: 'timestamp' })
       .notNull()

@@ -17,11 +17,11 @@ const ringkasan = computed(() => [
     ke: '/admin/events',
   },
   {
-    label: 'Pendaftar menunggu',
-    nilai: stats.value?.peserta.perStatus.menunggu ?? 0,
+    label: 'Pendaftar belum dikonfirmasi',
+    nilai: (stats.value?.peserta.perStatus.baru ?? 0) + (stats.value?.peserta.perStatus.proses ?? 0),
     catatan: `${stats.value?.peserta.total ?? 0} pendaftar total`,
     icon: 'i-lucide-user-plus',
-    ke: '/admin/registrations',
+    ke: '/admin/events',
   },
   {
     label: 'Akun terdaftar',
@@ -46,7 +46,7 @@ const alur = computed(() => {
   const s = stats.value
   const event = s?.kegiatan.perStatus.terbit ?? 0
   const daftar = s?.peserta.total ?? 0
-  const konfirmasi = s?.peserta.perStatus.terkonfirmasi ?? 0
+  const konfirmasi = s?.peserta.perStatus.konfirmasi ?? 0
   const media = s?.media.total ?? 0
 
   return [
@@ -64,15 +64,17 @@ const alur = computed(() => {
       detail: 'Pendaftar masuk dari halaman event publik, termasuk yang mendaftar tanpa akun.',
       angka: `${daftar} pendaftar`,
       selesai: daftar > 0,
-      aksi: { label: 'Lihat pendaftar', ke: '/admin/registrations' },
+      // Daftar pendaftar tidak lagi berdiri sendiri: ia tab di dalam event yang
+      // bersangkutan, karena satu pendaftaran selalu milik satu event.
+      aksi: { label: 'Lihat pendaftar', ke: '/admin/events' },
     },
     {
       no: 3,
       judul: 'Konfirmasi & catat pembayaran',
-      detail: 'Periksa bukti transfer, ubah status peserta, lalu tandai transaksi lunas.',
+      detail: 'Buka tab "Daftar peserta" pada event, majukan status pendaftar dari baru ke proses lalu konfirmasi.',
       angka: `${konfirmasi} terkonfirmasi`,
       selesai: konfirmasi > 0,
-      aksi: { label: 'Proses pendaftar', ke: '/admin/registrations' },
+      aksi: { label: 'Proses pendaftar', ke: '/admin/events' },
     },
     {
       no: 4,

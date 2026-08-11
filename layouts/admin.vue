@@ -10,8 +10,10 @@ const menu = computed(() => {
   const level = user.value?.level ?? 99
   return [
     { to: '/admin', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
-    { to: '/admin/registrations', label: 'Pendaftar', icon: 'i-lucide-user-plus' },
-    { to: '/admin/members', label: 'User', icon: 'i-lucide-users' },
+    // Pendaftar tidak lagi jadi menu sendiri: satu pendaftaran selalu milik satu
+    // event, jadi tempatnya di tab "Daftar peserta" pada event itu. Daftar lintas
+    // event tanpa konteksnya tidak bisa ditindaklanjuti admin.
+    { to: '/admin/members', label: 'Member', icon: 'i-lucide-users' },
     { to: '/admin/events', label: 'Event', icon: 'i-lucide-calendar-days' },
     { to: '/admin/jurnal', label: 'Jurnal', icon: 'i-lucide-notebook-pen' },
     { to: '/admin/contributors', label: 'Contributors', icon: 'i-lucide-pen-line' },

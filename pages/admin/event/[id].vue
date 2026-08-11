@@ -210,6 +210,24 @@ const statusOptions = [
   { value: 'batal', label: 'Batal' },
 ]
 
+/**
+ * Tiga tab. Pembagiannya mengikuti tiga pekerjaan yang berbeda waktunya:
+ * menyiapkan event (sebelum), mengurus pendaftar (selama pendaftaran dibuka),
+ * dan mengunggah materi (setelah acara). Menumpuk ketiganya dalam satu halaman
+ * panjang membuat pekerjaan yang sedang tidak dilakukan ikut menghalangi layar.
+ *
+ * Tab peserta & materi butuh kegiatanId, jadi keduanya tidak ada pada event baru.
+ */
+const tabs = computed(() => baru.value
+  ? [{ value: 'info', label: 'Informasi utama', icon: 'i-lucide-file-text' }]
+  : [
+      { value: 'info', label: 'Informasi utama', icon: 'i-lucide-file-text' },
+      { value: 'peserta', label: 'Daftar peserta', icon: 'i-lucide-users' },
+      { value: 'materi', label: 'Materi', icon: 'i-lucide-folder-open' },
+    ])
+
+const tabAktif = ref('info')
+
 const BAGIAN = [
   { key: 'materi', label: 'Materi Pembelajaran', ikon: 'i-lucide-file-text', petunjuk: 'Slide, rekaman, worksheet. Terkunci secara bawaan — hanya peserta event dan pengelola yang bisa membukanya.' },
   { key: 'galeri', label: 'Galeri', ikon: 'i-lucide-images', petunjuk: 'Foto dokumentasi. Terbuka untuk semua pengunjung; bisa dizoom dan diputar.' },
@@ -226,16 +244,36 @@ const BAGIAN = [
         </UButton>
         <h1 class="font-serif text-5xl text-cc-green-800">{{ baru ? 'Event baru' : form.judul || 'Ubah event' }}</h1>
       </div>
-      <UButton color="secondary" size="lg" icon="i-lucide-save" :loading="sibuk" @click="simpan">
+      <!-- Tombol simpan hanya milik tab identitas. Di tab peserta & materi setiap
+           tindakan menyimpan dirinya sendiri, jadi tombol ini di sana hanya akan
+           menyarankan ada perubahan yang belum tersimpan padahal tidak ada. -->
+      <UButton
+        v-if="tabAktif === 'info'"
+        color="secondary"
+        size="lg"
+        icon="i-lucide-save"
+        :loading="sibuk"
+        @click="simpan"
+      >
         {{ baru ? 'Buat event' : 'Simpan perubahan' }}
       </UButton>
     </div>
+
+    <UTabs
+      v-if="!baru"
+      v-model="tabAktif"
+      :items="tabs"
+      :content="false"
+      color="secondary"
+      variant="link"
+      class="mb-6"
+    />
 
     <UAlert v-if="galat" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
     <UAlert v-if="sukses" color="primary" variant="subtle" class="mb-4" icon="i-lucide-check" :description="sukses" />
 
     <!-- Identitas event -->
-    <UCard class="mb-6">
+    <UCard v-if="tabAktif === 'info'" class="mb-6">
       <template #header>
         <h2 class="font-serif text-2xl text-cc-green-800">Identitas event</h2>
       </template>
@@ -300,8 +338,22 @@ const BAGIAN = [
       </div>
     </UCard>
 
+    <!-- Daftar peserta -->
+    <UCard v-else-if="tabAktif === 'peserta'">
+      <template #header>
+        <h2 class="inline-flex items-center gap-2 font-serif text-2xl text-cc-green-800">
+          Daftar peserta
+          <UTooltip text="Status dimajukan manual satu langkah per klik: baru → proses → konfirmasi. Pendaftar bisa dibatalkan dari status mana pun, dan pembatalan bisa dianulir kembali ke status terakhirnya.">
+            <UIcon name="i-lucide-info" class="size-5 text-cc-brown-500" />
+          </UTooltip>
+        </h2>
+      </template>
+
+      <AdminPesertaTab :kegiatan-id="id" />
+    </UCard>
+
     <!-- Sesi & materi -->
-    <UCard v-if="!baru">
+    <UCard v-else-if="tabAktif === 'materi'">
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -380,13 +432,16 @@ const BAGIAN = [
       </div>
     </UCard>
 
+    <!-- Sengaja di luar rantai v-if/v-else-if tab: pada event baru satu-satunya tab
+         yang ada adalah "info", jadi keterangan ini harus menemani tab itu, bukan
+         menjadi cabang terakhir yang tidak pernah tercapai. -->
     <UAlert
-      v-else
+      v-if="baru"
       color="neutral"
       variant="subtle"
       icon="i-lucide-info"
-      title="Sesi dibuat setelah event tersimpan"
-      description="Simpan event ini dulu. Server akan langsung membuatkan satu sesi sebagai titik mulai, lalu Anda bisa menambah sesi sebanyak yang dibutuhkan."
+      title="Peserta & materi tersedia setelah event tersimpan"
+      description="Simpan event ini dulu. Server akan langsung membuatkan satu sesi sebagai titik mulai, lalu tab Daftar peserta dan Materi ikut terbuka."
     />
 
     <!-- Tambah item -->

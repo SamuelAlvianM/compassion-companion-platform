@@ -52,7 +52,7 @@ const roles = [
 const alur = [
   { no: 1, judul: 'Terbitkan event', detail: 'Buat kegiatan, isi tanggal, kuota, harga, lalu ubah statusnya jadi "terbit". Hanya event terbit yang tampil di situs publik.', peran: 'Admin' },
   { no: 2, judul: 'Terima pendaftaran', detail: 'Pendaftar masuk lewat halaman event. Yang sudah punya akun cukup satu klik; tamu mengisi nama dan email.', peran: 'otomatis' },
-  { no: 3, judul: 'Konfirmasi & catat pembayaran', detail: 'Periksa bukti transfer, ubah status peserta jadi terkonfirmasi, lalu tandai transaksi lunas. Event gratis langsung terkonfirmasi.', peran: 'Admin' },
+  { no: 3, judul: 'Konfirmasi & catat pembayaran', detail: 'Buka event lalu tab "Daftar peserta". Status dimajukan manual: baru → proses → konfirmasi. Pendaftar yang memakai akun langsung masuk sebagai proses, jadi tinggal dikonfirmasi. Yang batal bisa dikembalikan ke status terakhirnya kalau berubah pikiran.', peran: 'Admin' },
   { no: 4, judul: 'Unggah materi & terbitkan jurnal', detail: 'Setelah acara: unggah dokumentasi, bagikan materi ke peserta, dan terbitkan refleksi pilihan sebagai jurnal.', peran: 'Editor' },
 ]
 

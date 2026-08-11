@@ -17,7 +17,8 @@ interface EventRingkas {
   slug: string
   judul: string
   judulEn: string | null
-  harga: number
+  // Dipakai hanya untuk membedakan "penuh" dari "ditutup" pada pesan; angkanya
+  // sendiri tidak lagi ditampilkan.
   sisaKuota: number | null
   pendaftaranTerbuka: boolean
   sudahTerdaftar?: boolean
@@ -41,8 +42,7 @@ const sukses = ref('')
 
 const t = computed(() => props.isEn
   ? {
-      eyebrow: 'Registration', biaya: 'Fee', kuota: 'Seats',
-      takTerbatas: 'No seat limit', sisa: (n: number) => `${n} left`, gratis: 'Free',
+      eyebrow: 'Registration',
       sudah: 'You are already registered for this event.',
       penuh: 'This event is full.', ditutup: 'Registration is closed for this event.',
       nama: 'Full name', email: 'Email', noHp: 'WhatsApp number', institusi: 'Institution',
@@ -59,8 +59,7 @@ const t = computed(() => props.isEn
       wajib: 'Full name and email are required.',
     }
   : {
-      eyebrow: 'Pendaftaran', biaya: 'Biaya', kuota: 'Kuota',
-      takTerbatas: 'Tanpa batas', sisa: (n: number) => `sisa ${n}`, gratis: 'Gratis',
+      eyebrow: 'Pendaftaran',
       sudah: 'Anda sudah terdaftar di kegiatan ini.',
       penuh: 'Kegiatan ini sudah penuh.', ditutup: 'Pendaftaran kegiatan ini sudah ditutup.',
       nama: 'Nama lengkap', email: 'Email', noHp: 'Nomor WhatsApp', institusi: 'Institusi',
@@ -79,10 +78,6 @@ const t = computed(() => props.isEn
 
 const judulEvent = computed(() =>
   props.isEn ? (props.event.judulEn ?? props.event.judul) : props.event.judul)
-
-const rupiah = (n: number) => n === 0
-  ? t.value.gratis
-  : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
 
 /** Yang akan benar-benar tercatat — sumbernya akun bila ada sesi, formulir bila tamu. */
 const calon = computed(() => user.value
@@ -145,16 +140,8 @@ const daftar = async () => {
   <section class="registration panel">
     <div class="eyebrow">{{ t.eyebrow }}</div>
 
-    <dl class="mb-4">
-      <div class="flex justify-between border-b border-cc-stone-200 py-2 text-sm">
-        <dt class="text-cc-stone-600">{{ t.biaya }}</dt>
-        <dd class="font-semibold text-cc-green-800">{{ rupiah(event.harga) }}</dd>
-      </div>
-      <div class="flex justify-between py-2 text-sm">
-        <dt class="text-cc-stone-600">{{ t.kuota }}</dt>
-        <dd>{{ event.sisaKuota === null ? t.takTerbatas : t.sisa(event.sisaKuota) }}</dd>
-      </div>
-    </dl>
+    <!-- Biaya dan sisa kursi tidak ditampilkan. Kuota tetap ditegakkan di server —
+         yang dicabut hanya angkanya di layar, bukan aturannya. -->
 
     <UAlert
       v-if="sukses"
@@ -275,10 +262,6 @@ const daftar = async () => {
           <div class="py-3">
             <dt class="text-xs uppercase tracking-wider text-cc-stone-500">{{ t.email }}</dt>
             <dd class="mt-1 text-sm text-cc-stone-600">{{ calon.email }}</dd>
-          </div>
-          <div class="flex items-center justify-between py-3">
-            <dt class="text-xs uppercase tracking-wider text-cc-stone-500">{{ t.biaya }}</dt>
-            <dd class="font-semibold text-cc-green-800">{{ rupiah(event.harga) }}</dd>
           </div>
         </dl>
 

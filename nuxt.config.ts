@@ -41,7 +41,6 @@ export default defineNuxtConfig({
     customRoutes: 'config',
     pages: {
       admin: false,
-      'admin-registrations': false,
       'admin-members': false,
       'admin-events': false,
       'admin-jurnal': false,

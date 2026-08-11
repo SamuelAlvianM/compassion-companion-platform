@@ -122,9 +122,32 @@ const tanggal = (nilai: string | null, panjang = false) => {
 // Label tombol tanggal; kosong berarti belum ada tanggal yang dipilih.
 const labelRentang = computed(() => dari.value ? tanggal(dari.value) : '')
 
-const rupiah = (n: number) => n === 0
-  ? (isEn.value ? 'Free' : 'Gratis')
-  : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+/** Apakah dua timestamp jatuh pada hari yang sama menurut WIB. */
+const hariSama = (a: string | null, b: string | null) => {
+  if (!a || !b) return true
+  const ymd = (n: string) => new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Jakarta',
+  }).format(new Date(n))
+  return ymd(a) === ymd(b)
+}
+
+/**
+ * Baris tanggal pada kartu.
+ *
+ * Event sehari  -> tanggal + jam. Tanggal selesainya sama dengan tanggal mulai,
+ *                  jadi mengulanginya tidak menambah apa pun; jamnya justru yang
+ *                  menentukan apakah orang bisa ikut.
+ * Event berhari -> rentang tanggal. Di sini jam per hari belum tentu seragam,
+ *                  sehingga satu jam tunggal malah menyesatkan; rinciannya ada
+ *                  di halaman detail.
+ */
+const barisTanggal = (e: { tanggalMulai: string, tanggalSelesai: string | null, waktu: string | null }) => {
+  if (!hariSama(e.tanggalMulai, e.tanggalSelesai)) {
+    return `${tanggal(e.tanggalMulai)} – ${tanggal(e.tanggalSelesai)}`
+  }
+  const tgl = tanggal(e.tanggalMulai, true)
+  return e.waktu ? `${tgl} · ${e.waktu}` : tgl
+}
 
 const t = computed(() => isEn.value
   ? {
@@ -134,10 +157,7 @@ const t = computed(() => isEn.value
       filterTanggal: 'Any date', filterTanggalAria: 'Show events starting from a date',
       reset: 'Reset', hitung: (n: number) => `${n} event${n === 1 ? '' : 's'}`,
       kosong: 'No event matches this filter.', semua: 'Showing all events',
-      detail: 'Event details', daftar: 'Register',
-      penuh: 'Full', ditutup: 'Registration closed', sisa: (n: number) => `${n} seats left`,
-      sudahTerdaftar: 'Already registered',
-      biaya: 'Fee', lokasi: 'Location', kuotaTakTerbatas: 'No seat limit',
+      detail: 'Event details', lokasi: 'Location',
     }
   : {
       eyebrow: 'Program & Perjumpaan', judul: 'Event Compassionate Companion',
@@ -146,10 +166,7 @@ const t = computed(() => isEn.value
       filterTanggal: 'Semua tanggal', filterTanggalAria: 'Tampilkan event mulai dari tanggal tertentu',
       reset: 'Reset', hitung: (n: number) => `${n} event`,
       kosong: 'Tidak ada event yang cocok dengan filter ini.', semua: 'Menampilkan semua event',
-      detail: 'Detail event', daftar: 'Daftar',
-      penuh: 'Penuh', ditutup: 'Pendaftaran ditutup', sisa: (n: number) => `sisa ${n} kursi`,
-      sudahTerdaftar: 'Sudah terdaftar',
-      biaya: 'Biaya', lokasi: 'Lokasi', kuotaTakTerbatas: 'Tanpa batas kuota',
+      detail: 'Detail event', lokasi: 'Lokasi',
     })
 </script>
 
@@ -260,22 +277,18 @@ const t = computed(() => isEn.value
           </div>
 
           <div class="card-body">
-            <!-- Satu tanggal saja: tanggal mulai. Rentang penuh ada di halaman detail. -->
-            <div class="event-meta">{{ tanggal(e.tanggalMulai, true) }}</div>
+            <div class="event-meta">{{ barisTanggal(e) }}</div>
 
             <h3>{{ isEn ? (e.judulEn ?? e.judul) : e.judul }}</h3>
 
             <p class="muted">{{ isEn ? (e.deskripsiEn ?? e.deskripsi) : e.deskripsi }}</p>
 
-            <!-- Lokasi, biaya, dan sisa kuota dirapatkan jadi satu baris supaya
-                 kartu tidak memanjang seperti versi <dl> dua baris sebelumnya. -->
+            <!-- Biaya dan sisa kursi sengaja tidak ada di kartu. Keduanya angka yang
+                 berubah dan menuntut keputusan, sementara kartu ini hanya perlu
+                 membuat orang membuka halaman detail — di sanalah keputusan diambil. -->
             <div class="event-line">
               <UIcon :name="e.daring ? 'i-lucide-video' : 'i-lucide-map-pin'" class="size-4 shrink-0 text-cc-brown-500" />
               <span class="event-lokasi">{{ e.lokasi }}</span>
-              <strong>{{ rupiah(e.harga) }}</strong>
-              <span v-if="e.sisaKuota !== null && e.fase !== 'selesai'" class="event-sisa">
-                {{ e.sisaKuota === 0 ? t.penuh : t.sisa(e.sisaKuota) }}
-              </span>
             </div>
 
             <!-- Event yang sudah selesai tidak menawarkan aksi apa pun — badge di

@@ -97,6 +97,9 @@ export default defineEventHandler(async (event) => {
         cover: row.coverMediaId ? coverPer.get(row.coverMediaId) ?? null : null,
         tanggalMulai: row.tanggalMulai,
         tanggalSelesai: row.tanggalSelesai,
+        // Teks bebas ("09.00 – 16.30 WIB"). Dipakai kartu untuk event sehari, yang
+        // tanggal selesainya tidak menambah informasi apa pun.
+        waktu: row.waktu,
         tutupPendaftaran: row.tutupPendaftaran,
         harga: row.harga,
         kuota: row.kuota,

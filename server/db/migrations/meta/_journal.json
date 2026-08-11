@@ -29,6 +29,13 @@
       "when": 1786426865770,
       "tag": "0003_konten-event",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786432433027,
+      "tag": "0004_status-peserta",
+      "breakpoints": true
     }
   ]
 }
