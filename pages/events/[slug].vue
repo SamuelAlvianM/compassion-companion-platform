@@ -64,10 +64,6 @@ const rentang = computed(() => {
   return `${mulai} – ${tanggal(e.value.tanggalSelesai)}`
 })
 
-const rupiah = (n: number) => n === 0
-  ? (isEn.value ? 'Free' : 'Gratis')
-  : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
-
 const faseLabel = computed(() => ({
   mendatang: isEn.value ? 'Upcoming' : 'Mendatang',
   berlangsung: isEn.value ? 'Ongoing' : 'Berlangsung',
@@ -96,21 +92,15 @@ const SAMPUL: Record<string, string> = {
 const sampul = computed(() =>
   e.value?.cover || SAMPUL[e.value?.slug ?? ''] || '/images/event-gallery-placeholder.png')
 
-const modalOpen = ref(false)
-
+// Label pendaftaran (biaya, kuota, keadaan tombol) tinggal di EventRegisterPanel
+// bersama markup-nya, supaya tidak ada dua tempat yang harus diubah bersamaan.
 const t = computed(() => isEn.value
   ? {
       kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location',
-      daftarEyebrow: 'Registration',
-      biaya: 'Fee', kuota: 'Seats', takTerbatas: 'No seat limit', sisa: (n: number) => `${n} left`,
-      daftar: 'Register', sudah: 'Already registered', penuh: 'Full', ditutup: 'Registration closed',
       testimoniJudul: 'What they said', testimoniEyebrow: 'Participant testimonies',
     }
   : {
       kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi',
-      daftarEyebrow: 'Pendaftaran',
-      biaya: 'Biaya', kuota: 'Kuota', takTerbatas: 'Tanpa batas', sisa: (n: number) => `sisa ${n}`,
-      daftar: 'Daftar', sudah: 'Sudah terdaftar', penuh: 'Penuh', ditutup: 'Pendaftaran ditutup',
       testimoniJudul: 'Apa kata mereka', testimoniEyebrow: 'Testimoni peserta',
     })
 </script>
@@ -178,29 +168,7 @@ const t = computed(() => isEn.value
 
         <!-- Panel pendaftaran + testimoni -->
         <div>
-          <section class="registration panel">
-            <div class="eyebrow">{{ t.daftarEyebrow }}</div>
-            <dl class="mb-4">
-              <div class="flex justify-between border-b border-cc-stone-200 py-2 text-sm">
-                <dt class="text-cc-stone-600">{{ t.biaya }}</dt>
-                <dd class="font-semibold text-cc-green-800">{{ rupiah(e.harga) }}</dd>
-              </div>
-              <div class="flex justify-between py-2 text-sm">
-                <dt class="text-cc-stone-600">{{ t.kuota }}</dt>
-                <dd>{{ e.sisaKuota === null ? t.takTerbatas : t.sisa(e.sisaKuota) }}</dd>
-              </div>
-            </dl>
-
-            <UButton v-if="e.sudahTerdaftar" color="primary" variant="subtle" size="lg" block disabled>
-              {{ t.sudah }}
-            </UButton>
-            <UButton v-else-if="e.pendaftaranTerbuka" color="secondary" size="lg" block @click="modalOpen = true">
-              {{ t.daftar }}
-            </UButton>
-            <UButton v-else-if="e.fase !== 'selesai'" color="neutral" variant="subtle" size="lg" block disabled>
-              {{ e.sisaKuota === 0 ? t.penuh : t.ditutup }}
-            </UButton>
-          </section>
+          <EventRegisterPanel :event="e" :is-en="isEn" @berhasil="refresh()" />
 
           <aside v-if="testimoni.length" class="testimonials panel mt-5">
             <div class="eyebrow">{{ t.testimoniEyebrow }}</div>
@@ -217,13 +185,6 @@ const t = computed(() => isEn.value
 
       <EventResources v-if="sesi.length" :sesi="sesi" :is-en="isEn" :masuk="masuk" />
     </div>
-
-    <EventRegisterModal
-      v-model:open="modalOpen"
-      :event="e"
-      :is-en="isEn"
-      @berhasil="refresh()"
-    />
 
     <AdminEditBar v-if="bolehSunting" :admin-path="`/admin/event/${e.id}`" />
   </main>
