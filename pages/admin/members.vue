@@ -3,9 +3,15 @@ definePageMeta({ layout: 'admin' })
 
 // Daftar user sungguhan dari database. Endpoint-nya sudah membatasi ke level <= 3,
 // dan middleware admin.global.ts sudah menahan halaman ini lebih dulu.
+// Sentinel 'semua', bukan string kosong. Reka UI (penyokong USelect) memesan ''
+// untuk keadaan "belum dipilih" dan melempar galat render begitu ada item bernilai
+// kosong — dan galat itu menjatuhkan seluruh halaman jadi 500, bukan cuma
+// select-nya. Pola yang sama dipakai filter di halaman event dan form refleksi.
+const SEMUA = 'semua'
+
 const q = ref('')
-const role = ref<string | undefined>(undefined)
-const aktif = ref<string | undefined>(undefined)
+const role = ref(SEMUA)
+const aktif = ref(SEMUA)
 
 // Ketikan tidak langsung memicu request; jeda singkat mencegah satu panggilan
 // per huruf saat mengetik kata pencarian. Ditulis manual karena VueUse tidak
@@ -18,27 +24,51 @@ watch(q, (nilai) => {
 })
 onScopeDispose(() => clearTimeout(timer))
 
+// Sentinel diterjemahkan balik jadi "tidak menyaring"; server tidak perlu tahu.
 const query = computed(() => ({
   q: qDebounced.value || undefined,
-  role: role.value || undefined,
-  aktif: aktif.value || undefined,
+  role: role.value === SEMUA ? undefined : role.value,
+  aktif: aktif.value === SEMUA ? undefined : aktif.value,
 }))
 
 const { data, status } = useFetch('/api/users', { query })
 
 const users = computed(() => data.value?.data ?? [])
 const roleOptions = computed(() => [
-  { value: '', label: 'Semua role' },
+  { value: SEMUA, label: 'Semua role' },
   ...(data.value?.opsi.roles ?? []),
 ])
 const aktifOptions = [
-  { value: '', label: 'Semua status' },
+  { value: SEMUA, label: 'Semua status' },
   { value: 'true', label: 'Aktif' },
   { value: 'false', label: 'Nonaktif' },
 ]
 
-const adaFilter = computed(() => Boolean(q.value || role.value || aktif.value))
-const reset = () => { q.value = ''; role.value = undefined; aktif.value = undefined }
+const adaFilter = computed(() => Boolean(q.value) || role.value !== SEMUA || aktif.value !== SEMUA)
+const reset = () => { q.value = ''; role.value = SEMUA; aktif.value = SEMUA }
+
+/**
+ * User yang sedang dibuka di panel kanan. Null berarti panel tertutup dan tabel
+ * memakai lebar penuh.
+ *
+ * Disimpan sebagai id, bukan salinan barisnya: panel mengambil datanya sendiri
+ * (riwayat keikutsertaan tidak ikut di payload daftar), dan menyalin baris hanya
+ * akan membuat dua sumber yang bisa berbeda setelah daftarnya dimuat ulang.
+ */
+const terpilihId = ref<string | null>(null)
+
+const pilih = (id: string) => {
+  // Klik pada baris yang sama menutup panelnya — sama seperti menekan tombol X.
+  terpilihId.value = terpilihId.value === id ? null : id
+}
+
+// Kalau user yang sedang dibuka tersaring keluar oleh filter, panelnya ikut
+// ditutup; membiarkannya terbuka menunjukkan detail baris yang tidak ada di tabel.
+watch(users, (daftar) => {
+  if (terpilihId.value && !daftar.some((u: any) => u.id === terpilihId.value)) {
+    terpilihId.value = null
+  }
+})
 
 const columns = [
   { accessorKey: 'fullName', header: 'Nama' },
@@ -58,7 +88,9 @@ const tanggal = (nilai: string | null) => nilai
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl">
+  <!-- Lebar ikut melebar saat panel terbuka: dua kolom di dalam max-w-6xl membuat
+       tabelnya terlalu sempit untuk enam kolomnya. -->
+  <div class="mx-auto" :class="terpilihId ? 'max-w-[1400px]' : 'max-w-6xl'">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Administrasi</p>
@@ -87,54 +119,74 @@ const tanggal = (nilai: string | null) => nilai
       </UButton>
     </div>
 
-    <UCard :ui="{ body: 'p-0' }">
-      <UTable
-        :data="users"
-        :columns="columns"
-        :loading="status === 'pending'"
-        empty="Tidak ada user yang cocok."
-      >
-        <template #fullName-cell="{ row }">
-          <NuxtLink
-            :to="`/id/profil?id=${row.original.id}`"
-            class="font-semibold text-cc-green-800 hover:text-cc-brown-500 hover:underline"
-          >
-            {{ row.original.fullName }}
-          </NuxtLink>
-          <br>
-          <span class="text-xs text-cc-stone-500">@{{ row.original.username }}</span>
-        </template>
+    <!-- Tabel menyusut jadi separuh begitu satu user dibuka; panel detailnya
+         mengisi separuh sisanya. Di layar sempit keduanya bertumpuk, karena dua
+         kolom pada lebar segitu membuat tabelnya tidak terbaca. -->
+    <div
+      class="grid items-start gap-5"
+      :class="terpilihId ? 'lg:grid-cols-2' : 'grid-cols-1'"
+    >
+      <UCard :ui="{ body: 'p-0' }">
+        <UTable
+          :data="users"
+          :columns="columns"
+          :loading="status === 'pending'"
+          empty="Tidak ada user yang cocok."
+          class="cursor-pointer"
+          @select="(row: any) => pilih(row.original.id)"
+        >
+          <!-- Baris yang sedang dibuka ditandai lewat garis emas di tepi kiri sel
+               pertama. Nuxt UI tidak menyediakan kait untuk memberi atribut pada
+               <tr>, jadi penandanya dipasang di sel, bukan di barisnya. -->
+          <template #fullName-cell="{ row }">
+            <div
+              class="-my-2 border-l-2 py-2 pl-3 transition-colors"
+              :class="row.original.id === terpilihId ? 'border-cc-brown-500' : 'border-transparent'"
+            >
+              <span class="font-semibold text-cc-green-800">{{ row.original.fullName }}</span>
+              <br>
+              <span class="text-xs text-cc-stone-500">@{{ row.original.username }}</span>
+            </div>
+          </template>
 
-        <template #role-cell="{ row }">
-          <UBadge :color="warnaLevel(row.original.level)" variant="subtle" size="sm">
-            {{ row.original.roleLabel }} · L{{ row.original.level }}
-          </UBadge>
-          <UBadge v-if="!row.original.isActive" color="neutral" variant="outline" size="sm" class="ml-1">
-            nonaktif
-          </UBadge>
-        </template>
+          <template #role-cell="{ row }">
+            <UBadge :color="warnaLevel(row.original.level)" variant="subtle" size="sm">
+              {{ row.original.roleLabel }} · L{{ row.original.level }}
+            </UBadge>
+            <UBadge v-if="!row.original.isActive" color="neutral" variant="outline" size="sm" class="ml-1">
+              nonaktif
+            </UBadge>
+          </template>
 
-        <template #jumlahKegiatan-cell="{ row }">
-          <span class="tabular-nums">{{ row.original.jumlahKegiatan }}</span>
-        </template>
+          <template #jumlahKegiatan-cell="{ row }">
+            <span class="tabular-nums">{{ row.original.jumlahKegiatan }}</span>
+          </template>
 
-        <template #lastLogin-cell="{ row }">
-          <span class="text-sm text-cc-stone-600">{{ tanggal(row.original.lastLogin) }}</span>
-        </template>
+          <template #lastLogin-cell="{ row }">
+            <span class="text-sm text-cc-stone-600">{{ tanggal(row.original.lastLogin) }}</span>
+          </template>
 
-        <template #aksi-cell="{ row }">
-          <UButton
-            :to="`/id/profil?id=${row.original.id}`"
-            color="secondary"
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-eye"
-          >
-            Profil
-          </UButton>
-        </template>
-      </UTable>
-    </UCard>
+          <template #aksi-cell="{ row }">
+            <UButton
+              :color="row.original.id === terpilihId ? 'secondary' : 'neutral'"
+              :variant="row.original.id === terpilihId ? 'soft' : 'ghost'"
+              size="sm"
+              trailing-icon="i-lucide-chevron-right"
+              @click="pilih(row.original.id)"
+            >
+              Detail
+            </UButton>
+          </template>
+        </UTable>
+      </UCard>
+
+      <AdminDetailUser
+        v-if="terpilihId"
+        :key="terpilihId"
+        :user-id="terpilihId"
+        @tutup="terpilihId = null"
+      />
+    </div>
 
     <p v-if="data" class="mt-3 text-xs text-cc-stone-500">
       {{ users.length }} dari {{ data.meta.total }} akun.

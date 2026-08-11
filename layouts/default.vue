@@ -10,12 +10,20 @@ await muat()
 // Level <= 3 (master, admin, editor) punya pintu masuk ke area admin.
 const bolehKeAdmin = computed(() => (user.value?.level ?? 99) <= 3)
 
-const menuAkun = computed(() => [[
-  ...(bolehKeAdmin.value
-    ? [{ label: isEn.value ? 'Admin area' : 'Area admin', icon: 'i-lucide-layout-dashboard', to: '/admin' }]
-    : []),
-  { label: isEn.value ? 'Sign out' : 'Keluar', icon: 'i-lucide-log-out', onSelect: async () => { await keluar(); await navigateTo(localized('/')) } },
-]])
+// Dua kelompok: tujuan di atas, "keluar" dipisah di bawah. Menaruh keluar
+// bersebelahan dengan menu biasa membuatnya mudah tertekan saat yang dituju
+// sebenarnya profil.
+const menuAkun = computed(() => [
+  [
+    { label: isEn.value ? 'My profile' : 'Profil saya', icon: 'i-lucide-user-round', to: localized('/profil') },
+    ...(bolehKeAdmin.value
+      ? [{ label: isEn.value ? 'Admin area' : 'Area admin', icon: 'i-lucide-layout-dashboard', to: '/admin' }]
+      : []),
+  ],
+  [
+    { label: isEn.value ? 'Sign out' : 'Keluar', icon: 'i-lucide-log-out', onSelect: async () => { await keluar(); await navigateTo(localized('/')) } },
+  ],
+])
 </script>
 <template>
     <div>
