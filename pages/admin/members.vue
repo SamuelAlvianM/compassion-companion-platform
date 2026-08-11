@@ -88,9 +88,13 @@ const tanggal = (nilai: string | null) => nilai
 </script>
 
 <template>
-  <!-- Lebar ikut melebar saat panel terbuka: dua kolom di dalam max-w-6xl membuat
-       tabelnya terlalu sempit untuk enam kolomnya. -->
   <div class="mx-auto" :class="terpilihId ? 'max-w-[1400px]' : 'max-w-6xl'">
+    <!-- Lebar ikut melebar saat panel terbuka: dua kolom di dalam max-w-6xl
+         membuat tabelnya terlalu sempit untuk enam kolomnya.
+         Komentar ditaruh DI DALAM elemen akar — komentar di tingkat akar template
+         membuat halaman terhitung multi-akar, dan halaman multi-akar berhenti
+         tergambar saat dinavigasi dari halaman lain. -->
+
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Administrasi</p>
@@ -133,7 +137,7 @@ const tanggal = (nilai: string | null) => nilai
           :loading="status === 'pending'"
           empty="Tidak ada user yang cocok."
           class="cursor-pointer"
-          @select="(row: any) => pilih(row.original.id)"
+          @select="(_e: Event, row: any) => pilih(row.original.id)"
         >
           <!-- Baris yang sedang dibuka ditandai lewat garis emas di tepi kiri sel
                pertama. Nuxt UI tidak menyediakan kait untuk memberi atribut pada

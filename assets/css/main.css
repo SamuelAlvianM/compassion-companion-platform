@@ -1609,3 +1609,43 @@ a[href^="https://wa.me/"]::before {
     font: 12px 'DM Sans', sans-serif;
     color: #b3261e
 }
+
+/* ── Tinggi pita hijau kepala halaman ────────────────────────────────────────
+   Latar .event-page adalah gradien dengan henti KERAS di satu titik: hijau dari
+   0 sampai titik itu, krem sesudahnya. Titiknya tidak mengikuti isi, jadi halaman
+   yang kepalanya lebih tinggi dari 300px akan terpotong garis warna di tengah
+   isinya — persis yang terjadi pada baris statistik di halaman profil, yang
+   kepalanya berakhir di 348px karena ada avatar 96px dan satu baris angka.
+
+   Titik hentinya dijadikan variabel supaya halaman semacam itu cukup menaikkan
+   satu nilai, bukan menyalin ulang seluruh aturan gradien dan berisiko lepas dari
+   palet saat warnanya diganti. */
+.event-page {
+    --pita-hijau: 300px;
+    background: linear-gradient(var(--color-primary) 0 var(--pita-hijau), var(--color-surface) var(--pita-hijau))
+}
+
+/* Profil tidak memakai angka tetap sama sekali: pitanya dipindahkan ke .page-head
+   sehingga tingginya mengikuti isi. Kepala halaman ini memuat avatar, identitas,
+   dan baris statistik, dan tingginya ikut berubah begitu nama membungkus dua baris —
+   nilai tetap berapa pun pasti meleset untuk sebagian nama, entah memotong angka
+   statistik atau menelan bilah tab di bawahnya. */
+.event-page.profil-page {
+    padding-top: 0;
+    background: var(--color-surface)
+}
+
+.profil-page .page-head {
+    padding: 40px 0 30px;
+    background: var(--color-primary);
+    /* Melebarkan latar sampai tepi layar walau elemennya duduk di dalam .container
+       yang lebarnya terbatas.
+       Yang dipakai SPREAD (nilai keempat), bukan offset: offset hanya memindahkan
+       salinan kotaknya sejauh 100vw sehingga justru meninggalkan celah di antara
+       keduanya. Spread melebarkan bayangan ke segala arah, lalu clip-path memangkas
+       kembali arah vertikalnya supaya hijaunya tidak meluber ke atas dan ke bawah.
+       Dipakai box-shadow, bukan margin negatif, karena box-shadow tidak menambah
+       lebar dokumen sehingga tidak memunculkan gulir horizontal. */
+    box-shadow: 0 0 0 100vw var(--color-primary);
+    clip-path: inset(0 -100vw)
+}

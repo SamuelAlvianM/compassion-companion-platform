@@ -82,9 +82,12 @@ const tanggal = (nilai: string | null, jam = false) => nilai
         <div class="grid size-16 shrink-0 place-items-center rounded-full bg-cc-brown-500 font-serif text-2xl text-cc-stone-50">
           {{ inisial }}
         </div>
+        <!-- Dibungkus, bukan dipotong. Nama adalah hal yang dicari orang di panel
+             ini; "Master Compassionate Co…" memaksa menebak akun mana yang sedang
+             dibuka, dan ruang vertikal di sini justru berlimpah. -->
         <div class="min-w-0 flex-1">
-          <p class="truncate font-serif text-2xl leading-tight text-cc-green-800">{{ u.fullName }}</p>
-          <p class="truncate text-sm text-cc-stone-500">@{{ u.username }}</p>
+          <p class="font-serif text-2xl leading-tight text-balance text-cc-green-800">{{ u.fullName }}</p>
+          <p class="text-sm break-all text-cc-stone-500">@{{ u.username }}</p>
           <div class="mt-1.5 flex flex-wrap gap-1.5">
             <UBadge :color="warnaLevel(u.level)" variant="subtle" size="sm">
               {{ u.roleLabel }} · L{{ u.level }}
@@ -147,7 +150,7 @@ const tanggal = (nilai: string | null, jam = false) => nilai
             class="flex items-center gap-3 rounded-lg border border-cc-stone-200 px-3 py-2"
           >
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-semibold text-cc-green-800">{{ r.judul }}</p>
+              <p class="text-sm font-semibold text-cc-green-800">{{ r.judul }}</p>
               <p class="text-xs text-cc-stone-500">{{ tanggal(r.tanggalMulai) }}</p>
             </div>
             <UBadge :color="warnaStatus(r.status)" variant="subtle" size="sm" class="shrink-0">

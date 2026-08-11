@@ -177,7 +177,13 @@ const inisial = computed(() =>
 </script>
 
 <template>
-  <main class="event-page">
+  <main class="event-page profil-page">
+    <!-- Kelas `profil-page` memindahkan pita hijau ke .page-head supaya tingginya
+         mengikuti isi. Lihat main.css.
+         Komentar ini sengaja DI DALAM <main>: komentar di tingkat akar template
+         terhitung sebagai node akar kedua oleh Nuxt, dan halaman multi-akar
+         berhenti tergambar saat dinavigasi dari halaman lain. -->
+
     <div class="container">
       <!-- Rangka profil: avatar bulat + identitas + baris statistik + bilah tab,
            mengikuti tata letak yang sesungguhnya supaya tidak ada lompatan saat
@@ -253,6 +259,10 @@ const inisial = computed(() =>
 
         <!-- Refleksi -->
         <div v-if="tab === 'refleksi'" class="space-y-6">
+          <!-- Form "Tulis refleksi" disembunyikan sementara atas permintaan.
+               Dikomentari, bukan dihapus: endpoint POST /api/refleksi, state
+               `formRefleksi`, `kirimRefleksi`, dan kedua daftar opsinya masih utuh
+               di <script>, jadi mengembalikannya cukup membuka blok ini.
           <UCard v-if="sendiri" :ui="{ body: 'p-5' }">
             <UForm :state="formRefleksi" class="space-y-4" @submit="kirimRefleksi">
               <UFormField :label="t.tulis" name="isi">
@@ -271,6 +281,7 @@ const inisial = computed(() =>
               </UButton>
             </UForm>
           </UCard>
+          -->
 
           <RefleksiGrid
             :refleksi="refleksi"
