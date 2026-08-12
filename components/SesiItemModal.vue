@@ -146,6 +146,14 @@ const simpan = async () => {
       if (!form.value.judul) form.value.judul = berkas.value.name
     }
 
+    // Jaring pengaman untuk galeri, yang tidak punya isian judul sama sekali:
+    // memilih berkas dari pustaka atau mengunggah baru sudah mengisinya, tapi
+    // mengubah foto lama yang judulnya pernah dikosongkan tidak melewati keduanya —
+    // dan server menolak judul kosong.
+    if (props.bagian === 'galeri' && !form.value.judul.trim()) {
+      form.value.judul = namaPilihan.value || 'Foto'
+    }
+
     const body = {
       jenis: form.value.jenis,
       judul: form.value.judul,
@@ -179,26 +187,36 @@ const simpan = async () => {
 <template>
   <UModal
     :open="open"
-    :title="mengubah ? 'Ubah item' : 'Tambah item'"
+    :title="bagian === 'galeri'
+      ? (mengubah ? 'Ganti foto' : 'Tambah foto')
+      : (mengubah ? 'Ubah item' : 'Tambah item')"
     @update:open="emit('update:open', $event)"
   >
     <template #body>
       <div class="space-y-4">
-        <UFormField label="Jenis">
-          <USelect v-model="form.jenis" :items="jenisOptions" value-key="value" class="w-full" />
-        </UFormField>
+        <!-- Galeri tidak punya isian apa pun selain gambarnya.
+             Jenisnya cuma satu ("Gambar"), sehingga pilihan berisi satu pilihan;
+             dan judul foto dokumentasi hampir selalu berakhir sebagai pengulangan
+             nama berkas. Yang tersisa: berkasnya. `judul` tetap terisi di balik
+             layar dari nama berkas — ia jadi teks alternatif gambar, dan server
+             mewajibkannya. -->
+        <template v-if="bagian !== 'galeri'">
+          <UFormField label="Jenis">
+            <USelect v-model="form.jenis" :items="jenisOptions" value-key="value" class="w-full" />
+          </UFormField>
 
-        <UFormField label="Judul" :required="!pakaiBerkas">
-          <UInput
-            v-model="form.judul"
-            class="w-full"
-            :placeholder="pakaiBerkas ? 'Kosongkan untuk memakai nama berkas' : ''"
-          />
-        </UFormField>
+          <UFormField label="Judul" :required="!pakaiBerkas">
+            <UInput
+              v-model="form.judul"
+              class="w-full"
+              :placeholder="pakaiBerkas ? 'Kosongkan untuk memakai nama berkas' : ''"
+            />
+          </UFormField>
 
-        <UFormField label="Judul (EN)" hint="opsional">
-          <UInput v-model="form.judulEn" class="w-full" />
-        </UFormField>
+          <UFormField label="Judul (EN)" hint="opsional">
+            <UInput v-model="form.judulEn" class="w-full" />
+          </UFormField>
+        </template>
 
         <template v-if="pakaiBerkas">
           <!-- Dua jalan menuju berkas yang sama, jadi ditawarkan berdampingan

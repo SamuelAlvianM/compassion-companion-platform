@@ -103,7 +103,6 @@ const warnaLevel = (level: number) =>
   <div class="mx-auto max-w-6xl">
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Admin area</p>
         <h1 class="font-serif text-5xl text-cc-green-800">Dashboard</h1>
         <p class="mt-2 max-w-2xl text-sm text-cc-stone-600">
           Ringkasan data dan alur kerja pengelolaan Compassionate Companion.

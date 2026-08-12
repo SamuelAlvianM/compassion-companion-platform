@@ -15,7 +15,6 @@ const title = computed(() => names[String(route.params.section)] ?? 'Admin')
   <div class="mx-auto max-w-6xl">
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Admin area</p>
         <h1 class="font-serif text-5xl text-cc-green-800">{{ title }}</h1>
       </div>
       <UButton color="secondary" size="lg" icon="i-lucide-plus" class="shrink-0">Tambah baru</UButton>

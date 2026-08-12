@@ -420,13 +420,41 @@ const BAGIAN = [
         Belum ada sesi.
       </div>
 
-      <div v-for="s in sesi" :key="s.id" class="mb-4 rounded-xl border border-cc-stone-200 p-4 last:mb-0">
+      <!-- Satu kotak = satu sesi, dan kotaknya krem. Sebelumnya seluruh isinya
+           berlatar krem di dalam bingkai putih, sehingga batas antar sesi praktis
+           tidak terlihat pada event yang punya beberapa sesi — yang terbaca cuma
+           satu kolom panjang berisi bagian-bagian yang seragam. Sekarang
+           kebalikannya: latar sesi krem, isi tiap bagian putih. -->
+      <div
+        v-for="(s, iSesi) in sesi"
+        :key="s.id"
+        class="mb-6 rounded-xl border border-cc-brown-300 bg-cc-stone-50 p-4 last:mb-0"
+      >
+        <!-- Kepala bernomor. Tanpa ini dua sesi berturut-turut terbaca sebagai satu
+             kolom panjang berisi bagian yang seragam — yang membedakannya cuma
+             judul di dalam kotak isian, dan kotak isian tidak terbaca sebagai
+             judul. Nomornya urutan tampil, bukan id: itu yang dipakai orang saat
+             menyebut "sesi kedua". -->
+        <div class="mb-3 flex flex-wrap items-center gap-2 border-b border-cc-stone-300 pb-3">
+          <span class="grid size-7 shrink-0 place-items-center rounded-full bg-cc-green-800 font-serif text-sm text-cc-stone-50">
+            {{ iSesi + 1 }}
+          </span>
+          <span class="min-w-0 truncate font-serif text-xl text-cc-green-800">
+            {{ s.judul || 'Sesi tanpa judul' }}
+          </span>
+          <UBadge v-if="!s.tampil" color="neutral" variant="subtle" size="sm" class="shrink-0">
+            tersembunyi
+          </UBadge>
+        </div>
+
         <!-- Judul & tanggal sesi menyimpan dirinya sendiri; komponen yang sama
-             dipakai penyuntingan di halaman event publik. -->
+             dipakai penyuntingan di halaman event publik. Sakelar "Tampil" ikut
+             ditampilkan di sini: menyiapkan isi dan memutuskan apa yang terbit
+             ternyata pekerjaan yang sama, dan tanpa sakelarnya tidak ada tempat
+             lain di dashboard untuk menyembunyikan sesi yang belum siap. -->
         <SesiPengaturan
           :key="s.id"
           :sesi="s"
-          tanpa-tampil
           :pertama="sesi[0]?.id === s.id"
           :terakhir="sesi[sesi.length - 1]?.id === s.id"
           @tersimpan="muat()"
@@ -439,7 +467,7 @@ const BAGIAN = [
              menilai"), dan di kolom selebar sepertiga layar semuanya terpotong jadi
              potongan yang tidak bisa dibedakan satu sama lain. -->
         <div class="space-y-3">
-          <div v-for="b in BAGIAN" :key="b.key" class="rounded-lg bg-cc-stone-50 p-3">
+          <div v-for="b in BAGIAN" :key="b.key" class="rounded-lg border border-cc-stone-200 bg-white p-3">
             <div class="mb-2 flex items-center gap-1.5">
               <UIcon :name="b.ikon" class="size-4 text-cc-brown-500" />
               <span class="text-sm font-semibold text-cc-green-800">{{ b.label }}</span>
@@ -464,21 +492,59 @@ const BAGIAN = [
               Belum ada isi.
             </p>
 
+            <!-- Galeri: pita cuplikan mendatar, bukan daftar baris berjudul.
+                 Pada daftar foto, FOTONYA yang jadi isi — namanya
+                 ("Screenshot 2026 04 07 092118") tidak membantu siapa pun mengenali
+                 mana yang sedang dilihat, dan cuplikan 32px di sampingnya sama saja.
+                 Bergulir mendatar, bukan membungkus: satu baris membuat urutannya
+                 terbaca sebagai urutan, persis seperti saat fotonya diunggah. -->
+            <div v-else-if="b.key === 'galeri'" class="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+              <figure
+                v-for="(item, i) in s[b.key]"
+                :key="item.id"
+                class="w-32 shrink-0"
+              >
+                <img
+                  v-if="item.thumbnail || item.url"
+                  :src="item.thumbnail ?? item.url"
+                  :alt="item.judul"
+                  class="h-24 w-32 rounded-lg border border-cc-stone-200 bg-cc-stone-100 object-cover"
+                  loading="lazy"
+                >
+                <div v-else class="grid h-24 w-32 place-items-center rounded-lg border border-cc-stone-200 bg-cc-stone-100">
+                  <UIcon name="i-lucide-image-off" class="size-5 text-cc-stone-400" />
+                </div>
+
+                <!-- Tanpa keterangan di bawah foto: yang membedakan satu foto dari
+                     yang lain adalah gambarnya, dan nama berkas di sana justru
+                     menyita ruang yang bisa dipakai fotonya. -->
+                <div class="mt-1 flex items-center">
+                  <UButton
+                    color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-left"
+                    aria-label="Geser ke kiri" :disabled="i === 0" @click="geserItem(item.id, 'naik')"
+                  />
+                  <UButton
+                    color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-right"
+                    aria-label="Geser ke kanan" :disabled="i === s[b.key].length - 1" @click="geserItem(item.id, 'turun')"
+                  />
+                  <UButton
+                    color="neutral" variant="ghost" size="xs" icon="i-lucide-pencil"
+                    aria-label="Ubah foto" @click="bukaUbahItem(s.id, item)"
+                  />
+                  <UButton
+                    color="error" variant="ghost" size="xs" icon="i-lucide-x"
+                    aria-label="Hapus foto" @click="hapusItem(item.id)"
+                  />
+                </div>
+              </figure>
+            </div>
+
             <ul v-else class="space-y-1">
               <li
                 v-for="(item, i) in s[b.key]"
                 :key="item.id"
                 class="flex items-center gap-2 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
               >
-                <!-- Galeri diberi cuplikan gambarnya: satu daftar foto yang hanya
-                     berisi nama berkas praktis tidak bisa dibedakan isinya. -->
-                <img
-                  v-if="b.key === 'galeri' && (item.thumbnail || item.url)"
-                  :src="item.thumbnail ?? item.url"
-                  :alt="item.judul"
-                  class="size-8 shrink-0 rounded object-cover"
-                  loading="lazy"
-                >
                 <UIcon v-if="item.terkunci" name="i-lucide-lock" class="size-3 shrink-0 text-cc-stone-400" />
                 <span class="min-w-0 flex-1 truncate" :title="item.judul">{{ item.judul }}</span>
                 <UButton

@@ -1507,13 +1507,64 @@ a[href^="https://wa.me/"]::before {
     display: block;
     width: 100%;
     padding: 0;
-    border: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
     background: #e7dfd2;
     cursor: zoom-in
 }
 
+/* Foto ikut membulat bersama bingkainya. Tanpa ini sudutnya menonjol keluar dari
+   radius kartunya, dan pada kisi yang rapat itu terbaca sebagai gambar yang
+   saling menempel. */
+.gallery-item img {
+    border-radius: 9px
+}
+
+.gallery-item:hover {
+    border-color: var(--color-secondary)
+}
+
+/* Galeri dilonggarkan: empat kolom berjarak 18px membuat foto berhimpitan pada
+   lebar panel ini, dan tiap foto jadi terlalu kecil untuk dikenali isinya —
+   padahal mengenali isi itulah satu-satunya gunanya kisi ini. Tiga kolom dengan
+   jarak lebih lebar memberi tiap foto ruang yang cukup. */
+.gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px
+}
+
+/* Kepala tiap bagian materi/galeri/referensi: judul di kiri, tombol tambah di
+   kanan. Tombolnya dulu berkumpul di dasar panel, tempat ia baru terlihat sesudah
+   seluruh isi sesi tergulir habis. */
+.resource-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 18px
+}
+
+.resource-group-head h3 {
+    margin: 0
+}
+
 @media (max-width: 850px) {
     .tile-grid {
+        grid-template-columns: 1fr
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px
+    }
+}
+
+/* Aturan 1 kolom di blok lama berada LEBIH AWAL di berkas ini, jadi aturan 2 kolom
+   di atas akan menang di layar sempit meski media query-nya lebih longgar —
+   keduanya berspesifisitas sama dan yang belakangan yang dipakai. Ditulis ulang di
+   sini supaya urutannya benar. */
+@media (max-width: 480px) {
+    .gallery-grid {
         grid-template-columns: 1fr
     }
 }

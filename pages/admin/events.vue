@@ -77,16 +77,21 @@ const hapus = async () => {
   }
 }
 
-// Kolom "Biaya" dan "Status" dihapus. Harga tidak lagi diisi di formulir mana pun,
-// dan status redaksional sudah digantikan fase yang dihitung dari tanggal — dua
-// kolom yang isinya tidak bisa lagi berbeda antarbaris hanya melebarkan tabel.
+// Kolom "Biaya" dan "Status" dihapus lebih dulu; sekarang delapan kolom disusutkan
+// jadi lima.
+//
+// Delapan kolom tidak muat di layar mana pun, dan yang terdorong keluar justru
+// kolom aksi di ujung kanan — tombol ubah & hapus baru terlihat setelah tabelnya
+// digulir mendatar, padahal itu yang paling sering dicari orang di halaman ini.
+//
+// Yang digabung dipilih menurut apa yang dibaca bersamaan: lokasi menempel ke nama
+// event (keduanya menjawab "event yang mana"), batas pendaftaran menempel ke
+// tanggal (keduanya jadwal), dan jumlah peserta menempel ke sesi/materi (keduanya
+// isi). Tidak ada informasi yang hilang — yang berubah hanya letaknya.
 const columns = [
-  { accessorKey: 'judul', header: 'Nama Event' },
-  { accessorKey: 'tanggalMulai', header: 'Tanggal & jam' },
-  { accessorKey: 'tutupPendaftaran', header: 'Batas daftar' },
-  { accessorKey: 'lokasi', header: 'Lokasi' },
-  { accessorKey: 'isi', header: 'Sesi & materi' },
-  { accessorKey: 'terdaftar', header: 'Peserta' },
+  { accessorKey: 'judul', header: 'Event' },
+  { accessorKey: 'tanggalMulai', header: 'Jadwal' },
+  { accessorKey: 'isi', header: 'Isi & peserta' },
   { accessorKey: 'fase', header: 'Fase' },
   { accessorKey: 'aksi', header: '' },
 ]
@@ -96,7 +101,6 @@ const columns = [
   <div class="mx-auto max-w-7xl">
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Program</p>
         <h1 class="font-serif text-5xl text-cc-green-800">Event</h1>
         <p class="mt-2 text-sm text-cc-stone-600">Kelola program, peserta, materi, dan dokumentasi.</p>
       </div>
@@ -140,6 +144,9 @@ const columns = [
         :loading="muat === 'pending'"
         empty="Belum ada event. Klik “Event baru” untuk membuat yang pertama."
       >
+        <!-- Nama event + lokasinya. Slug dibuang dari tampilan: ia hanya berarti
+             saat menyusun tautan, dan barisnya menggandakan tinggi tiap baris tabel
+             untuk sesuatu yang tidak dibaca sambil lalu. -->
         <template #judul-cell="{ row }">
           <NuxtLink
             :to="`/admin/event/${row.original.id}`"
@@ -147,41 +154,43 @@ const columns = [
           >
             {{ row.original.judul }}
           </NuxtLink>
-          <div class="text-xs text-cc-stone-500">/{{ row.original.slug }}</div>
+          <div class="flex items-center gap-1 text-xs text-cc-stone-500">
+            <UIcon name="i-lucide-map-pin" class="size-3 shrink-0" />
+            <span class="truncate">{{ row.original.lokasi ?? '—' }}</span>
+          </div>
         </template>
 
+        <!-- Jadwal: tanggal acara di atas, batas pendaftaran di bawahnya. Yang
+             batasnya sudah lewat ditandai merah — baris seperti itu masih menerima
+             klik "Ubah" tapi tidak lagi menerima pendaftar. -->
         <template #tanggalMulai-cell="{ row }">
-          <div class="whitespace-nowrap">
+          <div class="whitespace-nowrap text-sm">
             {{ tanggal(row.original.tanggalMulai) }}
             <template v-if="row.original.tanggalSelesai && row.original.tanggalSelesai !== row.original.tanggalMulai">
               – {{ tanggal(row.original.tanggalSelesai) }}
             </template>
+            <span v-if="rentangJam(row.original)" class="text-cc-stone-500">
+              · {{ rentangJam(row.original) }}
+            </span>
           </div>
-          <div v-if="rentangJam(row.original)" class="text-xs text-cc-stone-500">
-            {{ rentangJam(row.original) }}
-          </div>
-        </template>
-
-        <!-- Batas pendaftaran. Yang sudah lewat ditandai, karena baris seperti itu
-             masih menerima klik "Ubah" tapi tidak lagi menerima pendaftar. -->
-        <template #tutupPendaftaran-cell="{ row }">
-          <span
-            v-if="row.original.tutupPendaftaran"
-            class="whitespace-nowrap text-sm"
-            :class="batasLewat(row.original.tutupPendaftaran) ? 'text-red-700' : 'text-cc-stone-600'"
+          <div
+            class="flex items-center gap-1 text-xs whitespace-nowrap"
+            :class="row.original.tutupPendaftaran && batasLewat(row.original.tutupPendaftaran)
+              ? 'text-red-700'
+              : 'text-cc-stone-500'"
           >
-            {{ tanggalJamSingkat(row.original.tutupPendaftaran) }}
-          </span>
-          <span v-else class="text-sm text-cc-stone-400">Sampai acara mulai</span>
+            <UIcon name="i-lucide-hourglass" class="size-3 shrink-0" />
+            <span v-if="row.original.tutupPendaftaran">
+              {{ tanggalJamSingkat(row.original.tutupPendaftaran) }}
+            </span>
+            <span v-else>Sampai acara mulai</span>
+          </div>
         </template>
 
-        <template #lokasi-cell="{ row }">
-          <span class="text-sm text-cc-stone-600">{{ row.original.lokasi ?? '—' }}</span>
-        </template>
-
-        <!-- Kolom ini yang memberi tahu event mana yang materinya masih kosong. -->
+        <!-- Kolom ini yang memberi tahu event mana yang materinya masih kosong,
+             sekaligus berapa yang sudah mendaftar. -->
         <template #isi-cell="{ row }">
-          <div class="flex items-center gap-1.5 text-sm">
+          <div class="flex items-center gap-1.5">
             <UBadge color="neutral" variant="subtle" size="sm">{{ row.original.jumlahSesi }} sesi</UBadge>
             <UBadge
               :color="row.original.jumlahItem ? 'secondary' : 'neutral'"
@@ -191,12 +200,12 @@ const columns = [
               {{ row.original.jumlahItem }} materi
             </UBadge>
           </div>
-        </template>
-
-        <template #terdaftar-cell="{ row }">
-          <span class="tabular-nums">
-            {{ row.original.terdaftar }}<span v-if="row.original.kuota" class="text-cc-stone-400">/{{ row.original.kuota }}</span>
-          </span>
+          <div class="flex items-center gap-1 text-xs text-cc-stone-500">
+            <UIcon name="i-lucide-users" class="size-3 shrink-0" />
+            <span class="tabular-nums">
+              {{ row.original.terdaftar }}<template v-if="row.original.kuota">/{{ row.original.kuota }}</template>
+            </span>
+          </div>
         </template>
 
         <!-- Fase, bukan status: dihitung dari tanggal setiap kali dibaca, jadi tidak

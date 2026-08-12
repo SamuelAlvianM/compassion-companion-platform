@@ -6,6 +6,12 @@
 // tidak ada verifikasi email, tidak ada tautan aktivasi, dan `username`
 // disusun dari email kalau tidak diisi: satu hal lebih sedikit yang harus
 // diketik admin, sementara pemakainya tetap bisa masuk memakai emailnya.
+//
+// Sejak form member kehilangan kolom username, "tidak diisi" jadi keadaan yang
+// normal, bukan kekecualian: yang dipakai **alamat email utuh**, bukan bagian
+// depannya. Alasannya satu-satunya identitas yang diketahui pemilik akun adalah
+// emailnya — kalau username diturunkan jadi `maria` dari `maria@…`, layar admin
+// menampilkan nama yang tidak pernah diberitahukan kepada siapa pun.
 
 import { and, eq, ne } from 'drizzle-orm'
 import { db } from '../db'
@@ -37,8 +43,10 @@ const emailWajar = (nilai: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nilai)
  * dua orang bernama sama di satu paroki bukan hal aneh, dan menolak pendaftaran
  * karena itu memaksa admin mengarang nama yang tidak dipakai siapa pun.
  */
-export const usernameUnik = (dasar: string, abaikanId?: string) => {
-  const awal = slugify(dasar) || 'user'
+export const usernameUnik = (dasar: string, abaikanId?: string, apaAdanya = false) => {
+  // `apaAdanya` melewati slugify: dipakai saat dasarnya alamat email, yang justru
+  // akan kehilangan `@` dan titiknya kalau ikut dirapikan.
+  const awal = (apaAdanya ? dasar.trim().toLowerCase() : slugify(dasar)) || 'user'
   let kandidat = awal
   for (let i = 2; i < 200; i++) {
     const ada = db
@@ -90,12 +98,16 @@ export const bacaUser = (body: Record<string, unknown>, opsi: OpsiBacaUser = {})
   const role = teks(body.role) || 'user'
   if (!USER_ROLES.includes(role as UserRole)) throw salah(`Role tidak dikenal: ${role}`)
 
-  // Username bawaan diambil dari bagian depan email, lalu dari namanya. Yang
-  // dikirim eksplisit tetap menang.
+  // Username bawaan = alamat email utuh; tanpa email, disusun dari namanya. Yang
+  // dikirim eksplisit tetap menang, dan akun yang sudah ada mempertahankan
+  // usernamenya (lihat OpsiBacaUser.usernameSekarang) — termasuk saat emailnya
+  // diperbaiki, supaya tidak ada yang kehilangan cara masuknya di tengah jalan.
   const usernameDiminta = teks(body.username)
   const username = usernameDiminta
     ? usernameUnik(usernameDiminta, abaikanId)
-    : usernameSekarang ?? usernameUnik(email?.split('@')[0] || fullName, abaikanId)
+    : usernameSekarang ?? (email
+        ? usernameUnik(email, abaikanId, true)
+        : usernameUnik(fullName, abaikanId))
 
   return {
     username,

@@ -5,6 +5,497 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-12 — Sesi 11: Halaman member berhenti jadi tempat membaca
+
+Menutup task yang disiapkan di akhir Sesi 10 (tinjauan pukul 13.22 & 13.26).
+Semua yang diminta dikerjakan; yang menuntut keputusan ditanyakan lebih dulu dan
+jawabannya dicatat di bawah masing-masing.
+
+### Eyebrow dicabut dari dashboard
+
+Delapan halaman kehilangan baris kecil huruf besar di atas judulnya —
+"Administrasi", "Program", "Konten", "Admin area", "Referensi", "Jurnal". Di situs
+publik penanda itu menempatkan halaman dalam rangkaiannya; di dashboard sidebar
+sudah melakukannya, dan yang tersisa cuma baris yang dibaca tanpa menjawab apa pun.
+
+Kelas yang sama (`text-xs font-bold uppercase tracking-[.16em]`) **tetap dipakai**
+sebagai label bagian di dalam kartu — "Password baru" di form member, dan blok
+contoh di `/admin/[section]`. Yang dicabut hanya yang berdiri tepat di atas `<h1>`
+halaman. Pada `jurnal/[id].vue` `mt-1` di judulnya ikut dibuang bersama eyebrow-nya,
+kalau tidak judulnya menggantung setengah baris dari tombol kembali.
+
+### Daftar member: memilih berarti pergi, bukan membentang
+
+Judul jadi **Member**, tombolnya **Add Member**, dan form di baliknya **Add Member
+/ Edit Member**. Aturannya disebut peninjau sendiri: judul halaman mengikuti nama
+tombol yang membawanya ke sana.
+
+Yang lebih dari penggantian kata: **panel detail di samping tabel dicabut
+seluruhnya.** Tombol "Detail" diganti dua ikon — mata membuka `/profil?id=<id>`,
+pensil membuka `/admin/member/<id>`. Alasan panel itu ada (Sesi sebelumnya:
+"pekerjaan di halaman ini adalah membanding-bandingkan akun") ternyata tidak
+terbukti: yang dilakukan orang di sini melihat satu akun lalu mengubahnya, dan
+panel sempit itu memuat versi setengah dari halaman profil yang sudah ada.
+
+Ikutannya: `components/AdminDetailUser.vue` **dihapus**, bukan ditinggal
+menggantung. Di dalamnya ada jalur reset password — diperiksa dulu, dan jalur yang
+sama sudah ada di form member, jadi tidak ada kemampuan yang hilang.
+
+Kolom **"Terakhir masuk" dibuang**. Satu tanggal di dalam daftar tidak bisa
+ditindaklanjuti dari sana; kalau riwayat masuk dibutuhkan, tempatnya menu log
+tersendiri. `lastLogin` masih dikirim `GET /api/users` — yang hilang pemakainya.
+
+Dua tombol ikon berarti dua tombol tanpa teks, jadi keduanya diberi `aria-label`
+yang menyebut **nama orangnya** ("Ubah akun Maria Santoso"), bukan sekadar "Ubah".
+Baris `@username` di bawah nama ikut dilepas: sejak username jadi email, ia hanya
+mengulang kolom Email di sebelahnya.
+
+### Form member: add dan edit jadi satu bentuk
+
+Satu berkas sudah menangani keduanya sejak Sesi 7, tapi bentuknya berbeda —
+password di mode edit bersembunyi di balik tombol dan `UModal`. Sekarang kolomnya
+ada di tempat yang sama pada kedua mode, dan **satu tombol simpan** mengurus
+keduanya (dipilih peninjau ketika ditanya).
+
+Pada mode edit itu berarti **dua permintaan**, karena password memang endpoint
+tersendiri: `PATCH /api/admin/users/[id]` dulu, `POST …/password` sesudahnya dan
+hanya bila kolomnya terisi. Urutannya menentukan bunyi galatnya — kalau yang kedua
+gagal, perubahan nama/role sudah tersimpan, dan pesannya mengatakan justru itu.
+Satu galat datar akan membuat orang menebak bagian mana yang tidak jadi.
+
+Kolom password kosong berarti **"jangan diubah"**, bukan "kosongkan passwordnya".
+
+### Username = email, dan itu menyentuh server
+
+Kolom Username dicabut dari form. Yang dijawab peninjau saat ditanya: tidak ada
+username di halaman member, masuknya pakai email saja.
+
+`bacaUser()` sudah menyusun username sendiri saat body tidak menyebutnya, tapi dari
+**bagian depan** email (`maria@…` → `maria`). Itu diubah jadi **alamat email utuh**:
+satu-satunya identitas yang pernah diberitahukan ke pemilik akun adalah emailnya,
+dan username turunan hanya akan jadi nama yang tidak dikenali siapa pun di layar
+admin. `usernameUnik()` dapat parameter ketiga `apaAdanya` yang melewati `slugify` —
+tanpa itu `@` dan titiknya justru dirapikan hilang.
+
+Akun yang sudah ada **tidak ikut berubah**: `usernameSekarang` di jalur PATCH
+mempertahankan username lama apa adanya, termasuk saat emailnya diperbaiki. Login
+menerima keduanya, jadi tidak ada yang kehilangan cara masuknya di tengah jalan.
+
+### Urutan event: nama baru yang membalik arahnya
+
+`Terdekat dulu` / `Terjauh dulu` → **`Terbaru` / `Terlama`** (EN: `Newest` /
+`Oldest`).
+
+Ini bukan penggantian teks belaka. "Terdekat" adalah tanggal paling awal — yaitu
+event **paling lama**. Kalau hanya labelnya yang ditukar, tiap pilihan akan
+melakukan kebalikan dari namanya.
+
+Bawaannya jadi **Terbaru** (tanggal terbaru di depan, atas permintaan), dan karena
+itu `orderBy` di `GET /api/events` ikut dibalik jadi `desc(tanggalMulai)`. Kalau
+tidak, susunan yang datang dari server berbeda dari pilihan yang tertulis di
+tombolnya, dan daftarnya akan bergeser sendiri sesaat setelah kartu pertama
+tergambar. Endpoint itu cuma punya satu pemakai (`pages/events/index.vue`), jadi
+pembalikannya tidak menyentuh halaman lain.
+
+### Tombol "Buat akun" yang masih bisa ditekan dua kali
+
+Ketemu saat menguji di browser, dan sudah ada sejak sebelum sesi ini.
+
+Sesudah akun dibuat, `simpan()` mengganti alamat halaman jadi
+`/admin/member/<id>` — tapi yang tergambar **tetap form Add Member yang sama**.
+Instance halamannya tidak berganti; itu memang harus begitu, karena password yang
+baru dibuat hanya bisa dibaca selama tampilannya tidak dimuat ulang. Yang tidak
+disadari sebelumnya: tombol "Buat akun" ikut tinggal di sana dan masih hidup.
+
+Menekannya lagi dengan email yang sama cuma menghasilkan galat "Email itu sudah
+dipakai akun lain". Yang berbahaya kalau emailnya diperbaiki dulu lalu ditekan:
+lahir **akun kedua**, sementara alamat halaman menunjuk yang pertama.
+
+Sekarang tombol simpan dan "Buatkan password acak" mati begitu satu akun lahir,
+dan muncul tautan **"Lanjut ubah akun ini"** ke halaman ubahnya — dimuat dari awal
+sebagai tautan biasa, supaya isiannya datang dari database dan bukan dari sisa
+form yang sudah dipakai.
+
+### Yang dikerjakan sesi ini
+
+- [x] Eyebrow dicabut di `admin/index`, `[section]`, `events`, `members`,
+      `member/[id]`, `petunjuk`, `contributors`, `jurnal/index`, `jurnal/[id]`
+- [x] `/admin/members`: judul Member, tombol Add Member, kolom "Terakhir masuk"
+      dihapus, panel detail + `terpilihId` dicabut, aksi jadi ikon mata & pensil
+- [x] `components/AdminDetailUser.vue` dihapus
+- [x] Form member: Add/Edit Member, tanpa username, password inline di kedua mode,
+      satu tombol simpan (PATCH lalu POST password bila terisi)
+- [x] `usernameUnik(..., apaAdanya)` + username bawaan = alamat email utuh
+- [x] Urutan event Terbaru/Terlama beserta arah urutnya; `desc(tanggalMulai)` di
+      `GET /api/events`
+- [x] Tombol kembali di profil orang lain → "Kembali ke daftar member" /
+      "Back to member list"
+- [x] Tombol simpan mati sesudah akun dibuat + tautan "Lanjut ubah akun ini"
+- [x] Diuji: urutan Terbaru & Terlama disaksikan di browser (5 kartu, dua arah),
+      label EN "Newest", 6 rute (200/302 sesuai penjagaan), typecheck 27 galat —
+      di bawah baseline 30, nol tambahan
+
+### Halaman admin akhirnya dilihat langsung
+
+Tiga sesi berturut-turut menutup catatannya dengan "halaman admin belum pernah
+disaksikan". Sesi ini tidak.
+
+Yang dibuktikan di browser dengan sesi admin sungguhan:
+
+| Yang diuji | Hasil |
+|---|---|
+| `/admin/members` | judul Member, tombol Add Member, lima kolom, tanpa eyebrow |
+| Kolom aksi | ikon mata & pensil, `aria-label` menyebut nama orangnya |
+| Mata | `/id/profil?id=…` — mendarat di tab **Riwayat event**, baris kontak utuh |
+| Pensil | `/admin/member/<id>` → **Edit Member**, isian terisi, password kosong |
+| Add Member | tanpa kolom username, password wajib, "Buatkan password acak" jalan |
+| Buat akun | `POST /api/admin/users` 200; `username` di database = **alamat email utuh** |
+| Simpan pada mode ubah | `PATCH` lalu `POST …/password` — dua-duanya 200, satu tombol |
+| Pesan sesudahnya | "Perubahan tersimpan. Password baru sudah dipasang …", kolom password dikosongkan |
+| Sesudah akun dibuat | tombol simpan mati, tautan "Lanjut ubah akun ini" muncul |
+
+Dua akun uji dibuat lewat form sungguhan lalu **barisnya dihapus langsung dari
+`data/cc.db`** — tidak ada endpoint hapus user, jadi tidak ada jalan lain
+membersihkannya. `cc_user` kembali 4 baris seperti semula.
+
+Yang membuatnya bisa dilihat kali ini: pratinjau diarahkan ke **`127.0.0.1:3009`**,
+bukan `localhost:3009`. Nama yang kedua itulah yang selama ini menjawab
+**426 Upgrade Required** — dev server memang hanya mengikat loopback IPv4
+(`devServer.host = '127.0.0.1'`, Sesi 7), sementara `localhost` di mesin ini
+lebih dulu terselesaikan ke IPv6. Layak diingat sesi berikutnya.
+
+### Catatan / risiko
+
+**Peringatan router yang tidak berbahaya.** Log SSR memuat
+`[VUE_ROUTER_R0004] No match found for location with path "/id/admin/members"` saat
+halaman profil dirender. Itu i18n mencoba melokalkan tautan kembali ke daftar
+member; `href` yang benar-benar tergambar tetap `/admin/members`, dan tombolnya
+berfungsi. Sudah ada sebelum sesi ini.
+
+**Username akun lama tidak diseragamkan.** Setelah sesi ini ada dua bentuk hidup
+berdampingan: akun lama dengan username turunan (`maria.santoso`) dan akun baru
+dengan alamat email utuh. Keduanya bisa dipakai masuk. Menyeragamkannya berarti
+menulis ulang username akun yang mungkin masih dipakai orang untuk masuk — tidak
+dikerjakan tanpa diminta.
+
+**Bawaan `GET /api/events` berubah arah.** Kalau suatu saat ada pemakai kedua
+endpoint itu, ia akan menerima urutan menurun — bukan menaik seperti dulu.
+
+---
+
+## 2026-08-12 — Sesi 10: Revisi tinjauan — yang dicabut lebih banyak dari yang ditambah
+
+Dua belas revisi dari tinjauan setelah Sesi 9. Hampir semuanya membuang sesuatu,
+dan itu polanya sendiri: yang ditinjau bukan fitur yang kurang melainkan penanda
+yang menuntut dibaca tanpa menjawab apa pun.
+
+### Penyaring tanggal & dua urutan dicabut
+
+Kalender di halaman event hilang, begitu juga "Terbaru ditambahkan" dan "Batas
+daftar terdekat". Ketiganya mengurutkan atau menyaring menurut hal yang **tidak
+tertulis di kartu** — tanggal baris itu dibuat, dan tenggat yang hanya sebagian
+event punya — sehingga hasilnya terbaca acak oleh yang memilihnya. Penanganan
+`null` khusus untuk "batas terdekat" (Sesi 9) ikut terbuang bersamanya.
+
+Parameter `dari` di `GET /api/events` **tidak dihapus**: server tetap menerimanya,
+yang hilang hanya pemakainya di klien.
+
+### Badge yang dibuang, dan satu yang berubah arti
+
+Badge level (`Master · L1`, `· level 1`) dicabut dari tabel user, panel detail,
+dan halaman profil. Angkanya cuma berarti bagi yang hafal tabel role — dan tabel
+itu sendiri sudah master-only sejak Sesi 7.
+
+Yang lebih dari sekadar tampilan: **badge status di riwayat event**. Membuangnya
+membuat daftar itu tidak bisa lagi membedakan "ikut" dari "batal", jadi
+pembuangannya menuntut penyaringan datanya. `riwayatKegiatan()` sekarang menolak
+baris `batal` di SQL — riwayat menjawab "event apa yang pernah diikuti", dan yang
+dibatalkan justru berarti tidak diikuti.
+
+Efek yang perlu diketahui: `ringkas.total` di halaman profil ikut mengecil, karena
+ia menghitung baris yang sama. Yang batal tetap utuh di tab "Daftar peserta" event
+yang bersangkutan — di sanalah pembatalan diurus dan bisa dianulir.
+
+### Master hilang dari daftar, bukan cuma dari labelnya
+
+Akun master disaring **di SQL** (`server/api/users/index.get.ts`), bukan di klien.
+Daftarnya berpaginasi: menyaring sesudah datanya sampai akan meninggalkan halaman
+yang isinya berkurang tanpa sebab, sementara `meta.total` tetap menghitungnya.
+Barisnya yang disembunyikan, bukan labelnya — dengan begitu pencarian nama pun
+tidak bisa membuktikan akun itu ada.
+
+Opsi role ikut kehilangan master di tiga tempat: filter daftar user, pilihan role
+di form akun, dan tabel role di halaman Petunjuk. Di form akun ada jebakan kecil
+yang ikut ditutup: daftar penuh dipakai selama `aktor` masih null, sehingga
+"Master" sempat terlihat sekejap oleh admin biasa pada tiap muat halaman.
+
+### Konfirmasi tiap tahap pendaftar
+
+Empat tombol berdempetan di ujung baris yang bentuknya identik, pada daftar yang
+bergeser sendiri tiap kali dimuat ulang — salah baris adalah kesalahan yang mudah
+terjadi dan tidak punya jejak. Sekarang semuanya lewat modal, dan modalnya
+menyebut **nama orangnya**: yang dikonfirmasi bukan "tindakan ini" melainkan
+"tindakan ini pada orang ini".
+
+Isi modalnya berbeda per tahap, karena tahapnya memang berbeda arti — "proses"
+berarti sudah dihubungi, "konfirmasi" berarti resmi terdaftar. Modal **tidak
+ditutup saat gagal**: galatnya muncul di dalamnya, jadi tombolnya bisa ditekan
+lagi tanpa mencari ulang barisnya. Galat tingkat daftar disembunyikan selama modal
+terbuka — di belakang lapisan gelap ia tidak akan terbaca.
+
+### Sakelar "Tampil" kembali, dan warnanya dibalik
+
+Sakelar yang dicabut dari tab Materi di Sesi 9 dikembalikan. Alasan pencabutannya
+— "di dashboard orang menyiapkan isi, bukan mengatur apa yang terbit" — ternyata
+memisahkan dua pekerjaan yang sebenarnya satu. Prop `tanpaTampil` dihapus
+seluruhnya, bukan disetel false: tidak ada lagi yang memakainya.
+
+Batas antar sesi juga tidak terasa. Sebabnya: seluruh isi berlatar krem di dalam
+bingkai putih, sehingga yang terbaca satu kolom panjang berisi bagian yang seragam.
+Sekarang dibalik — **kotak sesi krem, isi tiap bagian putih**. `SesiPengaturan`
+ikut jadi putih, kalau tidak ia lebur ke latar sesinya.
+
+### Sisanya
+
+- Eyebrow "Testimoni peserta" → "Refleksi event" / "Event reflection".
+- Urutan tab profil jadi **Pengaturan · Riwayat · Refleksi**. Tab Pengaturan tidak
+  ada pada profil orang lain, jadi ditambahkan penggeseran ke "Riwayat" — tanpa itu
+  membuka profil dari `/admin/members` mendarat pada tab yang tidak ada di bilahnya,
+  dan formulir di baliknya milik akun yang sedang dibuka.
+- Garis pemisah di panel detail user dibuang; tiga baris pendek tidak butuh
+  pembagi, dan garisnya justru memotong panel sempit itu jadi potongan kecil.
+- Halaman profil orang lain dapat baris kontak (email, WhatsApp, tanggal bergabung).
+  Sebelumnya pengelola yang membukanya tidak melihat satu pun data itu — tab
+  Pengaturan yang memuatnya hanya ada untuk pemiliknya sendiri.
+
+### Putaran kedua: dua tombol bernama sama, dan delapan kolom yang tidak muat
+
+**Daftar dengan akun butuh tiga klik dan dua tombol berbunyi sama.** Setelah
+"Periksa akun" berhasil, panel beralih ke kartu "Anda masuk sebagai …" yang
+tombolnya berbunyi *Daftar Sekarang* — dan modal di baliknya berbunyi persis sama.
+Orang menekan yang pertama lalu mengira sudah terdaftar. Sekarang login langsung
+membuka konfirmasinya; tombolnya berbunyi "Masuk & lanjut daftar", jadi apa yang
+akan terjadi tertulis di tombolnya sendiri.
+
+Kolomnya juga salah tipe: `type="email"` sementara endpoint login menerima username
+juga. Username tanpa @ ditolak browser sebagai "alamat tidak sah" padahal isinya
+benar. Labelnya kini "Email atau username", tipenya teks.
+
+**Refleksi event hanya pada event yang sudah selesai.** Panel itu berisi apa yang
+dikatakan orang sesudah mengikutinya; pada event mendatang ia menjanjikan sesuatu
+yang belum ada, pada yang sedang berlangsung ia mendahului acaranya sendiri. Ikut
+disembunyikan dari mode sunting — tidak ada yang bisa ditulis sebelum eventnya usai.
+
+**Delapan kolom di `/admin/events` jadi lima.** Yang terdorong keluar layar justru
+kolom aksi di ujung kanan: tombol ubah & hapus baru terlihat setelah tabelnya
+digulir mendatar. Penggabungannya mengikuti apa yang dibaca bersamaan — lokasi ke
+nama event, batas pendaftaran ke tanggal, jumlah peserta ke sesi/materi. Slug
+dibuang dari tampilan: ia hanya berarti saat menyusun tautan.
+
+**Tombol "Tambah" pindah ke kepala tiap bagian.** Sebelumnya ketiganya berkumpul di
+dasar panel sesi, tempat mereka baru terlihat sesudah seluruh isi tergulir habis —
+dan tombol mana milik bagian mana hanya bisa ditebak dari urutannya.
+
+**Sesi diberi nomor.** Di tab Materi, dua sesi berturut-turut terbaca sebagai satu
+kolom panjang berisi bagian yang seragam; yang membedakannya cuma judul di dalam
+kotak isian, dan kotak isian tidak terbaca sebagai judul. Sekarang tiap sesi
+dibuka kepala bernomor dengan judulnya sebagai teks — nomornya urutan tampil,
+karena itu yang dipakai orang saat menyebut "sesi kedua".
+
+### Galeri: fotonya yang jadi isi, bukan namanya
+
+Ini menutup task lanjutan yang ditolak saat tinjauan Sesi 9.
+
+Daftar galeri di tab Materi berhenti jadi baris teks berjudul. Sekarang **pita
+cuplikan mendatar** — foto 128×96 bergulir dalam satu baris, dengan tombol geser
+kiri/kanan, ganti, dan hapus di bawah masing-masing. Bergulir mendatar dan bukan
+membungkus, supaya urutannya terbaca sebagai urutan, persis seperti saat fotonya
+diunggah.
+
+Menyusul itu, **seluruh isian judul dicabut dari jalur galeri** — di modal unggah
+massal maupun di form satu-item. Alasannya sama di kedua tempat: yang dilihat orang
+fotonya, dan keterangan yang diketik untuk belasan foto sekaligus hampir selalu
+berakhir sebagai pengulangan nama berkas. Form galeri kini berisi satu hal: gambarnya.
+
+`judul` **tetap diisi di balik layar** dari nama berkas. Ia bukan hiasan: server
+mewajibkan kolom itu (`bacaItem` menolak judul kosong), dan nilainya dipakai sebagai
+teks alternatif gambar. Yang hilang cuma isiannya, bukan datanya. Ada jaring
+pengaman di `SesiItemModal` untuk foto lama yang judulnya pernah kosong — tanpa itu
+menyimpannya akan ditolak server oleh kolom yang tidak ada di layar mana pun.
+
+Judul foto ikut dilepas dari bilah lightbox: tanpa isian judul, yang tersimpan di
+sana selalu nama berkas, dan "Screenshot 2026 04 07 092118" bukan keterangan.
+
+Kisi galeri di halaman publik dilonggarkan: empat kolom berjarak 18px membuat foto
+berhimpitan dan tiap fotonya terlalu kecil untuk dikenali isinya — padahal
+mengenali isi itulah satu-satunya guna kisi itu. Kini tiga kolom, jarak 24px,
+bingkai membulat. Satu jebakan urutan CSS ikut ditutup: aturan 1 kolom untuk layar
+≤480px ada **lebih awal** di berkas daripada aturan 2 kolom yang baru, dan pada
+spesifisitas yang sama yang belakangan menang — jadi aturan 480px ditulis ulang
+sesudahnya.
+
+### Yang dikerjakan sesi ini
+
+- [x] Filter tanggal + urutan "terbaru"/"batas" dicabut dari `pages/events/index.vue`
+- [x] `EventTestimoni` eyebrow → Refleksi event / Event reflection
+- [x] Urutan tab profil + penggeseran tab untuk profil orang lain
+- [x] Modal konfirmasi tiap aksi di `AdminPesertaTab` (proses, konfirmasi, batal, pulihkan)
+- [x] `tanpaTampil` dihapus; sakelar Tampil kembali di tab Materi
+- [x] Kotak sesi krem + isi bagian putih; `SesiPengaturan` jadi putih
+- [x] Garis `divide-y`/`border-y` di `AdminDetailUser` dibuang
+- [x] Badge level & badge status riwayat dicabut di profil, panel detail, tabel user
+- [x] `riwayatKegiatan()` menolak baris `batal` di SQL
+- [x] Master disaring dari `GET /api/users`, opsi filter, form akun, halaman Petunjuk
+- [x] Baris kontak di kepala profil orang lain
+- [x] Login panel pendaftaran langsung membuka konfirmasi; kolom jadi
+      "Email atau username" bertipe teks
+- [x] `EventTestimoni` hanya digambar saat `fase === 'selesai'`
+- [x] `/admin/events`: 8 kolom → 5, aksi tidak lagi terdorong keluar layar
+- [x] Tombol "Tambah" pindah ke kepala tiap bagian di `EventResources`
+- [x] Kepala sesi bernomor di tab Materi
+- [x] Galeri jadi pita cuplikan mendatar di tab Materi
+- [x] Isian judul dicabut dari `GaleriUnggahModal` & `SesiItemModal` (galeri saja);
+      judul tetap terisi dari nama berkas untuk teks alternatif
+- [x] Judul foto dilepas dari bilah `GaleriLightbox`
+- [x] `.gallery-grid` 3 kolom + jarak 24px + bingkai membulat; urutan aturan
+      media query ≤480px dibetulkan
+- [x] Diuji: 7 rute (200 / 302 sesuai penjagaan), penanda filter & eyebrow
+      diperiksa di HTML hasil SSR, typecheck 30 galat — di bawah baseline 33,
+      nol tambahan; `nuxt build` sukses dua kali (47,6 MB)
+
+### Catatan / risiko
+
+**Halaman admin belum dilihat langsung.** Pratinjau dalam aplikasi masih menjawab
+**426 Upgrade Required** untuk setiap permintaan ke `localhost:3009` — kendala yang
+sama seperti Sesi 9, dan `curl` ke URL yang sama tetap menjawab 200. Rute admin
+sendiri 302 tanpa sesi, jadi yang belum pernah disaksikan di layar: **modal
+konfirmasi pendaftar, kotak sesi krem bernomor, pita galeri mendatar, tabel event
+lima kolom, dan panel detail user tanpa garis.** Semuanya perubahan tampilan;
+jalur datanya tidak berubah kecuali penyaringan `batal` di riwayat.
+
+Yang paling layak dicoba manual lebih dulu: **pita galeri** (apakah lebar 128px
+cukup dan tombolnya tidak berdesakan) dan **alur daftar dengan akun** — yang
+terakhir menyentuh urutan tampil panel, jadi salahnya akan berupa modal yang
+terbuka di atas panel yang keburu berganti wajah, bukan galat.
+
+**Kolom `status` peserta tidak berubah.** Yang batal tetap tersimpan lengkap
+beserta `statusSebelumBatal` — yang berubah hanya siapa yang melihatnya.
+
+### Task berikutnya: revisi tinjauan 12 Agu 13.22 — halaman member & urutan event
+
+Dua pesan tinjauan (13.22 & 13.26). Belum dikerjakan; ini catatan persiapannya.
+Polanya satu: **judul halaman harus menyebut hal yang sama dengan tombolnya**, dan
+daftar member berhenti jadi tempat membaca detail — ia jadi tempat memilih lalu
+pergi.
+
+#### 1. Eyebrow dicabut dari seluruh dashboard admin
+
+"Administrasi", "Program", "Konten", "Admin area", "Referensi", "Jurnal" — teks
+kecil huruf besar di atas judul halaman. Di situs publik ia menempatkan halaman
+dalam rangkaiannya; di dashboard, sidebar sudah melakukan itu dan penandanya
+tinggal jadi baris yang dibaca tanpa menjawab apa pun.
+
+Yang tersentuh (`text-xs font-bold uppercase tracking-[.16em]` tepat di atas `<h1>`):
+
+| Berkas | Baris | Teks |
+|---|---|---|
+| `pages/admin/index.vue` | 106 | Admin area |
+| `pages/admin/events.vue` | 104 | Program |
+| `pages/admin/members.vue` | 100 | Administrasi |
+| `pages/admin/member/[id].vue` | 158 | Administrasi |
+| `pages/admin/petunjuk.vue` | 78 | Referensi |
+| `pages/admin/contributors.vue` | 21 | Konten |
+| `pages/admin/jurnal/index.vue` | 52 | Konten |
+| `pages/admin/jurnal/[id].vue` | 68 | Jurnal |
+| `pages/admin/[section].vue` | 18, 33 | Admin area / Contoh pengelolaan |
+
+**Bukan** eyebrow, jangan ikut dibuang: kelas yang sama dipakai sebagai **label
+bagian di dalam kartu** — "Password baru" (`member/[id].vue:248`,
+`AdminDetailUser.vue:256`) dan "Data diri"/"Riwayat akun" (`AdminDetailUser.vue`).
+Yang dicabut hanya yang berdiri tepat di atas `<h1>` halaman.
+
+#### 2. `/admin/members`: judul, tombol, kolom, aksi
+
+- **Judul `User` → `Member`**, tombol **`Add User` → `Add Member`**, dan tombol
+  kembali di form (`Kembali ke User`) ikut. Alasannya yang disebut peninjau:
+  halaman berikutnya akan bernama ADD MEMBER / EDIT MEMBER, jadi judul daftarnya
+  harus kata yang sama.
+- **Kolom "Terakhir masuk" dihapus** (`lastLogin`, `members.vue:78` + template
+  `#lastLogin-cell` + helper `tanggal()` yang mungkin jadi tak terpakai). Kalau
+  log dibutuhkan nanti, menu log tersendiri — bukan satu kolom di daftar ini.
+  `lastLogin` tetap dikirim `GET /api/users`; yang dicabut pemakainya.
+- **Tombol "Detail" diganti dua ikon**: mata (pratinjau) dan pensil (ubah).
+- **Mata → `/profil?id=<id>`.** Halaman profil sudah menerima `?id=`
+  (`pages/profil.vue:19`, `targetId`), dan Sesi 10 sudah menambahkan baris kontak
+  serta penggeseran tab untuk profil orang lain — jadi tujuannya sudah siap
+  dipakai apa adanya.
+- **Pensil → `/admin/member/<id>`** (form yang sudah ada).
+- **Panel detail kanan dicabut seluruhnya**: `terpilihId`, `pilih()`, `watch`
+  penutup panel, kelas lebar bersyarat (`max-w-[1400px]` / `lg:grid-cols-2`),
+  penanda garis emas di sel nama, dan `@select` pada `<UTable>`. Tabelnya kembali
+  satu kolom `max-w-6xl`.
+- **`components/AdminDetailUser.vue` jadi tanpa pemakai** — `members.vue:189`
+  satu-satunya. Hapus berkasnya, jangan ditinggal menggantung. Perhatikan: di
+  dalamnya ada jalur **reset password** (`bolehReset` + modal). Jalur yang sama
+  sudah ada di `pages/admin/member/[id].vue` (tombol "Ganti password"), jadi tidak
+  ada kemampuan yang hilang — tapi pastikan itu dulu sebelum menghapus.
+
+#### 3. Form member: add dan edit harus sama persis
+
+Satu berkas sudah menangani keduanya (`pages/admin/member/[id].vue`, `baru =
+id === 'new'`), tapi bentuknya belum sama:
+
+- **Password pindah ke dalam form pada mode edit.** Sekarang mode edit
+  menyembunyikan field password (`v-if="baru"`) dan menaruh penggantiannya di
+  balik tombol + `UModal`. Yang diminta: field password langsung di form, sama
+  seperti mode buat. Endpointnya berbeda dan itu tidak berubah —
+  `POST /api/admin/users` membawa password saat membuat,
+  `POST /api/admin/users/[id]/password` untuk mengganti. Yang perlu diputuskan:
+  pada mode edit, apakah "Simpan perubahan" mengirim **dua** permintaan (PATCH
+  data + POST password bila kolomnya terisi), atau password punya tombolnya
+  sendiri di tempat. Yang pertama lebih dekat ke "sama persis dengan form add";
+  kalau dipilih, kolom kosong harus berarti "jangan ubah password", dan
+  kegagalan salah satu permintaan harus terbaca jelas milik yang mana.
+- **Field Username dicabut dari kedua mode.** `username = email`. Server sudah
+  siap: `bacaUser()` menyusun username dari bagian depan email saat body tidak
+  menyebutnya, dan pada PATCH `usernameSekarang` membuat username lama
+  dipertahankan apa adanya. **Perlu diputuskan**: "username = email saja" apakah
+  berarti kolom `username` diisi **alamat email utuh**, atau cukup dibiarkan
+  turunan otomatis yang sekarang (bagian depan email). Login sudah menerima
+  keduanya (email maupun username), jadi keduanya jalan — bedanya cuma apa yang
+  tampil sebagai `@handle` di tabel member.
+- Judul halaman ikut aturan tombol: **Add Member / Edit Member**.
+
+#### 4. `/pages/events/index.vue`: dua label urutan
+
+`Terdekat dulu` / `Terjauh dulu` → **`Terbaru` / `Terlama`** (EN: `Newest` /
+`Oldest`).
+
+**Ini bukan penggantian teks belaka — artinya terbalik.** `terdekat` sekarang
+menaik menurut `tanggalMulai` (event paling awal di atas), dan itu **sama dengan
+"Terlama"**. `terjauh` menurun = **"Terbaru"**. Kalau hanya labelnya yang ditukar,
+tiap pilihan akan melakukan kebalikan dari namanya.
+
+Yang ikut terbawa: `urutan` bawaan `'terdekat'` (baris 54), pemeriksaan
+`adaFilter` dan `resetFilter` (121, 126–127), dan `switch` di `events` (102–114).
+Bawaan server tetap `asc(tanggalMulai)`
+(`server/api/events/index.get.ts:48`) — kalau bawaan klien jadi "Terbaru",
+urutannya tidak lagi cocok dengan yang datang dari server, jadi pilihan awal akan
+mengubah susunan. Lebih aman: **biarkan "Terlama" sebagai bawaan** (perilaku
+tidak berubah, hanya namanya), atau ubah `orderBy` server sekalian.
+
+#### Yang perlu diperiksa setelah dikerjakan
+
+- Kolom `aksi` tanpa teks: dua tombol ikon harus punya `aria-label` sendiri, kalau
+  tidak keduanya jadi tombol tanpa nama bagi pembaca layar.
+- Klik pada ikon di dalam baris tabel: `@select` dicabut, jadi tidak ada lagi
+  klik-baris yang perlu ditahan `@click.stop` — pastikan tidak ada sisa.
+- `/profil?id=<id>` dibuka dari daftar mendarat di tab **Riwayat** (penggeseran
+  Sesi 10), bukan tab Pengaturan yang tidak ada di profil orang lain.
+- Typecheck: baseline 30 galat lama (Sesi 10), nol tambahan.
+
+---
+
 ## 2026-08-12 — Sesi 9: Jadwal event berjam, status dicabut, editor galeri
 
 ### Status redaksional dicabut — dan itu memang membuang sesuatu

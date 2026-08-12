@@ -3,8 +3,17 @@
 //
 // Dicocokkan lewat userId ATAU email: pendaftaran yang dibuat sebelum seseorang
 // punya akun tersimpan dengan userId null, dan pendaftaran itu tetap miliknya.
+//
+// Pendaftaran berstatus `batal` TIDAK ikut. Riwayat ini menjawab "event apa saja
+// yang pernah diikuti orang ini", dan yang dibatalkan justru berarti ia tidak
+// ikut — barisnya hanya menambah nama event yang tidak pernah ia hadiri. Disaring
+// di sini, satu tempat, karena keduanya yang memakai — halaman profil dan panel
+// detail user di /admin/members — sama-sama sudah tidak menampilkan status.
+//
+// Yang batal tetap terlihat utuh di tab "Daftar peserta" event yang bersangkutan;
+// di sanalah pembatalan diurus dan bisa dianulir.
 
-import { and, desc, eq, or } from 'drizzle-orm'
+import { and, desc, eq, ne, or } from 'drizzle-orm'
 import { db } from '../db'
 import { ccKegiatan, ccPeserta } from '../db/schema'
 import { faseKegiatan } from './kegiatan'
@@ -31,7 +40,7 @@ export const riwayatKegiatan = async (userId: string, email: string | null) => {
     })
     .from(ccPeserta)
     .innerJoin(ccKegiatan, eq(ccPeserta.kegiatanId, ccKegiatan.id))
-    .where(and(cocok))
+    .where(and(cocok, ne(ccPeserta.status, 'batal')))
     .orderBy(desc(ccKegiatan.tanggalMulai))
 
   const sekarang = new Date()

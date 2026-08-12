@@ -214,7 +214,18 @@ const t = computed(() => isEn.value
         <div>
           <EventRegisterPanel :event="e" :is-en="isEn" @berhasil="refresh()" />
 
-          <EventTestimoni :daftar="testimoni" :is-en="isEn" :simpan="simpanTestimoni" />
+          <!-- Refleksi event hanya pada event yang sudah SELESAI.
+               Panel ini berisi apa yang dikatakan orang setelah mengikutinya, jadi
+               pada event mendatang ia menjanjikan sesuatu yang belum ada, dan pada
+               event yang sedang berlangsung ia mendahului acaranya sendiri. Juga
+               disembunyikan dari mode sunting: tidak ada yang bisa ditulis sebelum
+               eventnya usai. -->
+          <EventTestimoni
+            v-if="e.fase === 'selesai'"
+            :daftar="testimoni"
+            :is-en="isEn"
+            :simpan="simpanTestimoni"
+          />
         </div>
       </div>
 

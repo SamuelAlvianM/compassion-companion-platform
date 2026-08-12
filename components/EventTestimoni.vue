@@ -26,7 +26,7 @@ const { aktif } = useEditMode()
 
 const t = computed(() => props.isEn
   ? {
-      eyebrow: 'Participant testimonies', judul: 'What they said',
+      eyebrow: 'Event reflection', judul: 'What they said',
       tambah: 'Add testimony', nama: 'Name', teks: 'Testimony',
       namaPh: 'Participant name', teksPh: 'What did they say?',
       simpanTombol: 'Save', batal: 'Cancel', ubah: 'Edit', hapus: 'Delete',
@@ -37,7 +37,7 @@ const t = computed(() => props.isEn
       wajib: 'Fill in the name or the testimony.',
     }
   : {
-      eyebrow: 'Testimoni peserta', judul: 'Apa kata mereka',
+      eyebrow: 'Refleksi event', judul: 'Apa kata mereka',
       tambah: 'Tambah testimoni', nama: 'Nama', teks: 'Testimoni',
       namaPh: 'Nama peserta', teksPh: 'Apa yang ia katakan?',
       simpanTombol: 'Simpan', batal: 'Batal', ubah: 'Ubah', hapus: 'Hapus',

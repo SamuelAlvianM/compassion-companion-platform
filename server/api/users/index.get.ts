@@ -3,13 +3,21 @@
 //
 // Query: q (cari nama/username/email), role, aktif (true|false), page, limit
 
-import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, like, ne, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '../../db'
 import { ccUser, ccPeserta, USER_ROLES, ROLE_LEVELS, ROLE_LABELS, type UserRole } from '../../db/schema'
 import { wajibRole } from '../../utils/session'
 
 export default defineEventHandler(async (event) => {
-  await wajibRole(event, 'editor')
+  const pengakses = await wajibRole(event, 'editor')
+
+  // Akun master tidak diperlihatkan kepada siapa pun selain master.
+  //
+  // Disaring di SQL, bukan di klien: daftarnya berpaginasi, jadi menyaring sesudah
+  // datanya sampai akan meninggalkan halaman yang isinya berkurang tanpa sebab —
+  // dan `meta.total` tetap menghitungnya. Yang disembunyikan barisnya, bukan hanya
+  // labelnya, supaya pencarian nama pun tidak bisa membuktikan akun itu ada.
+  const sembunyikanMaster = pengakses.role !== 'master'
 
   const q = getQuery(event)
   const kunci = typeof q.q === 'string' ? q.q.trim().toLowerCase() : ''
@@ -20,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(100, Math.max(1, Number(q.limit) || 25))
 
   const filters: SQL[] = []
+  if (sembunyikanMaster) filters.push(ne(ccUser.role, 'master'))
   if (kunci) {
     const pola = `%${kunci}%`
     filters.push(
@@ -73,7 +82,11 @@ export default defineEventHandler(async (event) => {
     })),
     meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     opsi: {
-      roles: USER_ROLES.map(r => ({ value: r, label: `${ROLE_LABELS[r]} — level ${ROLE_LEVELS[r]}` })),
+      // Opsi filter ikut kehilangan master: menyaring ke role yang barisnya sudah
+      // tidak pernah muncul hanya menghasilkan tabel kosong yang membingungkan.
+      roles: USER_ROLES
+        .filter(r => !(sembunyikanMaster && r === 'master'))
+        .map(r => ({ value: r, label: ROLE_LABELS[r] })),
     },
   }
 })

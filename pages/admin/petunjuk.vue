@@ -6,7 +6,7 @@ definePageMeta({ layout: 'admin' })
 // master; halaman ini menjelaskan ATURANNYA, dan boleh dibaca admin maupun editor.
 const { user } = useAuth()
 
-const roles = [
+const SEMUA_ROLES = [
   {
     level: 1, nama: 'Master', kunci: 'master',
     ringkas: 'Akses penuh atas seluruh sistem.',
@@ -49,6 +49,18 @@ const roles = [
   },
 ]
 
+/**
+ * Role Master hanya diperlihatkan kepada master.
+ *
+ * Halaman ini menjelaskan aturan, bukan menampilkan data — tapi menyebut sebuah
+ * role yang tidak akan pernah ditemui pembacanya di daftar user maupun di form
+ * akun hanya menimbulkan pertanyaan yang tidak ada jawabannya di layar mana pun.
+ */
+const roles = computed(() =>
+  user.value?.role === 'master'
+    ? SEMUA_ROLES
+    : SEMUA_ROLES.filter(r => r.kunci !== 'master'))
+
 const alur = [
   { no: 1, judul: 'Terbitkan event', detail: 'Buat kegiatan, isi tanggal, kuota, harga, lalu ubah statusnya jadi "terbit". Hanya event terbit yang tampil di situs publik.', peran: 'Admin' },
   { no: 2, judul: 'Terima pendaftaran', detail: 'Pendaftar masuk lewat halaman event. Yang sudah punya akun cukup satu klik; tamu mengisi nama dan email.', peran: 'otomatis' },
@@ -63,7 +75,6 @@ const warnaLevel = (level: number) =>
 <template>
   <div class="mx-auto max-w-4xl">
     <div class="mb-8">
-      <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Referensi</p>
       <h1 class="font-serif text-5xl text-cc-green-800">Petunjuk</h1>
       <p class="mt-2 max-w-2xl text-sm text-cc-stone-600">
         Pembagian wewenang antar role dan urutan kerja pengelolaan kegiatan.

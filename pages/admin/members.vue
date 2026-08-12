@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin' })
 
-// Daftar user sungguhan dari database. Endpoint-nya sudah membatasi ke level <= 3,
+// Daftar member sungguhan dari database. Endpoint-nya sudah membatasi ke level <= 3,
 // dan middleware admin.global.ts sudah menahan halaman ini lebih dulu.
 // Sentinel 'semua', bukan string kosong. Reka UI (penyokong USelect) memesan ''
 // untuk keadaan "belum dipilih" dan melempar galat render begitu ada item bernilai
@@ -47,70 +47,45 @@ const aktifOptions = [
 const adaFilter = computed(() => Boolean(q.value) || role.value !== SEMUA || aktif.value !== SEMUA)
 const reset = () => { q.value = ''; role.value = SEMUA; aktif.value = SEMUA }
 
-/**
- * User yang sedang dibuka di panel kanan. Null berarti panel tertutup dan tabel
- * memakai lebar penuh.
- *
- * Disimpan sebagai id, bukan salinan barisnya: panel mengambil datanya sendiri
- * (riwayat keikutsertaan tidak ikut di payload daftar), dan menyalin baris hanya
- * akan membuat dua sumber yang bisa berbeda setelah daftarnya dimuat ulang.
- */
-const terpilihId = ref<string | null>(null)
-
-const pilih = (id: string) => {
-  // Klik pada baris yang sama menutup panelnya — sama seperti menekan tombol X.
-  terpilihId.value = terpilihId.value === id ? null : id
-}
-
-// Kalau user yang sedang dibuka tersaring keluar oleh filter, panelnya ikut
-// ditutup; membiarkannya terbuka menunjukkan detail baris yang tidak ada di tabel.
-watch(users, (daftar) => {
-  if (terpilihId.value && !daftar.some((u: any) => u.id === terpilihId.value)) {
-    terpilihId.value = null
-  }
-})
-
+// Kolom "Terakhir masuk" dicabut atas permintaan: satu tanggal di dalam daftar
+// tidak menjawab pertanyaan apa pun yang bisa ditindaklanjuti di sini. Kalau
+// riwayat masuk dibutuhkan, tempatnya menu log tersendiri. `lastLogin` masih
+// dikirim GET /api/users; yang hilang cuma pemakainya.
 const columns = [
   { accessorKey: 'fullName', header: 'Nama' },
   { accessorKey: 'role', header: 'Role' },
   { accessorKey: 'email', header: 'Email' },
   { accessorKey: 'jumlahKegiatan', header: 'Event diikuti' },
-  { accessorKey: 'lastLogin', header: 'Terakhir masuk' },
   { accessorKey: 'aksi', header: '' },
 ]
 
 const warnaLevel = (level: number) =>
   ({ 1: 'error', 2: 'primary', 3: 'secondary', 4: 'neutral' })[level] ?? 'neutral'
-
-const tanggal = (nilai: string | null) => nilai
-  ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(nilai))
-  : '—'
 </script>
 
 <template>
-  <div class="mx-auto" :class="terpilihId ? 'max-w-[1400px]' : 'max-w-6xl'">
-    <!-- Lebar ikut melebar saat panel terbuka: dua kolom di dalam max-w-6xl
-         membuat tabelnya terlalu sempit untuk enam kolomnya.
+  <div class="mx-auto max-w-6xl">
+    <!-- Panel detail di samping tabel dicabut: memilih satu member sekarang berarti
+         pergi ke halamannya — profil lengkap untuk melihat, form untuk mengubah.
          Komentar ditaruh DI DALAM elemen akar — komentar di tingkat akar template
          membuat halaman terhitung multi-akar, dan halaman multi-akar berhenti
          tergambar saat dinavigasi dari halaman lain. -->
 
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Administrasi</p>
-        <h1 class="font-serif text-5xl text-cc-green-800">User</h1>
+        <h1 class="font-serif text-5xl text-cc-green-800">Member</h1>
         <p class="mt-2 text-sm text-cc-stone-600">
           Semua akun beserta role dan riwayat keikutsertaannya.
         </p>
       </div>
       <UButton to="/admin/member/new" color="secondary" size="lg" icon="i-lucide-user-plus" class="shrink-0">
-        Add User
+        Add Member
       </UButton>
     </div>
 
     <div class="mb-6 grid gap-3 rounded-lg border border-cc-green-800 bg-cc-stone-50 p-3 sm:grid-cols-[1fr_200px_170px_auto] sm:items-end">
       <UFormField label="Cari" size="sm">
-        <UInput v-model="q" icon="i-lucide-search" placeholder="Nama, username, atau email" class="w-full" />
+        <UInput v-model="q" icon="i-lucide-search" placeholder="Nama atau email" class="w-full" />
       </UFormField>
       <UFormField label="Role" size="sm">
         <USelect v-model="role" :items="roleOptions" class="w-full" />
@@ -123,74 +98,58 @@ const tanggal = (nilai: string | null) => nilai
       </UButton>
     </div>
 
-    <!-- Tabel menyusut jadi separuh begitu satu user dibuka; panel detailnya
-         mengisi separuh sisanya. Di layar sempit keduanya bertumpuk, karena dua
-         kolom pada lebar segitu membuat tabelnya tidak terbaca. -->
-    <div
-      class="grid items-start gap-5"
-      :class="terpilihId ? 'lg:grid-cols-2' : 'grid-cols-1'"
-    >
-      <UCard :ui="{ body: 'p-0' }">
-        <UTable
-          :data="users"
-          :columns="columns"
-          :loading="status === 'pending'"
-          empty="Tidak ada user yang cocok."
-          class="cursor-pointer"
-          @select="(_e: Event, row: any) => pilih(row.original.id)"
-        >
-          <!-- Baris yang sedang dibuka ditandai lewat garis emas di tepi kiri sel
-               pertama. Nuxt UI tidak menyediakan kait untuk memberi atribut pada
-               <tr>, jadi penandanya dipasang di sel, bukan di barisnya. -->
-          <template #fullName-cell="{ row }">
-            <div
-              class="-my-2 border-l-2 py-2 pl-3 transition-colors"
-              :class="row.original.id === terpilihId ? 'border-cc-brown-500' : 'border-transparent'"
-            >
-              <span class="font-semibold text-cc-green-800">{{ row.original.fullName }}</span>
-              <br>
-              <span class="text-xs text-cc-stone-500">@{{ row.original.username }}</span>
-            </div>
-          </template>
+    <UCard :ui="{ body: 'p-0' }">
+      <UTable
+        :data="users"
+        :columns="columns"
+        :loading="status === 'pending'"
+        empty="Tidak ada member yang cocok."
+      >
+        <template #fullName-cell="{ row }">
+          <span class="font-semibold text-cc-green-800">{{ row.original.fullName }}</span>
+        </template>
 
-          <template #role-cell="{ row }">
-            <UBadge :color="warnaLevel(row.original.level)" variant="subtle" size="sm">
-              {{ row.original.roleLabel }} · L{{ row.original.level }}
-            </UBadge>
-            <UBadge v-if="!row.original.isActive" color="neutral" variant="outline" size="sm" class="ml-1">
-              nonaktif
-            </UBadge>
-          </template>
+        <!-- Nama rolenya saja. Angka level hanya berarti bagi yang hafal tabel
+             wewenang, dan tabel itu sendiri sudah tidak ada di dashboard. -->
+        <template #role-cell="{ row }">
+          <UBadge :color="warnaLevel(row.original.level)" variant="subtle" size="sm">
+            {{ row.original.roleLabel }}
+          </UBadge>
+          <UBadge v-if="!row.original.isActive" color="neutral" variant="outline" size="sm" class="ml-1">
+            nonaktif
+          </UBadge>
+        </template>
 
-          <template #jumlahKegiatan-cell="{ row }">
-            <span class="tabular-nums">{{ row.original.jumlahKegiatan }}</span>
-          </template>
+        <template #jumlahKegiatan-cell="{ row }">
+          <span class="tabular-nums">{{ row.original.jumlahKegiatan }}</span>
+        </template>
 
-          <template #lastLogin-cell="{ row }">
-            <span class="text-sm text-cc-stone-600">{{ tanggal(row.original.lastLogin) }}</span>
-          </template>
-
-          <template #aksi-cell="{ row }">
+        <!-- Dua tujuan, dua ikon: mata membuka profil lengkapnya sebagaimana
+             dilihat orang lain, pensil membuka formnya. Keduanya butuh aria-label
+             sendiri — tanpa teks di dalam tombol, keduanya terbaca sebagai tombol
+             tanpa nama. -->
+        <template #aksi-cell="{ row }">
+          <div class="flex justify-end gap-1">
             <UButton
-              :color="row.original.id === terpilihId ? 'secondary' : 'neutral'"
-              :variant="row.original.id === terpilihId ? 'soft' : 'ghost'"
+              :to="`/profil?id=${row.original.id}`"
+              color="neutral"
+              variant="ghost"
               size="sm"
-              trailing-icon="i-lucide-chevron-right"
-              @click="pilih(row.original.id)"
-            >
-              Detail
-            </UButton>
-          </template>
-        </UTable>
-      </UCard>
-
-      <AdminDetailUser
-        v-if="terpilihId"
-        :key="terpilihId"
-        :user-id="terpilihId"
-        @tutup="terpilihId = null"
-      />
-    </div>
+              icon="i-lucide-eye"
+              :aria-label="`Lihat profil ${row.original.fullName}`"
+            />
+            <UButton
+              :to="`/admin/member/${row.original.id}`"
+              color="secondary"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-pencil"
+              :aria-label="`Ubah akun ${row.original.fullName}`"
+            />
+          </div>
+        </template>
+      </UTable>
+    </UCard>
 
     <p v-if="data" class="mt-3 text-xs text-cc-stone-500">
       {{ users.length }} dari {{ data.meta.total }} akun.

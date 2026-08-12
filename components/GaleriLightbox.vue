@@ -102,7 +102,9 @@ const tombol = (e: KeyboardEvent) => {
       >
         <!-- Bilah kendali -->
         <div class="flex items-center gap-1 border-b border-white/10 px-3 py-2 text-white">
-          <span class="mr-2 min-w-0 truncate text-sm">{{ aktif?.judul }}</span>
+          <!-- Judul foto tidak lagi ditampilkan: galeri tidak punya isian judul,
+               jadi yang tersimpan di sana selalu nama berkas. `judul` tetap dipakai
+               sebagai teks alternatif gambar di bawah. -->
           <span class="text-xs text-white/50">{{ indeks + 1 }} / {{ foto.length }}</span>
 
           <div class="ml-auto flex items-center gap-1">

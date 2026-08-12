@@ -44,7 +44,6 @@ const t = computed(() => props.isEn
       judul: 'Add photos to the gallery',
       keterangan: 'Select several photos at once. Crop and rotate the ones that need it — the rest upload as they are.',
       pilih: 'Choose photos', tambahLagi: 'Add more', kosong: 'No photos selected yet.',
-      judulFoto: 'Caption', judulFotoEn: 'Caption (EN)',
       unggah: 'Upload', batal: 'Cancel', hapus: 'Remove from list',
       terlalu: 'is larger than 10 MB and was skipped.',
       bukanGambar: 'is not an image and was skipped.',
@@ -54,7 +53,6 @@ const t = computed(() => props.isEn
       judul: 'Tambah foto ke galeri',
       keterangan: 'Pilih beberapa foto sekaligus. Potong dan putar yang perlu saja — sisanya terunggah apa adanya.',
       pilih: 'Pilih foto', tambahLagi: 'Tambah lagi', kosong: 'Belum ada foto yang dipilih.',
-      judulFoto: 'Keterangan', judulFotoEn: 'Keterangan (EN)',
       unggah: 'Unggah', batal: 'Batal', hapus: 'Buang dari daftar',
       terlalu: 'lebih dari 10 MB dan dilewati.',
       bukanGambar: 'bukan gambar dan dilewati.',
@@ -293,15 +291,11 @@ const penandaKeadaan = (e: Entri) => ({
             @ganti="mintaGanti"
           />
 
-          <div class="grid gap-3 sm:grid-cols-2">
-            <UFormField :label="t.judulFoto" size="sm">
-              <UInput v-model="aktif.judul" class="w-full" />
-            </UFormField>
-            <UFormField :label="t.judulFotoEn" size="sm" hint="opsional">
-              <UInput v-model="aktif.judulEn" class="w-full" />
-            </UFormField>
-          </div>
-
+          <!-- Tidak ada isian keterangan. Galeri adalah foto dokumentasi: yang
+               dilihat orang fotonya, dan keterangan yang diketik untuk belasan foto
+               sekaligus hampir selalu berakhir sebagai pengulangan nama berkas.
+               `judul` tetap diisi dari nama berkasnya di balik layar — ia jadi
+               teks alternatif gambar, dan kolomnya wajib di server. -->
           <div class="flex items-center justify-between gap-2">
             <p v-if="aktif.galat" class="text-xs text-red-700">{{ aktif.galat }}</p>
             <span v-else class="text-xs text-cc-stone-500">{{ aktif.berkas.name }}</span>

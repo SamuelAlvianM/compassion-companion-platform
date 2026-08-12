@@ -46,7 +46,7 @@ const t = computed(() => isEn.value
       visibilitas: 'Visibility', publik: 'Public', peserta: 'Participants only', pribadi: 'Private',
       ikut: 'events joined', hadir: 'attended', menunggu: 'awaiting confirmation',
       kosongRiwayat: 'No event history yet.', lihat: 'Show', sembunyikan: 'Hide',
-      kembali: 'Back to user list', bergabung: 'Joined',
+      kembali: 'Back to member list', bergabung: 'Joined',
     }
   : {
       eyebrow: 'Profil', tab1: 'Refleksi', tab2: 'Riwayat event', tab3: 'Pengaturan akun',
@@ -63,7 +63,7 @@ const t = computed(() => isEn.value
       visibilitas: 'Visibilitas', publik: 'Publik', peserta: 'Khusus peserta', pribadi: 'Pribadi',
       ikut: 'event diikuti', hadir: 'hadir', menunggu: 'menunggu konfirmasi',
       kosongRiwayat: 'Belum ada riwayat event.', lihat: 'Tampilkan', sembunyikan: 'Sembunyikan',
-      kembali: 'Kembali ke daftar user', bergabung: 'Bergabung',
+      kembali: 'Kembali ke daftar member', bergabung: 'Bergabung',
     })
 
 useSeoMeta({
@@ -71,12 +71,23 @@ useSeoMeta({
   robots: 'noindex, nofollow',
 })
 
-const tab = ref('refleksi')
+// Urutan tab: Pengaturan → Riwayat → Refleksi.
+//
+// Pengaturan di depan karena itu yang dicari orang saat membuka profilnya sendiri —
+// mengganti nomor WhatsApp atau password, bukan membaca ulang refleksinya.
+const tab = ref('akun')
 const tabs = computed(() => [
-  { value: 'refleksi', label: t.value.tab1, icon: 'i-lucide-feather' },
-  { value: 'riwayat', label: t.value.tab2, icon: 'i-lucide-calendar-check' },
   ...(sendiri.value ? [{ value: 'akun', label: t.value.tab3, icon: 'i-lucide-settings' }] : []),
+  { value: 'riwayat', label: t.value.tab2, icon: 'i-lucide-calendar-check' },
+  { value: 'refleksi', label: t.value.tab1, icon: 'i-lucide-feather' },
 ])
+
+// Profil orang lain tidak punya tab Pengaturan. Tanpa penggeseran ini, membukanya
+// dari /admin/members mendarat pada tab yang tidak ada di bilahnya — dan formulir
+// di baliknya milik akun yang sedang dibuka, bukan akun yang membukanya.
+watchEffect(() => {
+  if (!sendiri.value && tab.value === 'akun') tab.value = 'riwayat'
+})
 
 // ── Edit profil ──────────────────────────────────────────────────────────────
 const formProfil = reactive({ fullName: '', email: '', phoneNumber: '' })
@@ -188,13 +199,9 @@ const tanggal = (nilai: string | null) => nilai
   ? new Intl.DateTimeFormat(isEn.value ? 'en-GB' : 'id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(nilai))
   : '—'
 
-const warnaStatus = (s: string) =>
-  ({ konfirmasi: 'primary', proses: 'secondary', baru: 'warning', batal: 'neutral' })[s] ?? 'neutral'
-
-/** Label status pendaftaran, dwibahasa. Nilai di database tetap bahasa Indonesia. */
-const labelStatus = (s: string) => (isEn.value
-  ? { baru: 'New', proses: 'In process', konfirmasi: 'Confirmed', batal: 'Cancelled' }
-  : { baru: 'Baru', proses: 'Diproses', konfirmasi: 'Terkonfirmasi', batal: 'Dibatalkan' })[s] ?? s
+// Status & fase pendaftaran tidak lagi ditampilkan di riwayat: yang batal sudah
+// disaring di server (server/utils/riwayat.ts), sehingga setiap baris yang sampai
+// ke sini berarti hal yang sama — orang ini ikut event itu.
 
 const inisial = computed(() =>
   (profil.value?.fullName ?? '?').split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase(),
@@ -260,19 +267,41 @@ const inisial = computed(() =>
 
             <div class="min-w-0 flex-1">
               <div class="eyebrow">{{ t.eyebrow }}</div>
-              <h1 class="!text-4xl">{{ profil.fullName }}</h1>
-              <p class="!mb-2 opacity-90">@{{ profil.username }}</p>
-              <div class="flex flex-wrap items-center gap-2">
-                <UBadge color="secondary" variant="solid" size="sm">
-                  {{ profil.roleLabel }} · level {{ profil.level }}
-                </UBadge>
-                <UBadge v-if="!profil.isActive" color="error" variant="subtle" size="sm">
-                  {{ isEn ? 'Inactive' : 'Nonaktif' }}
-                </UBadge>
-              </div>
+              <h1 class="!mb-1 !text-4xl">{{ profil.fullName }}</h1>
+              <p class="!mb-0 text-sm opacity-90">@{{ profil.username }}</p>
+              <!-- Role & level tidak ditampilkan. Keduanya urusan internal
+                   pengelolaan akun, bukan identitas orangnya — dan halaman ini
+                   dibuka pemiliknya sendiri sama seringnya dengan pengelola. -->
+              <UBadge v-if="!profil.isActive" color="error" variant="subtle" size="sm" class="mt-2">
+                {{ isEn ? 'Inactive' : 'Nonaktif' }}
+              </UBadge>
             </div>
           </div>
 
+          <!-- Kontak, hanya saat pengelola membuka profil orang lain.
+               Pemiliknya sendiri tidak perlu diberi tahu emailnya — ia bisa
+               mengubahnya di tab Pengaturan, dan mengulanginya di kepala halaman
+               hanya menduakan tempat orang mencarinya. -->
+          <dl v-if="!sendiri" class="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm text-cc-stone-50">
+            <div v-if="profil.email" class="flex items-center gap-2">
+              <UIcon name="i-lucide-mail" class="size-4 shrink-0 opacity-70" />
+              <dt class="sr-only">{{ t.email }}</dt>
+              <dd class="break-all">{{ profil.email }}</dd>
+            </div>
+            <div v-if="profil.phoneNumber" class="flex items-center gap-2">
+              <UIcon name="i-lucide-phone" class="size-4 shrink-0 opacity-70" />
+              <dt class="sr-only">{{ t.hp }}</dt>
+              <dd>{{ profil.phoneNumber }}</dd>
+            </div>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-calendar-plus" class="size-4 shrink-0 opacity-70" />
+              <dt class="sr-only">{{ t.bergabung }}</dt>
+              <dd class="opacity-90">{{ t.bergabung }} {{ tanggal(profil.createdAt) }}</dd>
+            </div>
+          </dl>
+
+          <!-- Tiga angka ringkasan. `total` dan `hadir` kini menghitung pendaftaran
+               yang tidak dibatalkan saja — yang batal sudah disaring di server. -->
           <dl v-if="ringkas" class="mt-6 flex flex-wrap gap-8 border-t border-white/20 pt-4 text-cc-stone-50">
             <div><dt class="text-xs uppercase opacity-70">{{ t.ikut }}</dt><dd class="font-serif text-3xl">{{ ringkas.total }}</dd></div>
             <div><dt class="text-xs uppercase opacity-70">{{ t.hadir }}</dt><dd class="font-serif text-3xl">{{ ringkas.hadir }}</dd></div>
@@ -327,14 +356,12 @@ const inisial = computed(() =>
                 <p class="font-semibold text-cc-green-800">{{ isEn ? (r.judulEn ?? r.judul) : r.judul }}</p>
                 <p class="text-xs text-cc-stone-500">{{ tanggal(r.tanggalMulai) }} · {{ r.lokasi }}</p>
               </div>
-              <UBadge :color="warnaStatus(r.status)" variant="subtle" size="sm">{{ labelStatus(r.status) }}</UBadge>
-              <UBadge color="neutral" variant="outline" size="sm">{{ r.fase }}</UBadge>
             </li>
           </ul>
         </UCard>
 
-        <!-- Pengaturan akun -->
-        <div v-else class="space-y-6">
+        <!-- Pengaturan akun — hanya untuk profil sendiri. -->
+        <div v-else-if="tab === 'akun' && sendiri" class="space-y-6">
           <UCard>
             <template #header>
               <h2 class="font-serif text-2xl text-cc-green-800">{{ t.tab3 }}</h2>

@@ -49,7 +49,6 @@ const columns = [
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Konten</p>
         <h1 class="font-serif text-5xl text-cc-green-800">Jurnal</h1>
         <p class="mt-2 max-w-3xl text-sm text-cc-stone-600">
           Kelola cerita peserta, sharing pengalaman, sharing pengetahuan, dan praktik baik

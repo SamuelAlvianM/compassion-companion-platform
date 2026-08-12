@@ -26,15 +26,6 @@ const props = defineProps<{
   terakhir?: boolean
   /** Ada tindakan lain yang sedang berjalan di panel ini. */
   sibuk?: boolean
-  /**
-   * Sembunyikan sakelar "Tampil".
-   *
-   * Dipakai tab Materi di dashboard, tempat pengelola sedang menyiapkan isi dan
-   * bukan mengatur apa yang terbit. Sakelarnya tetap ada di penyuntingan halaman
-   * publik — di sana pengelola melihat langsung apa yang hilang saat dimatikan,
-   * yang di dalam formulir admin hanya berupa kata "Tampil" tanpa akibat terlihat.
-   */
-  tanpaTampil?: boolean
 }>()
 
 const emit = defineEmits<{ tersimpan: [], geser: ['naik' | 'turun'], hapus: [] }>()
@@ -130,13 +121,11 @@ const penanda = computed(() => ({
 </script>
 
 <template>
-  <div class="mb-5 rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
-    <div
-      class="grid items-end gap-3"
-      :class="tanpaTampil
-        ? 'md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]'
-        : 'md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_auto]'"
-    >
+  <!-- Putih, bukan krem: di tab Materi kotak sesinya sendiri sudah krem, dan dua
+       lapis krem membuat pengaturannya lebur ke dalam latarnya. Di halaman publik
+       latarnya #fffdfa, jadi putih + garis tepi tetap terbaca sebagai kotak sendiri. -->
+  <div class="mb-5 rounded-lg border border-cc-stone-300 bg-white p-3">
+    <div class="grid items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_auto]">
       <UFormField label="Judul sesi" size="sm">
         <UInput v-model="draf.judul" class="w-full" />
       </UFormField>
@@ -146,7 +135,7 @@ const penanda = computed(() => ({
       <UFormField label="Tanggal sesi" size="sm">
         <UInput v-model="draf.tanggalYmd" type="date" class="w-full" />
       </UFormField>
-      <UTooltip v-if="!tanpaTampil" text="Sembunyikan sesi ini dari halaman publik tanpa menghapus isinya">
+      <UTooltip text="Sembunyikan sesi ini dari halaman publik tanpa menghapus isinya">
         <USwitch v-model="draf.tampil" label="Tampil" />
       </UTooltip>
     </div>

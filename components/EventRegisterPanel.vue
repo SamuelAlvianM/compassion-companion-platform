@@ -58,8 +58,9 @@ const t = computed(() => props.isEn
       kirim: 'Send registration',
       punyaAkun: 'Already have an account', daftarAkun: 'Register with an account',
       akunEyebrow: 'Registration with an account', akunJudul: 'Sign in first.',
-      akunIsi: 'Enter the email and password of the account you registered with.',
-      password: 'Password', periksa: 'Check account', memeriksa: 'Checking…',
+      akunIsi: 'Enter the email or username of your account. Once it checks out, the confirmation appears straight away.',
+      akunId: 'Email or username', akunIdPh: 'name@email.com or username',
+      password: 'Password', periksa: 'Sign in & continue', memeriksa: 'Checking…',
       gagalPeriksa: 'Email or password is incorrect.', gagalDaftar: 'Registration failed.',
       kembaliTamu: 'Register without an account instead',
       sebagai: 'You are signed in as', daftarSekarang: 'Register now', ganti: 'Use another account',
@@ -81,8 +82,9 @@ const t = computed(() => props.isEn
       kirim: 'Kirim pendaftaran',
       punyaAkun: 'Sudah memiliki akun', daftarAkun: 'Daftar dengan akun',
       akunEyebrow: 'Pendaftaran dengan akun', akunJudul: 'Masuk dulu.',
-      akunIsi: 'Masukkan email dan password akun yang Anda pakai mendaftar.',
-      password: 'Password', periksa: 'Periksa akun', memeriksa: 'Memeriksa…',
+      akunIsi: 'Masukkan email atau username akun Anda. Begitu cocok, konfirmasi pendaftaran langsung terbuka.',
+      akunId: 'Email atau username', akunIdPh: 'nama@email.com atau username',
+      password: 'Password', periksa: 'Masuk & lanjut daftar', memeriksa: 'Memeriksa…',
       gagalPeriksa: 'Email atau password salah.', gagalDaftar: 'Pendaftaran gagal.',
       kembaliTamu: 'Daftar tanpa akun saja',
       sebagai: 'Anda masuk sebagai', daftarSekarang: 'Daftar Sekarang', ganti: 'Pakai akun lain',
@@ -131,10 +133,18 @@ const periksaAkun = async () => {
   memeriksa.value = true
   try {
     // `masuk()` menerima username ATAU email — endpoint login memang menerima
-    // keduanya di field yang sama. Setelah berhasil, sesi terbentuk dan panel
-    // beralih sendiri ke kartu identitas; tidak langsung mendaftar.
+    // keduanya di field yang sama.
     await masuk(akun.email, akun.password)
     akun.password = ''
+
+    // Konfirmasi dibuka SEKETIKA, tanpa menunggu klik kedua.
+    //
+    // Sebelumnya panel beralih ke kartu "Anda masuk sebagai …" yang tombolnya
+    // berbunyi "Daftar Sekarang", dan modal di baliknya berbunyi persis sama.
+    // Dua tombol dengan kata yang sama untuk satu maksud membuat orang mengira
+    // sudah terdaftar sesudah menekan yang pertama — padahal belum sama sekali.
+    // Sekarang satu tindakan: masuk, lalu baca konfirmasinya.
+    konfirmasiOpen.value = true
   }
   catch (error: any) {
     galat.value = error?.data?.statusMessage || error?.statusMessage || t.value.gagalPeriksa
@@ -274,8 +284,18 @@ const keTamu = () => { mode.value = 'tamu'; galat.value = '' }
       <p class="muted">{{ t.akunIsi }}</p>
 
       <div class="mt-5 space-y-4">
-        <UFormField :label="t.email" required>
-          <UInput v-model="akun.email" type="email" autocomplete="email" placeholder="nama@email.com" class="w-full" />
+        <!-- `type="text"`, bukan `email`: endpoint login menerima username juga, dan
+             kotak bertipe email menolak username tanpa @ lewat validasi browser —
+             ditolak sebagai "alamat tidak sah" padahal isinya benar. -->
+        <UFormField :label="t.akunId" required>
+          <UInput
+            v-model="akun.email"
+            type="text"
+            autocomplete="username"
+            :placeholder="t.akunIdPh"
+            class="w-full"
+            @keyup.enter="periksaAkun"
+          />
         </UFormField>
         <UFormField :label="t.password" required>
           <UInput

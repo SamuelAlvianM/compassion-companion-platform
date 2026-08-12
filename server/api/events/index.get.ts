@@ -9,7 +9,7 @@
 // Penyaringan fase dikerjakan di JS, bukan SQL, karena fase adalah turunan tanggal
 // (lihat server/utils/kegiatan.ts) dan bukan kolom yang bisa di-WHERE.
 
-import { and, asc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm'
 import { db } from '../../db'
 import { ccKegiatan, ccMedia, ccPeserta } from '../../db/schema'
 import { faseKegiatan, pendaftaranTerbuka, FASE, type Fase } from '../../utils/kegiatan'
@@ -45,7 +45,10 @@ export default defineEventHandler(async (event) => {
     .select()
     .from(ccKegiatan)
     .where(and(...filters))
-    .orderBy(asc(ccKegiatan.tanggalMulai))
+    // Tanggal terbaru lebih dulu — sama dengan pilihan "Terbaru" yang jadi bawaan
+    // di halaman event, supaya susunan tidak bergeser sendiri sesudah kartu
+    // pertama tergambar.
+    .orderBy(desc(ccKegiatan.tanggalMulai))
 
   // Jumlah peserta per kegiatan, untuk menampilkan sisa kuota.
   const hitungan = await db

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { DateValue } from '@internationalized/date'
-
 const route = useRoute()
 const base = computed(() => route.path.startsWith('/en') ? '/en' : '/id')
 const isEn = computed(() => base.value === '/en')
@@ -46,44 +44,37 @@ const cari = ref('')
 // sudah ada di tangan, jadi mengurutkannya di server berarti satu perjalanan
 // tambahan untuk pekerjaan yang di sini memakan waktu tidak terukur.
 //
-// `terdekat` bukan sekadar bawaan melainkan urutan yang memang dikirim server;
-// menaruhnya lebih dulu membuat pilihan awal tidak mengubah apa pun.
-const urutan = ref('terdekat')
+// `terbaru` bukan sekadar bawaan melainkan urutan yang memang dikirim server
+// (`desc(tanggalMulai)`); menaruhnya lebih dulu membuat pilihan awal tidak
+// mengubah apa pun.
+//
+// Namanya dulu "Terdekat dulu"/"Terjauh dulu" dan artinya terbalik dari yang
+// sekarang: yang terdekat itu tanggal paling awal, yaitu event paling lama.
+// Penggantian namanya karena itu ikut menukar arah urutnya, bukan cuma teksnya.
+//
+// Empat pilihan, bukan enam. "Terbaru ditambahkan" dan "Batas daftar terdekat"
+// dicabut atas permintaan: keduanya mengurutkan menurut hal yang tidak terbaca di
+// kartu — tanggal baris itu dibuat, dan tenggat yang hanya sebagian event punya —
+// sehingga hasilnya tampak acak bagi yang memilihnya.
+const urutan = ref('terbaru')
 
 const urutanOptions = computed(() => [
-  { value: 'terdekat', label: isEn.value ? 'Soonest first' : 'Terdekat dulu', icon: 'i-lucide-arrow-down-narrow-wide' },
-  { value: 'terjauh', label: isEn.value ? 'Furthest first' : 'Terjauh dulu', icon: 'i-lucide-arrow-up-narrow-wide' },
-  { value: 'terbaru', label: isEn.value ? 'Recently added' : 'Terbaru ditambahkan', icon: 'i-lucide-sparkles' },
-  { value: 'batas', label: isEn.value ? 'Closing soonest' : 'Batas daftar terdekat', icon: 'i-lucide-hourglass' },
+  { value: 'terbaru', label: isEn.value ? 'Newest' : 'Terbaru', icon: 'i-lucide-arrow-down-wide-narrow' },
+  { value: 'terlama', label: isEn.value ? 'Oldest' : 'Terlama', icon: 'i-lucide-arrow-up-narrow-wide' },
   { value: 'az', label: isEn.value ? 'Title A–Z' : 'Judul A–Z', icon: 'i-lucide-arrow-down-a-z' },
   { value: 'za', label: isEn.value ? 'Title Z–A' : 'Judul Z–A', icon: 'i-lucide-arrow-up-a-z' },
 ])
 
 const ikonUrutan = computed(() =>
-  urutanOptions.value.find(o => o.value === urutan.value)?.icon ?? 'i-lucide-arrow-down-narrow-wide')
+  urutanOptions.value.find(o => o.value === urutan.value)?.icon ?? 'i-lucide-arrow-down-wide-narrow')
 
-// Satu tanggal, bukan rentang. Artinya "mulai dari tanggal ini" — bukan "tepat di
-// tanggal ini", yang untuk daftar sepanjang belasan event hampir selalu kosong.
-//
-// UCalendar dipakai alih-alih <input type="date">: tampilan input native
-// ditentukan browser sehingga tidak bisa diselaraskan dengan palet situs.
-// DateValue-nya bebas zona waktu, jadi tidak ada pergeseran hari saat jadi string.
-const tanggalPilih = shallowRef<DateValue | undefined>(undefined)
-
-const keYmd = (d: DateValue | null | undefined) =>
-  d ? `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}` : ''
-
-const dari = computed(() => keYmd(tanggalPilih.value))
-
-// Kalender ditutup begitu tanggal dipilih. Dengan satu tanggal (bukan rentang)
-// tidak ada langkah kedua yang perlu ditunggu, jadi membiarkannya terbuka hanya
-// menuntut satu klik tambahan untuk menutupnya.
-const kalenderOpen = ref(false)
-watch(tanggalPilih, () => { kalenderOpen.value = false })
-
+// Penyaring tanggal dicabut atas permintaan. Tiga kontrol yang tersisa — cari,
+// kategori, urutan — sudah menjawab pertanyaan yang sama untuk daftar sepanjang
+// belasan event, sementara kalendernya menuntut satu keputusan lagi yang hampir
+// selalu menghasilkan daftar kosong. Parameter `dari` di GET /api/events masih
+// diterima server; yang hilang hanya pemakainya di sini.
 const query = computed(() => ({
   fase: fase.value === 'semua' ? [] : [fase.value],
-  dari: dari.value || undefined,
 }))
 
 // Sengaja TANPA `await`. Dengan await, <script setup> jadi async dan Vue menahan
@@ -116,25 +107,14 @@ const judulUrut = (e: any) => String((isEn.value ? e.judulEn ?? e.judul : e.judu
 const events = computed(() => {
   const daftar = [...tersaring.value]
   switch (urutan.value) {
-    case 'terjauh':
-      return daftar.sort((a, b) => waktuDari(b.tanggalMulai) - waktuDari(a.tanggalMulai))
-    case 'terbaru':
-      return daftar.sort((a, b) => waktuDari(b.createdAt) - waktuDari(a.createdAt))
-    case 'batas':
-      // Event tanpa batas pendaftaran diletakkan di belakang, bukan di depan.
-      // Tanpa penanganan khusus, `null` jadi 0 dan justru merebut posisi teratas —
-      // padahal urutan ini dipakai orang untuk mencari yang paling mendesak.
-      return daftar.sort((a, b) => {
-        const ka = a.tutupPendaftaran ? waktuDari(a.tutupPendaftaran) : Infinity
-        const kb = b.tutupPendaftaran ? waktuDari(b.tutupPendaftaran) : Infinity
-        return ka - kb
-      })
+    case 'terlama':
+      return daftar.sort((a, b) => waktuDari(a.tanggalMulai) - waktuDari(b.tanggalMulai))
     case 'az':
       return daftar.sort((a, b) => judulUrut(a).localeCompare(judulUrut(b), isEn.value ? 'en' : 'id'))
     case 'za':
       return daftar.sort((a, b) => judulUrut(b).localeCompare(judulUrut(a), isEn.value ? 'en' : 'id'))
     default:
-      return daftar.sort((a, b) => waktuDari(a.tanggalMulai) - waktuDari(b.tanggalMulai))
+      return daftar.sort((a, b) => waktuDari(b.tanggalMulai) - waktuDari(a.tanggalMulai))
   }
 })
 
@@ -143,13 +123,12 @@ const events = computed(() => {
 const { items: eventsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfiniteList(events, { awal: 9, tambah: 6 })
 
 const adaFilter = computed(() =>
-  fase.value !== 'semua' || Boolean(cari.value.trim()) || Boolean(dari.value) || urutan.value !== 'terdekat')
+  fase.value !== 'semua' || Boolean(cari.value.trim()) || urutan.value !== 'terbaru')
 
 const resetFilter = () => {
   fase.value = 'semua'
   cari.value = ''
-  tanggalPilih.value = undefined
-  urutan.value = 'terdekat'
+  urutan.value = 'terbaru'
 }
 
 // ── Tampilan ─────────────────────────────────────────────────────────────────
@@ -181,9 +160,6 @@ const tanggal = (nilai: string | null, panjang = false) => {
     timeZone: 'Asia/Jakarta',
   }).format(new Date(nilai))
 }
-
-// Label tombol tanggal; kosong berarti belum ada tanggal yang dipilih.
-const labelRentang = computed(() => dari.value ? tanggal(dari.value) : '')
 
 /** Apakah dua timestamp jatuh pada hari yang sama menurut WIB. */
 const hariSama = (a: string | null, b: string | null) => {
@@ -227,7 +203,6 @@ const t = computed(() => isEn.value
       eyebrow: 'Programs & gatherings', judul: 'Compassionate Companion Events',
       intro: 'A space for learning, reflection, and encounter for those who are sent.',
       filterCari: 'Search events…', filterKategori: 'Category', filterUrutan: 'Sort events',
-      filterTanggal: 'Any date', filterTanggalAria: 'Show events starting from a date',
       reset: 'Reset', hitung: (n: number) => `${n} event${n === 1 ? '' : 's'}`,
       kosong: 'No event matches this filter.', semua: 'Showing all events',
       detail: 'Event details', lokasi: 'Location',
@@ -236,7 +211,6 @@ const t = computed(() => isEn.value
       eyebrow: 'Program & Perjumpaan', judul: 'Event Compassionate Companion',
       intro: 'Ruang belajar, refleksi, dan perjumpaan bagi para utusan.',
       filterCari: 'Cari event…', filterKategori: 'Kategori', filterUrutan: 'Urutkan event',
-      filterTanggal: 'Semua tanggal', filterTanggalAria: 'Tampilkan event mulai dari tanggal tertentu',
       reset: 'Reset', hitung: (n: number) => `${n} event`,
       kosong: 'Tidak ada event yang cocok dengan filter ini.', semua: 'Menampilkan semua event',
       detail: 'Detail event', lokasi: 'Lokasi',
@@ -271,27 +245,6 @@ const t = computed(() => isEn.value
           class="w-52"
           :ui="{ base: 'rounded-full' }"
         />
-
-        <UPopover v-model:open="kalenderOpen" :ui="{ content: 'p-0' }">
-          <!-- Varian dibiarkan tetap `outline` walau tanggal sudah dipilih: labelnya
-               sudah berubah jadi "Mulai …" dan tombol reset ikut muncul, jadi tidak
-               perlu warna solid yang membuatnya menonjol sendiri di antara dua
-               kontrol lain. `text-dimmed` menyamakan ikonnya dengan ikon search dan
-               kategori. -->
-          <UButton
-            color="neutral"
-            variant="outline"
-            icon="i-lucide-calendar-range"
-            :ui="{ base: 'rounded-full px-3.5', leadingIcon: 'text-dimmed' }"
-            :aria-label="t.filterTanggalAria"
-          >
-            {{ labelRentang ? `${isEn ? 'From' : 'Mulai'} ${labelRentang}` : t.filterTanggal }}
-          </UButton>
-
-          <template #content>
-            <UCalendar v-model="tanggalPilih" class="p-2" :locale="isEn ? 'en-GB' : 'id-ID'" />
-          </template>
-        </UPopover>
 
         <!-- Urutan duduk sebaris dengan penyaring, bukan di atas daftar: keduanya
              mengubah apa yang terlihat, dan memisahkannya membuat orang mencari

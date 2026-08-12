@@ -69,6 +69,7 @@ const teks = computed(() => props.isEn
       tolakMasuk: 'Sign in with the account you used to register, then open this page again.',
       tolakDaftar: 'Register for this event to get access to its materials.',
       masuk: 'Sign in', tutup: 'Close', bukaBaru: 'Opens in a new tab',
+      tambah: 'Add', tambahFoto: 'Add photos',
       petunjukSesi: 'Each session is one part of the event — Day 1, Day 2, and so on.',
     }
   : {
@@ -80,6 +81,7 @@ const teks = computed(() => props.isEn
       tolakMasuk: 'Masuk dengan akun yang Anda pakai mendaftar, lalu buka halaman ini lagi.',
       tolakDaftar: 'Daftar ke event ini untuk mendapat akses materinya.',
       masuk: 'Masuk', tutup: 'Tutup', bukaBaru: 'Terbuka di tab baru',
+      tambah: 'Tambah', tambahFoto: 'Tambah foto',
       petunjukSesi: 'Tiap sesi adalah satu bagian dari event — Day 1, Day 2, dan seterusnya.',
     })
 
@@ -269,12 +271,6 @@ const hapusItem = async () => {
   }
 }
 
-/** Tiga bagian, dipakai untuk merender toolbar "Tambah" di masing-masing. */
-const BAGIAN: { key: Bagian, label: () => string }[] = [
-  { key: 'materi', label: () => teks.value.materi },
-  { key: 'galeri', label: () => teks.value.galeri },
-  { key: 'referensi', label: () => teks.value.referensi },
-]
 </script>
 
 <template>
@@ -361,7 +357,16 @@ const BAGIAN: { key: Bagian, label: () => string }[] = [
 
         <!-- Materi pembelajaran -->
         <section v-if="item.materi.length || aktif" class="resource-group">
-          <h3>{{ teks.materi }}</h3>
+          <div class="resource-group-head">
+            <h3>{{ teks.materi }}</h3>
+            <UButton
+              v-if="aktif"
+              color="neutral" variant="soft" size="xs" icon="i-lucide-plus"
+              @click="tambahItem(item.id, 'materi')"
+            >
+              {{ teks.tambah }}
+            </UButton>
+          </div>
           <div class="tile-grid">
             <!-- Tiap kartu dibungkus <div> supaya baris tombolnya bisa berdiri di
                  luar <button>/<a> kartunya — tombol di dalam tombol tidak sah, dan
@@ -410,7 +415,16 @@ const BAGIAN: { key: Bagian, label: () => string }[] = [
 
         <!-- Galeri -->
         <section v-if="item.galeri.length || aktif" class="resource-group">
-          <h3>{{ teks.galeri }}</h3>
+          <div class="resource-group-head">
+            <h3>{{ teks.galeri }}</h3>
+            <UButton
+              v-if="aktif"
+              color="neutral" variant="soft" size="xs" icon="i-lucide-plus"
+              @click="tambahItem(item.id, 'galeri')"
+            >
+              {{ teks.tambahFoto }}
+            </UButton>
+          </div>
           <div class="gallery-grid">
             <div v-for="(foto, i) in item.galeri" :key="foto.id">
               <button type="button" class="gallery-item" @click="bukaGaleri(item, i)">
@@ -443,7 +457,16 @@ const BAGIAN: { key: Bagian, label: () => string }[] = [
 
         <!-- Referensi -->
         <section v-if="item.referensi.length || aktif" class="resource-group">
-          <h3>{{ teks.referensi }}</h3>
+          <div class="resource-group-head">
+            <h3>{{ teks.referensi }}</h3>
+            <UButton
+              v-if="aktif"
+              color="neutral" variant="soft" size="xs" icon="i-lucide-plus"
+              @click="tambahItem(item.id, 'referensi')"
+            >
+              {{ teks.tambah }}
+            </UButton>
+          </div>
           <div class="tile-grid">
             <div v-for="ref in item.referensi" :key="ref.id">
               <a :href="ref.url ?? '#'" target="_blank" rel="noopener noreferrer" class="tile">
@@ -479,22 +502,12 @@ const BAGIAN: { key: Bagian, label: () => string }[] = [
           </div>
         </section>
 
-        <!-- Tombol tambah per bagian, satu baris di dasar panel. Ditaruh di sini,
-             bukan di dalam tiap <section>, supaya ketiganya tetap terjangkau pada
-             sesi yang bagiannya masih kosong. -->
-        <div v-if="aktif" class="mt-5 flex flex-wrap gap-2 border-t border-cc-stone-200 pt-4">
-          <UButton
-            v-for="b in BAGIAN"
-            :key="b.key"
-            color="neutral"
-            variant="soft"
-            size="xs"
-            icon="i-lucide-plus"
-            @click="tambahItem(item.id, b.key)"
-          >
-            {{ b.label() }}
-          </UButton>
-        </div>
+        <!-- Tombol tambah tidak lagi berkumpul di dasar panel. Di sana ketiganya
+             baru terlihat sesudah seluruh isi sesi tergulir habis, dan yang
+             mencarinya harus menebak tombol mana milik bagian mana dari urutannya
+             saja. Sekarang tiap bagian membawa tombolnya sendiri di kepalanya —
+             bagian yang kosong pun tetap tergambar selama mode sunting menyala,
+             jadi tidak ada bagian yang kehilangan jalan masuknya. -->
       </template>
     </UAccordion>
 

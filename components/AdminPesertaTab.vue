@@ -72,11 +72,86 @@ const tanggal = (nilai: string | null) => nilai
 const langkahMaju = (status: string) =>
   ({ baru: 'Proses', proses: 'Konfirmasi' } as Record<string, string>)[status] ?? null
 
-const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
+// ── Konfirmasi ───────────────────────────────────────────────────────────────
+// Tiap perpindahan status lewat modal dulu, bukan langsung dari kliknya.
+//
+// Alasannya bukan seragam demi seragam: keempat tombolnya duduk berdempetan di
+// ujung baris yang bentuknya identik, dan daftarnya bergeser sendiri tiap kali
+// datanya dimuat ulang — salah baris adalah kesalahan yang mudah terjadi dan tidak
+// punya jejak. Modalnya menyebut NAMA orangnya, jadi yang dikonfirmasi bukan
+// "tindakan ini" melainkan "tindakan ini pada orang ini".
+type Aksi = 'maju' | 'batal' | 'pulihkan'
+
+/** Pendaftar yang menunggu konfirmasi, beserta aksi yang akan dijalankan. */
+const calon = ref<{ peserta: any, aksi: Aksi } | null>(null)
+
+const minta = (peserta: any, aksi: Aksi) => {
+  galat.value = ''
+  calon.value = { peserta, aksi }
+}
+
+/** Isi modal, ditentukan aksi dan status peserta saat ini. */
+const dialog = computed(() => {
+  const c = calon.value
+  if (!c) return null
+  const nama = c.peserta.nama
+
+  if (c.aksi === 'batal') {
+    return {
+      judul: 'Batalkan pendaftaran ini?',
+      isi: `${nama} tidak akan terhitung sebagai peserta event ini dan hilang dari riwayat keikutsertaannya. Pembatalan masih bisa dianulir kembali ke status ${labelStatus(c.peserta.status)}.`,
+      tombol: 'Batalkan pendaftaran',
+      warna: 'error' as const,
+      ikon: 'i-lucide-x',
+    }
+  }
+
+  if (c.aksi === 'pulihkan') {
+    const balik = labelStatus(c.peserta.statusSebelumBatal ?? 'baru')
+    return {
+      judul: 'Kembalikan pendaftar ini?',
+      isi: `${nama} kembali ke status ${balik} — status terakhirnya sebelum dibatalkan, bukan diulang dari awal.`,
+      tombol: `Kembalikan ke ${balik}`,
+      warna: 'primary' as const,
+      ikon: 'i-lucide-rotate-ccw',
+    }
+  }
+
+  // Maju: dua tahap, dan keduanya berarti pekerjaan yang berbeda.
+  if (c.peserta.status === 'baru') {
+    return {
+      judul: 'Proses pendaftaran ini?',
+      isi: `Tandai pendaftaran ${nama} sedang diproses — sudah dihubungi dan menunggu pembayaran atau kelengkapan lain. Belum berarti ia terdaftar sebagai peserta.`,
+      tombol: 'Jadikan Proses',
+      warna: 'secondary' as const,
+      ikon: 'i-lucide-loader',
+    }
+  }
+
+  return {
+    judul: 'Konfirmasi pendaftaran ini?',
+    isi: `${nama} resmi terdaftar sebagai peserta event ini. Pastikan pembayaran dan kelengkapannya sudah diverifikasi — ini langkah terakhir.`,
+    tombol: 'Konfirmasi peserta',
+    warna: 'primary' as const,
+    ikon: 'i-lucide-check',
+  }
+})
+
+/** Menutup modal tanpa mengirim apa pun. Dipakai tombol Batal maupun klik di luar. */
+const tutupDialog = () => { calon.value = null }
+
+const jalankan = async () => {
+  const c = calon.value
+  if (!c) return
+  const id = c.peserta.id
   galat.value = ''
   sibukId.value = id
   try {
-    await $fetch(`/api/admin/peserta/${id}`, { method: 'PATCH', body: { aksi } })
+    await $fetch(`/api/admin/peserta/${id}`, { method: 'PATCH', body: { aksi: c.aksi } })
+    // Modal ditutup hanya sesudah permintaannya berhasil: kalau gagal, galatnya
+    // muncul di dalam modal dan tombolnya bisa ditekan lagi tanpa mencari ulang
+    // barisnya di daftar.
+    calon.value = null
     await refresh()
   }
   catch (e: any) {
@@ -131,7 +206,9 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
       />
     </div>
 
-    <UAlert v-if="galat" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
+    <!-- Galat saat modal terbuka ditampilkan di dalam modalnya, bukan di sini —
+         di belakang lapisan gelap ia tidak akan terbaca. -->
+    <UAlert v-if="galat && !calon" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
 
     <div v-if="memuatAwal" class="space-y-2" aria-hidden="true">
       <div
@@ -191,7 +268,7 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
               size="sm"
               icon="i-lucide-rotate-ccw"
               :loading="sibukId === p.id"
-              @click="jalankan(p.id, 'pulihkan')"
+              @click="minta(p, 'pulihkan')"
             >
               Kembalikan ke {{ labelStatus(p.statusSebelumBatal ?? 'baru') }}
             </UButton>
@@ -204,7 +281,7 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
               size="sm"
               trailing-icon="i-lucide-arrow-right"
               :loading="sibukId === p.id"
-              @click="jalankan(p.id, 'maju')"
+              @click="minta(p, 'maju')"
             >
               {{ langkahMaju(p.status) }}
             </UButton>
@@ -215,7 +292,7 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
               size="sm"
               icon="i-lucide-x"
               :loading="sibukId === p.id"
-              @click="jalankan(p.id, 'batal')"
+              @click="minta(p, 'batal')"
             >
               Batal
             </UButton>
@@ -223,5 +300,54 @@ const jalankan = async (id: string, aksi: 'maju' | 'batal' | 'pulihkan') => {
         </div>
       </div>
     </div>
+
+    <!-- Konfirmasi perpindahan status.
+         `:open` + `@update:open`, bukan `v-model:open`: keadaan terbukanya turunan
+         dari `calon`, dan menutup modal berarti membuang calonnya — termasuk saat
+         ditutup lewat Esc atau klik di luar, yang keduanya tidak menjalankan apa pun. -->
+    <UModal
+      :open="calon !== null"
+      :title="dialog?.judul ?? ''"
+      @update:open="(nilai: boolean) => { if (!nilai) tutupDialog() }"
+    >
+      <template #body>
+        <p class="text-sm text-cc-stone-600">{{ dialog?.isi }}</p>
+
+        <div v-if="calon" class="mt-3 rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-semibold text-cc-green-800">{{ calon.peserta.nama }}</span>
+            <UBadge :color="warnaStatus(calon.peserta.status)" variant="subtle" size="sm">
+              {{ labelStatus(calon.peserta.status) }}
+            </UBadge>
+          </div>
+          <p class="mt-1 text-sm text-cc-stone-600">
+            {{ calon.peserta.email }}<template v-if="calon.peserta.noHp"> · {{ calon.peserta.noHp }}</template>
+          </p>
+        </div>
+
+        <UAlert
+          v-if="galat"
+          color="error"
+          variant="subtle"
+          class="mt-3"
+          icon="i-lucide-triangle-alert"
+          :description="galat"
+        />
+      </template>
+
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="tutupDialog">Batal</UButton>
+          <UButton
+            :color="dialog?.warna ?? 'primary'"
+            :icon="dialog?.ikon"
+            :loading="Boolean(sibukId)"
+            @click="jalankan"
+          >
+            {{ dialog?.tombol }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

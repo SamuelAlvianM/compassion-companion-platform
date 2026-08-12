@@ -65,8 +65,7 @@ function saveJournal() {
       Kembali ke Jurnal
     </UButton>
 
-    <p class="text-xs font-bold uppercase tracking-[.16em] text-cc-brown-500">Jurnal</p>
-    <h1 class="mt-1 font-serif text-5xl text-cc-green-800">
+    <h1 class="font-serif text-5xl text-cc-green-800">
       {{ isNew ? 'Add Jurnal' : 'Edit Jurnal' }}
     </h1>
 
