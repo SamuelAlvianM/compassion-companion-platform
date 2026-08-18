@@ -1,193 +1,1051 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: "admin" });
 
-const route = useRoute()
-const isNew = computed(() => route.params.id === 'new')
+// Halaman sunting jurnal di dashboard — satu layar untuk "tulis baru" dan
+// "sunting", dan satu layar untuk dua peran yang berbeda pekerjaannya:
+//
+//   ADMIN  menulis/merapikan, MENUGASKAN editor, dan MENERBITKAN.
+//   EDITOR memeriksa yang ditugaskan kepadanya: menyetujui atau mengembalikan
+//          untuk revisi. Jurnal yang bukan tugasnya tetap bisa dibuka — supaya ia
+//          tahu apa yang sedang dikerjakan bersama — tapi terkunci.
+//
+// Yang menentukan terkunci atau tidak BUKAN halaman ini melainkan server
+// (`bolehSunting` di /api/admin/jurnal/[id]), aturannya sama persis dengan yang
+// menolak permintaan PATCH. Layar hanya menuruti.
 
-const form = reactive({
-  title: '',
-  journalType: '',
-  eventName: '',
-  contributorType: 'member' as 'member' | 'non-member',
-  contributor: '',
-})
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+const { user } = useAuth();
 
-const content = ref('')
-const saved = ref(false)
-const validationError = ref('')
-const editor = ref<HTMLElement | null>(null)
+const id = computed(() => String(route.params.id));
+const baru = computed(() => id.value === "new");
+const level = computed(() => user.value?.level ?? 99);
+const bolehMenerbitkan = computed(() => level.value <= 2);
 
-const journalTypeOptions = [
-  { value: 'event-reflection', label: 'Event Reflection' },
-  { value: 'sharing-journey', label: 'Sharing Journey' },
-  { value: 'insight', label: 'Insight' },
-  { value: 'practice', label: 'Practice' },
-]
+/**
+ * Benar-benar berperan EDITOR (level 3), bukan "editor ke atas".
+ *
+ * Dipakai untuk menggambar tombol keputusan redaksi. Sengaja bukan `level <= 3`:
+ * kalau begitu, admin ikut melihat "Setujui" dan "Revisi" lagi — persis yang
+ * dicabut. Pemeriksaan sebuah peran yang PERSIS jarang benar di kode ini (hampir
+ * semuanya "peran ini ke atas"), jadi barisnya diberi penjelasan supaya tidak ada
+ * yang merapikannya jadi `<=` di kemudian hari.
+ */
+const adalahEditor = computed(() => level.value === 3);
 
-const contributorTypeOptions = [
-  { value: 'member', label: 'Member' },
-  { value: 'non-member', label: 'Non Member' },
-]
+/**
+ * Siapa yang membuat barisnya. Dipakai untuk memutuskan siapa yang boleh MENGIRIM
+ * tulisan ke pemeriksaan.
+ *
+ * Mengirim adalah pekerjaan PENULIS, bukan pekerjaan siapa pun yang kebetulan
+ * punya akses sunting. Tanpa pembedaan ini, editor yang ditugaskan ikut melihat
+ * "Kirim hasil revisi" pada tulisan yang justru sedang dikembalikan kepada
+ * penulisnya — dan sekali diklik, giliran member terenggut tanpa ia mengerjakan
+ * apa pun. Statusnya melompat ke "sedang diperiksa" dengan naskah yang belum ia
+ * perbaiki.
+ */
+const dibuatOleh = ref<string | null>(null);
+const milikSaya = computed(
+  () => Boolean(dibuatOleh.value) && dibuatOleh.value === user.value?.id,
+);
 
-const members = ['Maria Santoso', 'Andreas Pratama', 'Clara Wijaya', 'Nicholas', 'Anna']
-const events = ['Listening as Leadership', 'Leadership with Compassion', 'Compassion in Practice']
+/**
+ * Boleh mengirim ke pemeriksaan: admin (yang berdiri sebagai penulis, kadang
+ * mewakili member) dan pemilik tulisannya sendiri. Editor yang sedang bertugas
+ * memeriksa tidak — pekerjaannya menilai, bukan mengirim.
+ */
+const bolehMengirim = computed(() => bolehMenerbitkan.value || milikSaya.value);
 
-// Toolbar editor masih memakai document.execCommand — cukup untuk mockup, dan tetap
-// perlu diganti editor sungguhan (mis. Tiptap) sebelum dipakai menulis konten nyata.
-function format(command: string, value?: string) {
-  editor.value?.focus()
-  document.execCommand(command, false, value)
-}
+const kosong = () => ({
+  judul: "",
+  judulEn: "",
+  tipe: "",
+  kontributor: "",
+  kontributorPeran: "",
+  userId: "",
+  kegiatanId: "",
+  ringkasan: "",
+  ringkasanEn: "",
+  isi: "",
+  isiEn: "",
+  coverMediaId: "",
+});
 
-function updateContent(event: Event) {
-  content.value = (event.target as HTMLElement).innerHTML
-}
+const form = reactive(kosong());
+const coverUrl = ref<string | null>(null);
+const statusJurnal = ref<
+  "draft" | "review" | "revisi" | "approved" | "published"
+>("draft");
+const catatanRevisi = ref<string | null>(null);
+const editorId = ref("");
+const editorNama = ref<string | null>(null);
+const bolehSunting = ref(true);
+const slug = ref("");
+const galat = ref("");
+const sibuk = ref(false);
+const dicoba = ref(false);
 
-// Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
-// bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
-const wajibKosong = belumDiisi
+const TIPE = [
+  { value: "event-reflection", label: "Event Reflection" },
+  { value: "sharing-journey", label: "Sharing Journey" },
+  { value: "insight", label: "Insight" },
+  { value: "practice", label: "Practice" },
+];
 
-/** Tombol simpan sudah pernah ditekan — penanda kolom wajib menyala dari sini,
-    bukan sejak formulir dibuka. */
-const dicoba = ref(false)
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  review: "Direview",
+  revisi: "Perlu revisi",
+  approved: "Disetujui",
+  published: "Terbit",
+};
+const STATUS_WARNA: Record<
+  string,
+  "neutral" | "warning" | "secondary" | "primary"
+> = {
+  draft: "neutral",
+  review: "warning",
+  revisi: "secondary",
+  approved: "primary",
+  published: "primary",
+};
 
-function saveJournal() {
-  dicoba.value = true
-  validationError.value = ''
+const headerSSR = () =>
+  import.meta.server ? useRequestHeaders(["cookie"]) : undefined;
 
-  // Kolom wajib diperiksa di sini juga, bukan hanya lewat atribut `required`:
-  // yang menyala di kolomnya menunjukkan MANA yang kurang, dan kalimat di sini
-  // menjelaskan kenapa tombolnya tidak melakukan apa-apa.
-  const kurang = [
-    ['Judul Jurnal', form.title],
-    ['Tipe Jurnal', form.journalType],
-    ['Nama Kontributor', form.contributor],
-    ...(form.journalType === 'event-reflection' ? [['Nama Event', form.eventName]] : []),
-  ].filter(([, nilai]) => kosongkah(nilai)).map(([label]) => label)
+/**
+ * Tautan ke event. DIKEMBALIKAN ke formulir sesudah sempat dicabut.
+ *
+ * Dicabut dulu karena hampir selalu kosong; dikembalikan karena tanpanya sebuah
+ * jurnal Event Reflection baru tidak punya jalan sama sekali untuk menyebut event
+ * apa yang direfleksikannya — dan nama event itu tergambar di kartu daftar publik
+ * (`.journal-event`), tepat di bawah kategorinya. Yang hilang bukan cuma satu
+ * kolom di dashboard, melainkan satu baris yang dibaca pengunjung.
+ *
+ * Boleh kosong untuk kategori apa pun, termasuk Event Reflection: kategorinya bisa
+ * dipilih lebih dulu daripada eventnya, dan menolak keadaan sementara yang wajar
+ * cuma membuat formulirnya rewel.
+ */
+const { data: dataKegiatan } = useFetch("/api/admin/kegiatan-pilihan", {
+  headers: headerSSR(),
+});
 
-  if (kurang.length) {
-    validationError.value = `Masih kosong: ${kurang.join(', ')}.`
-    return
+/**
+ * Nama event yang SEDANG terpasang, diisi saat jurnalnya dimuat.
+ *
+ * Ada karena daftar pilihan disaring server (hanya yang berlangsung dan yang baru
+ * selesai), sementara jurnal lama bisa menunjuk event dari setahun lalu. Kalau
+ * nilai itu tidak punya baris yang cocok di daftar, USelectMenu menggambar id
+ * mentahnya — dan yang terbaca orang jadi "cck-Fqpt6wiU".
+ *
+ * Pola yang sama persis dipakai `penulisTanpaAkun` di bawah, dan alasannya juga
+ * sama: yang sudah terpasang harus tetap tergambar sebagai pilihan, apa pun isi
+ * daftar yang sedang berlaku. Disimpan sebagai nama, bukan dengan meminta server
+ * menyertakannya lewat query — permintaan itu berangkat sebelum jurnalnya selesai
+ * dimuat, jadi id yang mau disertakan belum diketahui saat dibutuhkan.
+ */
+const kegiatanTerpasang = ref<{ id: string, judul: string } | null>(null);
+
+/** Sentinel "tidak terkait event". USelectMenu menolak nilai string kosong
+    (ComboboxItem melemparkan galat kalau `value=""`), jadi ketiadaan tidak bisa
+    diwakili oleh "". Pola dan alasannya sama dengan TANPA_AKUN di bawah. */
+const TANPA_EVENT = "__tanpa-event";
+
+/**
+ * Pilihan event. Daftarnya SUDAH disaring server: yang sedang berlangsung, plus
+ * yang baru selesai dalam batas yang ditentukan di endpointnya. Yang mendatang
+ * dan yang batal tidak pernah ikut.
+ *
+ * Baris kosong di paling atas bukan basa-basi: melepas tautan event adalah
+ * tindakan yang sah (kategorinya diubah, atau tautannya memang salah pasang), dan
+ * tanpa barisnya satu-satunya jalan melepasnya adalah tidak ada.
+ */
+const kegiatanOptions = computed(() => {
+  const daftar = (dataKegiatan.value?.data ?? []).map((k) => ({
+    value: k.id,
+    label: k.fase === "berlangsung" ? `${k.label} · berlangsung` : k.label,
+  }));
+
+  const terpasang = kegiatanTerpasang.value;
+  // Ditandai "sudah lewat" supaya bedanya jelas: baris ini ada karena tulisannya
+  // memang sudah tertaut ke situ, bukan karena eventnya masih layak dipilih.
+  if (terpasang && !daftar.some((o) => o.value === terpasang.id)) {
+    daftar.unshift({
+      value: terpasang.id,
+      label: `${terpasang.judul} · sudah lewat`,
+    });
   }
-  if (!content.value.trim()) {
-    validationError.value = 'Konten jurnal perlu diisi terlebih dahulu.'
-    return
+
+  return [{ value: TANPA_EVENT, label: "Tidak terkait event" }, ...daftar];
+});
+
+/** Nilai yang tergambar di kotaknya: `kegiatanId` kosong berarti sentinelnya. */
+const kegiatanPilihan = computed(() => form.kegiatanId || TANPA_EVENT);
+
+const pilihKegiatan = (nilai: string) => {
+  form.kegiatanId = nilai === TANPA_EVENT ? "" : nilai;
+};
+
+/** Calon editor untuk kotak penugasan. Diambil untuk semua pengelola, bukan hanya
+    admin: editor pun melihat nama rekan yang menangani jurnal lain di daftar, dan
+    dua sumber nama yang berbeda akan menyimpang. Yang digerbangi admin adalah
+    MENUGASKANNYA, dan itu diperiksa server. */
+const { data: dataEditor } = useFetch("/api/admin/editors", {
+  headers: headerSSR(),
+});
+
+/**
+ * Nilai penanda untuk pilihan yang artinya "kosong".
+ *
+ * BUKAN string kosong: `USelectMenu` menolaknya mentah-mentah — "A <ComboboxItem />
+ * must have a value prop that is not an empty string" — dan akibatnya bukan cuma
+ * baris merah di konsol, melainkan dropdown yang gagal terbuka. Kosongnya
+ * diterjemahkan kembali di setter/handler, jadi yang tersimpan tetap "" / null.
+ */
+const LEPAS_EDITOR = "__lepas";
+const TANPA_AKUN = "__tanpa-akun";
+
+const editorOptions = computed(() => [
+  { value: LEPAS_EDITOR, label: "Belum ditugaskan" },
+  ...(dataEditor.value?.data ?? []).map((e: any) => ({
+    value: e.id,
+    label: e.nama,
+  })),
+]);
+
+/** Jembatan antara `editorId` (id sungguhan atau "") dan nilai yang dimengerti
+    pemilihnya. Ditulis sebagai computed berpasangan supaya tidak ada dua sumber
+    kebenaran untuk satu kotak. */
+const editorPilihan = computed({
+  get: () => editorId.value || LEPAS_EDITOR,
+  set: (nilai: string) => {
+    simpanEditor(nilai === LEPAS_EDITOR ? "" : nilai);
+  },
+});
+
+/** Calon penulis: SELURUH akun aktif, bukan hanya pengelola seperti
+    `editorOptions`. Tulisan yang dimasukkan lewat layar ini hampir selalu tulisan
+    member — pengelola yang menuliskannya, bukan yang menulisnya. */
+const { data: dataPenulis } = useFetch("/api/admin/penulis", {
+  headers: headerSSR(),
+});
+
+const akunPenulis = computed(() => dataPenulis.value?.data ?? []);
+
+/**
+ * Nama penulis yang TIDAK punya akun — pembicara tamu, tulisan lama, atau orang
+ * yang menulis sekali lalu tidak pernah mendaftar.
+ *
+ * Disimpan terpisah dan hanya diisi saat memuat, bukan dihitung dari `form`:
+ * kalau ia ikut menghilang begitu admin memilih akun lain, nama aslinya tidak
+ * bisa dikembalikan tanpa menutup halaman. Membuka sebuah jurnal tidak boleh
+ * menjadi cara kehilangan nama penulisnya.
+ */
+const penulisTanpaAkun = ref("");
+
+const penulisOptions = computed(() => {
+  const akun = akunPenulis.value.map((u: any) => ({
+    value: u.id,
+    label: u.nama,
+  }));
+  return penulisTanpaAkun.value
+    ? [{ value: TANPA_AKUN, label: penulisTanpaAkun.value }, ...akun]
+    : akun;
+});
+
+/** Yang sedang terpilih di kotak penulis. `userId` kosong berarti penulisnya
+    tidak punya akun — dan itu tetap sebuah pilihan yang tergambar, bukan kotak
+    kosong. */
+const penulisPilihan = computed(() =>
+  form.userId || (penulisTanpaAkun.value ? TANPA_AKUN : undefined),
+);
+
+/** Memilih penulis mengubah DUA kolom: `userId` yang menautkannya ke profil, dan
+    `kontributor` yang tersimpan sebagai teks. Namanya tetap disimpan apa adanya
+    supaya tulisan tidak kehilangan penulis kalau akunnya suatu saat dihapus. */
+const pilihPenulis = (nilai: string) => {
+  if (nilai === TANPA_AKUN) {
+    form.userId = "";
+    form.kontributor = penulisTanpaAkun.value;
+    return;
   }
-  saved.value = true
-}
+  form.userId = nilai;
+  form.kontributor =
+    akunPenulis.value.find((u: any) => u.id === nilai)?.nama ?? "";
+};
+
+const pesan = (e: any, bawaan: string) =>
+  e?.data?.statusMessage || e?.statusMessage || e?.message || bawaan;
+
+// ── Simpan ───────────────────────────────────────────────────────────────────
+// Berdiri DI ATAS `muat()`, bukan di bawahnya. `muat()` memanggil `sidik()` untuk
+// mencatat keadaan awal formulir, dan ia dijalankan (`await muat()`) sebelum baris
+// mana pun di bawahnya sempat dijalankan — kalau tetap di bawah, yang muncul
+// "Cannot access 'tersimpan' before initialization", persis di kepala halaman.
+const payload = () => ({
+  judul: form.judul.trim(),
+  judulEn: form.judulEn.trim() || null,
+  tipe: form.tipe || null,
+  kontributor: form.kontributor.trim(),
+  kontributorPeran: form.kontributorPeran.trim() || null,
+  userId: form.userId || null,
+  kegiatanId: form.kegiatanId || null,
+  ringkasan: form.ringkasan.trim() || null,
+  ringkasanEn: form.ringkasanEn.trim() || null,
+  isi: form.isi || null,
+  isiEn: form.isiEn || null,
+  coverMediaId: form.coverMediaId || null,
+});
+
+const sidik = () => JSON.stringify(payload());
+const tersimpan = ref("");
+
+const keadaanSimpan = ref<
+  "diam" | "menunggu" | "menyimpan" | "tersimpan" | "gagal"
+>("diam");
+let timer: ReturnType<typeof setTimeout> | undefined;
+
+// ── Muat ─────────────────────────────────────────────────────────────────────
+const muat = async () => {
+  if (baru.value) {
+    Object.assign(form, kosong());
+    coverUrl.value = null;
+    statusJurnal.value = "draft";
+    catatanRevisi.value = null;
+    editorId.value = "";
+    editorNama.value = null;
+    bolehSunting.value = true;
+    slug.value = "";
+    // Penulis dimulai dari yang sedang login — itu kasus yang paling sering —
+    // tapi tetap bisa diganti ke akun lain: admin juga memasukkan tulisan orang.
+    form.kontributor = user.value?.fullName ?? "";
+    form.userId = user.value?.id ?? "";
+    penulisTanpaAkun.value = "";
+    kegiatanTerpasang.value = null;
+    // Yang membuat barisnya adalah yang sedang membuka layar ini.
+    dibuatOleh.value = user.value?.id ?? null;
+    return;
+  }
+
+  sibuk.value = true;
+  try {
+    // Saat SSR, $fetch tidak ikut membawa cookie peramban — tanpa penerusan ini,
+    // endpoint admin selalu menjawab 401 pada render pertama.
+    const { data } = await $fetch<{ data: any }>(
+      `/api/admin/jurnal/${id.value}`,
+      { headers: headerSSR() },
+    );
+    Object.assign(form, {
+      judul: data.judul ?? "",
+      judulEn: data.judulEn ?? "",
+      tipe: data.tipe ?? "",
+      kontributor: data.kontributor ?? "",
+      kontributorPeran: data.kontributorPeran ?? "",
+      userId: data.userId ?? "",
+      kegiatanId: data.kegiatanId ?? "",
+      ringkasan: data.ringkasan ?? "",
+      ringkasanEn: data.ringkasanEn ?? "",
+      isi: data.isi ?? "",
+      isiEn: data.isiEn ?? "",
+      coverMediaId: data.coverMediaId ?? "",
+    });
+    penulisTanpaAkun.value = data.userId ? "" : (data.kontributor ?? "");
+    // Endpoint detailnya sudah ikut mengirim judul eventnya, jadi tidak perlu
+    // permintaan kedua hanya untuk menuliskan satu nama.
+    kegiatanTerpasang.value = data.kegiatan
+      ? { id: data.kegiatan.id, judul: data.kegiatan.judul }
+      : null;
+    dibuatOleh.value = data.dibuatOleh ?? null;
+    coverUrl.value = data.coverUrl ?? null;
+    statusJurnal.value = data.status;
+    catatanRevisi.value = data.catatanRevisi ?? null;
+    editorId.value = data.editorId ?? "";
+    editorNama.value = data.editor?.nama ?? null;
+    bolehSunting.value = Boolean(data.bolehSunting);
+    slug.value = data.slug;
+    tersimpan.value = sidik();
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal memuat jurnal.");
+  } finally {
+    sibuk.value = false;
+  }
+};
+
+await muat();
+watch(id, muat);
+
+// ── Kolom wajib ──────────────────────────────────────────────────────────────
+const wajibKosong = belumDiisi;
+
+const kurang = computed(() => {
+  const daftar: string[] = [];
+  if (!form.judul.trim()) daftar.push("Judul");
+  if (!form.kontributor.trim()) daftar.push("Nama penulis");
+  return daftar;
+});
+
+/** Syarat tambahan saat MENGIRIM ke review — bukan saat menyimpan.
+    Draf boleh mengendap tanpa editor; yang tidak boleh adalah mengirimkannya ke
+    antrean yang tidak dimiliki siapa pun. */
+const kurangUntukReview = computed(() => {
+  const daftar = [...kurang.value];
+  if (bolehMenerbitkan.value && !editorId.value) daftar.push("Editor");
+  return daftar;
+});
+
+/** Kategori: tidak menghalangi menyimpan, tapi menghalangi TERBIT. Tulisan titipan
+    member lahir tanpa kategori, dan yang menentukannya admin. */
+const kategoriKosong = computed(() => !form.tipe);
+
+const simpanSekarang = async () => {
+  if (baru.value || !bolehSunting.value) return;
+  if (kurang.value.length) {
+    keadaanSimpan.value = "diam";
+    return;
+  }
+  if (sidik() === tersimpan.value) {
+    keadaanSimpan.value = "diam";
+    return;
+  }
+
+  const dikirim = sidik();
+  keadaanSimpan.value = "menyimpan";
+  galat.value = "";
+  try {
+    await $fetch(`/api/admin/jurnal/${id.value}`, {
+      method: "PATCH",
+      body: payload(),
+    });
+    tersimpan.value = dikirim;
+    keadaanSimpan.value = "tersimpan";
+  } catch (e: any) {
+    keadaanSimpan.value = "gagal";
+    galat.value = pesan(e, "Gagal menyimpan jurnal.");
+  }
+};
+
+watch(
+  form,
+  () => {
+    if (baru.value || !bolehSunting.value) return;
+    clearTimeout(timer);
+    keadaanSimpan.value = "menunggu";
+    timer = setTimeout(simpanSekarang, 800);
+  },
+  { deep: true },
+);
+
+onBeforeUnmount(() => clearTimeout(timer));
+
+const buatJurnal = async () => {
+  dicoba.value = true;
+  galat.value = "";
+  if (kurang.value.length) {
+    galat.value = `Masih kosong: ${kurang.value.join(", ")}.`;
+    return;
+  }
+
+  sibuk.value = true;
+  try {
+    const { data } = await $fetch<{ data: any }>("/api/admin/jurnal", {
+      method: "POST",
+      // Editor ikut dikirim kalau sudah dipilih di layar ini. Boleh kosong —
+      // draft memang boleh mengendap tanpa editor; yang menolak kekosongan itu
+      // "Kirim untuk direview", bukan tombol ini.
+      body: { ...payload(), editorId: editorId.value || null },
+    });
+    toast.add({
+      title: "Jurnal telah dibuat",
+      description: `Status saat ini: ${STATUS_LABEL.draft}`,
+      icon: "i-lucide-check",
+      color: "primary",
+    });
+    await router.replace(`/admin/jurnal/${data.id}`);
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal membuat jurnal.");
+  } finally {
+    sibuk.value = false;
+  }
+};
+
+// ── Penugasan editor ─────────────────────────────────────────────────────────
+const simpanEditor = async (nilai: string) => {
+  // Di layar "tulis baru" barisnya belum ada, jadi tidak ada yang bisa di-PATCH.
+  // Pilihannya cukup disimpan di `editorId` dan ikut berangkat bersama POST.
+  if (baru.value) {
+    editorId.value = nilai;
+    return;
+  }
+
+  galat.value = "";
+  sibuk.value = true;
+  try {
+    const { data } = await $fetch<{ data: any }>(
+      `/api/admin/jurnal/${id.value}`,
+      {
+        method: "PATCH",
+        body: { editorId: nilai || null },
+      },
+    );
+    editorId.value = data.editorId ?? "";
+    editorNama.value =
+      editorOptions.value.find((o) => o.value === data.editorId)?.label ?? null;
+    toast.add({
+      title: "Jurnal telah diperbarui",
+      description: data.editorId
+        ? `Editor pemeriksa: ${editorNama.value ?? "—"}`
+        : "Penugasan editor dilepas",
+      icon: "i-lucide-check",
+      color: "primary",
+    });
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal menugaskan editor.");
+  } finally {
+    sibuk.value = false;
+  }
+};
+
+// ── Perpindahan status ───────────────────────────────────────────────────────
+const modalRevisi = ref(false);
+const catatanBaru = ref("");
+
+const pindahStatus = async (tujuan: string, catatan?: string) => {
+  galat.value = "";
+  sibuk.value = true;
+  try {
+    clearTimeout(timer);
+    // Simpanan terakhir ikut dikirim bersama perpindahan status — hanya bila yang
+    // menekan memang berhak menyunting. Editor yang cuma menyetujui tidak ikut
+    // menimpa isi tulisan dengan salinan yang ada di layarnya.
+    const isiSimpanan = bolehSunting.value ? payload() : {};
+    const { data } = await $fetch<{ data: any }>(
+      `/api/admin/jurnal/${id.value}`,
+      {
+        method: "PATCH",
+        body: {
+          ...isiSimpanan,
+          status: tujuan,
+          ...(catatan ? { catatanRevisi: catatan } : {}),
+        },
+      },
+    );
+    statusJurnal.value = data.status;
+    catatanRevisi.value = data.catatanRevisi ?? null;
+    slug.value = data.slug;
+    if (bolehSunting.value) {
+      tersimpan.value = sidik();
+      keadaanSimpan.value = "tersimpan";
+    }
+    modalRevisi.value = false;
+    catatanBaru.value = "";
+    // Dua baris, bukan satu: yang pertama menyatakan tindakannya berhasil, yang
+    // kedua menyatakan tulisan ini sekarang ADA DI MANA. Judul lama (“Status jadi
+    // ...”) menggabungkan keduanya jadi satu kalimat setengah, dan yang paling
+    // sering dicari orang sesudah menekan tombol — keadaan sekarang — justru yang
+    // paling sulit dibaca di situ.
+    toast.add({
+      title: "Jurnal telah diperbarui",
+      description: `Status saat ini: ${STATUS_LABEL[data.status]}`,
+      icon: "i-lucide-check",
+      color: "primary",
+    });
+    // Hak sunting bisa BERUBAH mengikuti status (mis. tulisan yang terbit tidak
+    // lagi disunting editor), jadi barisnya dibaca ulang dari server.
+    await muat();
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal mengubah status.");
+  } finally {
+    sibuk.value = false;
+  }
+};
+
+const kirimReview = () => {
+  dicoba.value = true;
+  if (kurangUntukReview.value.length) {
+    galat.value = `Lengkapi dulu sebelum dikirim: ${kurangUntukReview.value.join(", ")}.`;
+    return;
+  }
+  pindahStatus("review");
+};
+
+const terbitkan = () => {
+  if (kategoriKosong.value) {
+    dicoba.value = true;
+    galat.value =
+      "Kategori jurnal belum diisi. Tentukan kategorinya dulu sebelum diterbitkan.";
+    return;
+  }
+  pindahStatus("published");
+};
+
+const hapus = async () => {
+  if (!confirm("Hapus jurnal ini? Tindakan ini tidak bisa dibatalkan.")) return;
+  sibuk.value = true;
+  try {
+    await $fetch(`/api/admin/jurnal/${id.value}`, { method: "DELETE" });
+    await router.push("/admin/jurnal");
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal menghapus jurnal.");
+  } finally {
+    sibuk.value = false;
+  }
+};
+
+const tabBahasa = ref("id");
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <UButton
-      to="/admin/jurnal"
-      color="secondary"
-      variant="link"
-      leading-icon="i-lucide-arrow-left"
-      class="mb-4 -ml-2"
-    >
-      Kembali ke Jurnal
-    </UButton>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <NuxtLink
+          to="/admin/jurnal"
+          class="text-sm text-cc-stone-600 hover:text-cc-brown-500"
+        >
+          &larr; Kembali
+        </NuxtLink>
 
-    <h1 class="font-serif text-5xl text-cc-green-800">
-      {{ isNew ? 'Add Jurnal' : 'Edit Jurnal' }}
-    </h1>
-
-    <UCard class="mt-5" :ui="{ body: 'p-8' }">
-      <UForm :state="form" class="space-y-6" @submit="saveJournal">
-        <UFormField label="Judul Jurnal" name="title" required :error="wajibKosong(form.title, dicoba)">
-          <UInput v-model="form.title" placeholder="Masukkan judul jurnal" class="w-full" />
-        </UFormField>
-
-        <div class="grid gap-6 sm:grid-cols-2">
-          <UFormField label="Tipe Jurnal" name="journalType" required :error="wajibKosong(form.journalType, dicoba)">
-            <USelect
-              v-model="form.journalType"
-              :items="journalTypeOptions"
-              placeholder="Pilih tipe jurnal"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField
-            v-if="form.journalType === 'event-reflection'"
-            label="Nama Event"
-            name="eventName"
-            required
-            :error="wajibKosong(form.eventName, dicoba)"
+        <!-- Status duduk sebaris dengan judulnya. Baris penanda sendiri di
+             bawahnya membuat kepala halaman jadi tiga tingkat untuk satu hal.
+             Slug dicabut: alamatnya sudah bisa dibuka lewat tombol "Lihat", dan
+             sebagai teks ia cuma deretan tanda hubung yang tidak pernah dibaca. -->
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-4">
+          <h1 class="font-serif text-4xl break-words text-cc-green-800">
+            {{ baru ? "Tulis jurnal" : form.judul || "Tanpa judul" }}
+          </h1>
+          <UBadge
+            v-if="!baru"
+            :color="STATUS_WARNA[statusJurnal]"
+            variant="subtle"
+            size="sm"
           >
-            <USelect v-model="form.eventName" :items="events" placeholder="Pilih event" class="w-full" />
-          </UFormField>
+            {{ STATUS_LABEL[statusJurnal] }}
+          </UBadge>
         </div>
 
-        <UFormField label="Konten" name="content">
-          <div class="overflow-hidden rounded-lg border border-cc-stone-200 bg-white">
-            <div class="flex gap-1 border-b border-cc-stone-200 bg-cc-stone-50 p-2">
-              <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-bold" aria-label="Bold" @click="format('bold')" />
-              <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-italic" aria-label="Italic" @click="format('italic')" />
-              <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-heading-2" aria-label="Heading" @click="format('formatBlock', 'h2')" />
-              <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-list" aria-label="Daftar" @click="format('insertUnorderedList')" />
-              <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-quote" aria-label="Kutipan" @click="format('formatBlock', 'blockquote')" />
-            </div>
-            <div
-              ref="editor"
-              contenteditable="true"
-              class="min-h-56 p-4 text-base leading-7 outline-none"
-              data-placeholder="Tulis isi jurnal di sini..."
-              @input="updateContent"
+        <div v-if="!baru" class="mt-1 flex flex-wrap items-center gap-3">
+          <span v-if="editorNama" class="text-xs text-cc-stone-500"
+            >ditangani {{ editorNama }}</span
+          >
+          <IndikatorSimpan v-if="bolehSunting" :keadaan="keadaanSimpan" />
+        </div>
+      </div>
+
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UButton
+          v-if="baru"
+          color="secondary"
+          icon="i-lucide-plus"
+          :loading="sibuk"
+          @click="buatJurnal"
+        >
+          Buat draft
+        </UButton>
+
+        <template v-else>
+          <!-- Kirim untuk diperiksa: milik yang menulis.
+
+               Admin memakai kalimat yang SAMA PERSIS dengan yang dibaca member
+               di /jurnal-saya ("Kirim hasil revisi"), bukan kalimat sendiri
+               ("Kirim ulang"). Di alur ini admin memang berdiri sebagai penulis —
+               kadang sebagai dirinya sendiri, kadang mewakili member yang tidak
+               sanggup menyelesaikan permintaan editor — dan dua kalimat berbeda
+               untuk satu tindakan yang sama membuatnya terbaca seolah dua hal
+               yang berbeda. -->
+          <UButton
+            v-if="
+              bolehMengirim &&
+              bolehSunting &&
+              (statusJurnal === 'draft' || statusJurnal === 'revisi')
+            "
+            color="secondary"
+            icon="i-lucide-send"
+            :loading="sibuk"
+            @click="kirimReview"
+          >
+            {{
+              statusJurnal === "revisi"
+                ? "Kirim hasil revisi"
+                : "Kirim untuk diperiksa"
+            }}
+          </UButton>
+
+          <!-- Keputusan redaksi — MILIK EDITOR SAJA.
+               "Setujui" dan "Revisi" tidak lagi digambar untuk admin, atas
+               permintaan. Pembagiannya jadi tegas dan terbaca dari layar: editor
+               menilai isinya, admin menentukan kapan terbit. Selama keduanya ada
+               di tangan admin, tidak ada di layar yang mencegahnya menyetujui
+               tulisannya sendiri lalu menerbitkannya semenit kemudian — dan alur
+               reviewnya cuma jadi tiga klik.
+
+               Servernya sendiri MASIH mengizinkan admin memutuskan (lihat
+               KEPUTUSAN_EDITOR di validasi-jurnal.ts). Itu dibiarkan dengan
+               sengaja: kalau editor berhalangan dan pekerjaannya harus jalan,
+               jalannya masih ada — hanya tidak lagi ditawarkan sebagai tombol
+               yang tinggal dipencet. -->
+          <template v-if="adalahEditor && bolehSunting">
+            <UButton
+              v-if="statusJurnal === 'review'"
+              color="primary"
+              icon="i-lucide-check"
+              :loading="sibuk"
+              @click="pindahStatus('approved')"
+            >
+              Setujui
+            </UButton>
+            <UButton
+              v-if="statusJurnal === 'review' || statusJurnal === 'approved'"
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-message-square-warning"
+              @click="modalRevisi = true"
+            >
+              Revisi
+            </UButton>
+          </template>
+
+          <!-- Menerbitkan: admin ke atas.
+               Tombolnya digambar SEJAK AWAL dan dimatikan selama belum disetujui,
+               bukan disembunyikan sampai syaratnya terpenuhi. Tombol yang tidak
+               ada tidak memberi tahu apa pun; tombol yang ada tapi mati sekaligus
+               mengatakan "ini langkah berikutnya" dan "belum sekarang" — dan
+               alasannya terbaca di tooltipnya. -->
+          <UTooltip
+            v-if="bolehMenerbitkan && statusJurnal !== 'published'"
+            :text="statusJurnal === 'approved' ? 'Terbitkan ke halaman jurnal' : 'Bisa diterbitkan setelah editor menyetujui'"
+          >
+            <UButton
+              color="primary"
+              icon="i-lucide-upload"
+              :loading="sibuk"
+              :disabled="statusJurnal !== 'approved'"
+              @click="terbitkan"
+            >
+              Terbitkan
+            </UButton>
+          </UTooltip>
+
+          <UButton
+            v-if="statusJurnal === 'published' && bolehMenerbitkan"
+            color="neutral"
+            variant="subtle"
+            icon="i-lucide-eye-off"
+            :loading="sibuk"
+            @click="pindahStatus('draft')"
+          >
+            Tarik dari publik
+          </UButton>
+
+          <UButton
+            v-if="statusJurnal === 'published'"
+            :to="`/id/jurnal/${slug}`"
+            target="_blank"
+            color="secondary"
+            variant="solid"
+            trailing-icon="i-lucide-external-link"
+          >
+            Lihat
+          </UButton>
+
+          <UButton
+            v-if="bolehMenerbitkan && statusJurnal !== 'published'"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            :loading="sibuk"
+            @click="hapus"
+          >
+            Hapus
+          </UButton>
+        </template>
+      </div>
+    </div>
+
+    <UAlert
+      v-if="galat"
+      class="mb-4"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :description="galat"
+    />
+
+    <UAlert
+      v-if="statusJurnal === 'revisi' && catatanRevisi"
+      class="mb-4"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-message-square-warning"
+      title="Catatan revisi"
+      :description="catatanRevisi"
+    />
+
+    <!-- Kategori wajib sebelum terbit. Diberitahukan sejak sekarang, bukan saat
+         tombol Terbitkan ditekan: tulisan titipan member selalu datang tanpa
+         kategori, dan yang menentukannya admin. -->
+    <UAlert
+      v-if="!baru && kategoriKosong"
+      class="mb-4"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-tag"
+      title="Kategori belum diisi"
+      description="Tentukan kategori dan Editor yang akan ditugaskan untuk memeriksa jurnal"
+    />
+
+    <UCard class="mb-6">
+      <!-- Penanda terkunci duduk di pojok kanan atas TIAP kotak, bukan sekali di
+           baris tombol. Alasan kenapa sebuah isian tidak bisa diubah harus berada
+           di kotak yang sedang dicoba diubah orangnya — baris tombol di kepala
+           halaman sudah tergulir ke atas begitu orang sampai di kotak kedua. -->
+      <div v-if="!bolehSunting" class="mb-4 flex justify-end">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600">
+          <UIcon name="i-lucide-lock" class="size-3.5" />
+          Tidak memiliki <strong>Akses Edit</strong>
+        </span>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <UFormField
+          label="Judul"
+          required
+          class="sm:col-span-2"
+          :error="wajibKosong(form.judul, dicoba)"
+        >
+          <UInput
+            v-model="form.judul"
+            :disabled="!bolehSunting"
+            placeholder="Judul tulisan"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Kategori jurnal"
+          required
+          :error="dicoba && kategoriKosong ? 'Belum diisi' : undefined"
+          hint="wajib sebelum terbit"
+        >
+          <USelect
+            v-model="form.tipe"
+            :items="TIPE"
+            value-key="value"
+            :disabled="!bolehSunting"
+            placeholder="Pilih kategori"
+            class="w-full"
+          />
+        </UFormField>
+
+        <!-- Penulis DIPILIH, bukan diketik dan bukan sekadar diberitahukan.
+             Tulisan yang lahir di layar ini biasanya tulisan admin sendiri —
+             karena itu isian awalnya nama yang sedang login — tapi admin juga
+             memasukkan tulisan orang lain, dan itu harus bisa dikatakan.
+
+             Daftar akun, bukan isian bebas: nama yang datang dari akun ikut
+             menautkan tulisan ke profil orangnya, sementara nama yang diketik
+             ulang cuma teks yang mirip. Penulis lama yang tidak punya akun tetap
+             muncul di daftar apa adanya (lihat `penulisTanpaAkun`), supaya
+             membuka halaman ini tidak pernah menjadi cara kehilangan namanya. -->
+        <UFormField
+          label="Penulis"
+          required
+          :hint="baru ? 'awalnya Anda' : undefined"
+          :error="wajibKosong(form.kontributor, dicoba)"
+        >
+          <USelectMenu
+            :model-value="penulisPilihan"
+            :items="penulisOptions"
+            value-key="value"
+            :disabled="!bolehSunting"
+            placeholder="Pilih penulis"
+            class="w-full"
+            @update:model-value="pilihPenulis"
+          />
+        </UFormField>
+
+        <!-- Memilih editor: admin saja. Penulisnya tidak pernah melihat kolom
+             ini — nama editornya sengaja tidak sampai ke layar member.
+
+             Tergambar juga di layar "tulis baru", bukan hanya sesudah drafnya
+             jadi: admin yang sudah tahu siapa yang akan memeriksa tidak perlu
+             kembali ke formulir yang sama untuk satu isian. Boleh dikosongkan di
+             sini — yang menolak kekosongan itu "Kirim untuk direview". -->
+        <UFormField
+          v-if="bolehMenerbitkan"
+          label="Pilih editor"
+          required
+          :hint="baru ? 'bisa menyusul' : 'dipilih admin'"
+          :error="!editorId && dicoba && !baru ? 'Belum ditugaskan' : undefined"
+        >
+          <USelectMenu
+            v-model="editorPilihan"
+            :items="editorOptions"
+            value-key="value"
+            placeholder="Belum ditugaskan"
+            class="w-full"
+          />
+        </UFormField>
+
+        <!-- Event yang direfleksikan.
+             Untuk sekarang tautannya TIDAK tergambar di kartu daftar publik —
+             barisnya dikomentari di pages/jurnal/index.vue atas permintaan. Yang
+             masih memakainya penyaring "Nama event" di halaman yang sama. Hint di
+             bawah menyebutkan itu apa adanya; menjanjikan "tampil di kartu" saat
+             kartunya tidak menggambarnya cuma cara membuat orang mengira ada yang
+             rusak. -->
+        <UFormField
+          label="Event terkait"
+          hint="opsional — dipakai penyaring di halaman jurnal"
+        >
+          <USelectMenu
+            :model-value="kegiatanPilihan"
+            :items="kegiatanOptions"
+            value-key="value"
+            :disabled="!bolehSunting"
+            placeholder="Tidak terkait event"
+            class="w-full"
+            @update:model-value="pilihKegiatan"
+          />
+        </UFormField>
+
+        <!-- Gambar sampul DINONAKTIFKAN sementara.
+             Alasannya bukan bugnya, melainkan kartu di /id/jurnal yang memang
+             belum pernah menggambar thumbnail — endpointnya sudah mengirim
+             `coverUrl`, tapi templatnya tidak memakainya. Selama itu belum
+             dipasang, kolom ini menjanjikan sesuatu yang tidak pernah dilihat
+             siapa pun kecuali di kepala artikel.
+             Kolom `cover_media_id`, endpoint, dan `GambarField` tetap utuh:
+             kembalikan blok ini begitu kartunya siap menggambar sampul.
+        <div class="sm:col-span-2">
+          <GambarField
+            :url="coverUrl"
+            label="Gambar sampul"
+            petunjuk="opsional — tampil di kepala artikel"
+            :rasio="16 / 9"
+            :lebar-pratinjau="320"
+            @terpasang="
+              ({ mediaId, url }) => {
+                form.coverMediaId = mediaId;
+                coverUrl = url;
+              }
+            "
+            @dilepas="
+              () => {
+                form.coverMediaId = '';
+                coverUrl = null;
+              }
+            "
+          />
+        </div>
+        -->
+      </div>
+    </UCard>
+
+    <UCard>
+      <template #header>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="font-serif text-2xl text-cc-green-800">Isi tulisan</h2>
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Penanda yang sama seperti di kotak pertama; di kotak ini ia
+                 menumpang baris kepala yang memang sudah ada. -->
+            <span
+              v-if="!bolehSunting"
+              class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600"
+            >
+              <UIcon name="i-lucide-lock" class="size-3.5" />
+              Tidak memiliki <strong>Akses Edit</strong>
+            </span>
+            <UTabs
+              v-model="tabBahasa"
+              size="sm"
+              :items="[
+                { value: 'id', label: 'Indonesia' },
+                { value: 'en', label: 'English (opsional)' },
+              ]"
+              :content="false"
             />
           </div>
+        </div>
+      </template>
+
+      <div v-show="tabBahasa === 'id'" class="space-y-4">
+        <UFormField label="Ringkasan" hint="kalimat pembuka di kartu daftar">
+          <UTextarea
+            v-model="form.ringkasan"
+            :disabled="!bolehSunting"
+            :rows="2"
+            autoresize
+            :maxrows="4"
+            class="w-full"
+          />
         </UFormField>
 
-        <div class="grid gap-6 sm:grid-cols-2">
-          <UFormField label="Tipe Kontributor" name="contributorType">
-            <URadioGroup
-              v-model="form.contributorType"
-              :items="contributorTypeOptions"
-              orientation="horizontal"
-            />
-          </UFormField>
-          <UFormField label="Nama Kontributor" name="contributor" required :error="wajibKosong(form.contributor, dicoba)">
-            <USelect
-              v-if="form.contributorType === 'member'"
-              v-model="form.contributor"
-              :items="members"
-              placeholder="Pilih member"
-              class="w-full"
-            />
-            <UInput
-              v-else
-              v-model="form.contributor"
-              placeholder="Nama kontributor non member"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
+        <UFormField label="Tuliskan isi jurnal di sini:">
+          <JurnalEditor v-model="form.isi" :terkunci="!bolehSunting" />
+        </UFormField>
+      </div>
 
-        <UAlert
-          v-if="validationError"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :description="validationError"
-        />
-        <UAlert
-          v-if="saved"
-          color="primary"
-          variant="subtle"
-          icon="i-lucide-check"
-          description="Jurnal berhasil disimpan sebagai draft (mockup)."
-        />
+      <div v-show="tabBahasa === 'en'" class="space-y-4">
+        <UFormField label="Judul (EN)" hint="opsional">
+          <UInput
+            v-model="form.judulEn"
+            :disabled="!bolehSunting"
+            class="w-full"
+          />
+        </UFormField>
 
-        <UButton type="submit" color="secondary" size="lg" icon="i-lucide-save">Simpan</UButton>
-      </UForm>
+        <UFormField label="Ringkasan (EN)" hint="opsional">
+          <UTextarea
+            v-model="form.ringkasanEn"
+            :disabled="!bolehSunting"
+            :rows="2"
+            autoresize
+            :maxrows="4"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField label="Tuliskan versi Inggrisnya di sini:" hint="opsional">
+          <JurnalEditor
+            v-model="form.isiEn"
+            :terkunci="!bolehSunting"
+            placeholder="Kosongkan bila tidak ada versi Inggrisnya."
+          />
+        </UFormField>
+      </div>
     </UCard>
+
+    <UModal v-model:open="modalRevisi" title="Minta revisi">
+      <template #body>
+        <UFormField label="Catatan untuk penulis" required>
+          <UTextarea
+            v-model="catatanBaru"
+            :rows="4"
+            class="w-full"
+            placeholder="Apa yang perlu diperbaiki sebelum tulisan ini terbit?"
+          />
+        </UFormField>
+        <p class="mt-2 text-xs text-cc-stone-500">
+          Catatan ini yang dibaca penulisnya. Nama Anda tidak ikut ditampilkan
+          kepadanya.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="modalRevisi = false"
+            >Batal</UButton
+          >
+          <UButton
+            color="secondary"
+            :disabled="!catatanBaru.trim()"
+            :loading="sibuk"
+            @click="pindahStatus('revisi', catatanBaru.trim())"
+          >
+            Kembalikan untuk revisi
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
-
-<style scoped>
-[contenteditable]:empty:before {
-  content: attr(data-placeholder);
-  color: #94a3b8;
-  pointer-events: none;
-}
-</style>

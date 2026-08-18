@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const route = useRoute()
 const isEn = computed(() => route.path.startsWith('/en'))
+/** Awalan bahasa untuk tautan ke halaman baca — /id/jurnal/… atau /en/jurnal/…. */
+const base = computed(() => (isEn.value ? '/en' : '/id'))
 
 useSeoMeta({
   title: () => isEn.value ? 'Journal' : 'Jurnal',
@@ -46,18 +48,50 @@ const teks = computed(() => isEn.value
       semuaEvent: 'Semua event', baca: 'Baca lebih lanjut', kosong: 'Belum ada jurnal yang sesuai dengan pencarian atau filter Anda.',
     })
 
-const journals = [
-  { type: 'sharing-journey' as JournalType, title: 'Menemukan Arah dalam Kebersamaan', excerpt: 'Ada masa ketika pertanyaan siapa saya terasa sederhana, tetapi jawabannya justru membawa saya pada perjalanan yang panjang. Di dalam kebersamaan, saya perlahan belajar mengenali arah.', contributor: 'Imanuel Ananta', role: 'Peserta rekoleksi', date: '12 Mei 2026', dateValue: '2026-05-12', event: '', path: '/id/reflection-journey' },
-  { type: 'event-reflection' as JournalType, title: 'Ketika Saya Belajar Mendengarkan', excerpt: 'Saya selalu mengira pemimpin harus paling cepat memberi jawaban. Ternyata, terkadang yang dibutuhkan adalah kehadiran yang sungguh mendengarkan.', contributor: 'Nicholas', role: 'Peserta program', date: '1 Mei 2026', dateValue: '2026-05-01', event: 'Listening as Leadership', path: '/id/sharing-mendengar-dengan-hadir' },
-  { type: 'event-reflection' as JournalType, title: 'Membawa Kegelisahan kepada Tuhan', excerpt: 'Dari kegelisahan itu saya belajar melihat keadaan hati saya dengan jujur dan penuh belas kasih. Saya tidak perlu segera menyelesaikan semuanya sendiri.', contributor: 'Anna', role: 'Peserta program', date: '20 Apr 2026', dateValue: '2026-04-20', event: 'Leadership with Compassion', path: '/id/sharing-menata-kegelisahan' },
-  { type: 'insight' as JournalType, title: 'Kehadiran yang Membuka Ruang', excerpt: 'Mendampingi tidak selalu berarti menawarkan jawaban. Kadang, yang paling dibutuhkan seseorang adalah ruang aman untuk melihat pengalamannya sendiri.', contributor: 'Henk T. Sengkey', role: 'Leadership Coach', date: '8 Apr 2026', dateValue: '2026-04-08', event: '', path: '/id/reflection-journey' },
-  { type: 'practice' as JournalType, title: 'Tiga Menit untuk Mendengarkan Diri', excerpt: 'Latihan sederhana ini dapat dilakukan sebelum rapat, pelayanan, atau percakapan penting: berhenti, bernapas, dan memberi nama pada keadaan hati.', contributor: 'Tim Compassionate Companion', role: 'Praktik mingguan', date: '28 Mar 2026', dateValue: '2026-03-28', event: '', path: '/id/reflection-journey' },
-  { type: 'event-reflection' as JournalType, title: 'Berani Hadir dalam Percakapan Sulit', excerpt: 'Saya belajar bahwa keberanian bukan soal bicara paling keras, melainkan bertahan hadir ketika percakapan mulai terasa tidak nyaman.', contributor: 'Maria', role: 'Peserta program', date: '15 Mar 2026', dateValue: '2026-03-15', event: 'Listening as Leadership', path: '/id/sharing-mendengar-dengan-hadir' },
-]
+// Daftar jurnal kini dibaca dari database lewat /api/jurnal — dulu array tetap di
+// berkas ini, yang sudah menyimpang dari daftar admin di `shared/jurnal.ts`
+// (judul sama, isi berbeda, dan tidak ada yang memberi tahu saat keduanya berbeda).
+// Endpoint hanya mengirim yang berstatus `terbit`; draft dan yang sedang direview
+// tidak pernah sampai ke sini.
+//
+// Tanpa `await`, seperti halaman event: dengan await, <script setup> jadi async dan
+// Vue menahan seluruh komponen sampai fetch selesai — digabung pageTransition
+// 'out-in', itu yang membuat layar kosong sesaat tiap berpindah bahasa.
+const { data: hasil, status: muatStatus } = useFetch('/api/jurnal')
+
+const memuatAwal = computed(() => muatStatus.value === 'pending' && !hasil.value)
+
+/** Bentuk kartu di layar, disusun dari baris database. Nama kolomnya sengaja
+    dipertahankan seperti versi statis (title/excerpt/contributor/…) supaya seluruh
+    template dan CSS `.journal-card` tidak perlu ikut berubah. */
+const journals = computed(() =>
+  (hasil.value?.data ?? []).map(row => ({
+    type: row.tipe as JournalType,
+    title: (isEn.value ? (row.judulEn ?? row.judul) : row.judul) ?? '',
+    excerpt: (isEn.value ? (row.ringkasanEn ?? row.ringkasan) : row.ringkasan) ?? '',
+    contributor: row.kontributor,
+    role: row.kontributorPeran ?? '',
+    date: tanggalPanjang(row.tanggal),
+    dateValue: String(row.tanggal ?? '').slice(0, 10),
+    event: row.kegiatanJudul ?? '',
+    slug: row.slug,
+    path: `${base.value}/jurnal/${row.slug}`,
+  })),
+)
+
+/** Tanggal terbit dalam WIB. Disimpan sebagai timestamp UTC; tanpa zona waktu,
+    tulisan yang terbit pukul 06.00 pagi tampil bertanggal sehari sebelumnya. */
+function tanggalPanjang(nilai: string | number | null) {
+  if (!nilai) return ''
+  return new Intl.DateTimeFormat(isEn.value ? 'en-GB' : 'id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta',
+  }).format(new Date(nilai))
+}
 
 const eventOptions = computed(() => [
   { value: 'all', label: teks.value.semuaEvent },
-  ...[...new Set(journals.filter(journal => journal.type === 'event-reflection').map(journal => journal.event))]
+  ...[...new Set(journals.value.filter(journal => journal.type === 'event-reflection').map(journal => journal.event))]
+    .filter(Boolean)
     .map(event => ({ value: event, label: event })),
 ])
 const typeLabel = (type: JournalType) => types.value.find(item => item.value === type)?.label ?? type
@@ -70,7 +104,7 @@ const typeIcon = (type: JournalType) => ({
 
 const filteredJournals = computed(() => {
   const keyword = search.value.trim().toLowerCase()
-  return journals
+  return journals.value
     .filter(journal => selectedType.value === 'all' || journal.type === selectedType.value)
     .filter(journal => selectedType.value !== 'event-reflection' || selectedEvent.value === 'all' || journal.event === selectedEvent.value)
     .filter(journal => !keyword || `${journal.title} ${journal.excerpt}`.toLowerCase().includes(keyword))
@@ -81,6 +115,32 @@ const filteredJournals = computed(() => {
 // pencarian & filter tetap menjangkau seluruh jurnal meski baru sebagian kartu
 // yang pernah tergambar.
 const { items: journalsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfiniteList(filteredJournals, { awal: 9, tambah: 6 })
+
+// ── Sorotan dari log kerja ───────────────────────────────────────────────────
+//
+// Log master menautkan baris "diterbitkan" ke halaman ini dengan `?sorot={slug}`.
+// Yang dibutuhkan di ujung tautan itu bukan sekadar sampai ke halamannya, tapi tahu
+// KARTU YANG MANA di antara belasan — jadi kartunya digulir ke tengah layar lalu
+// berkedip dua kali dalam satu detik.
+//
+// Kedipan, bukan sorotan yang menetap: yang menetap harus dimatikan oleh sesuatu
+// (klik di luar, jeda waktu, tombol tutup), dan tiap-tiapnya adalah keadaan
+// tambahan yang harus diurus. Yang berkedip sekali lalu selesai tidak meninggalkan
+// apa pun untuk dibersihkan.
+const sorot = computed(() => String(route.query.sorot ?? ''))
+const kartuSorot = ref<HTMLElement | null>(null)
+
+const pasangKartu = (el: Element | ComponentPublicInstance | null, slug: string) => {
+  if (slug === sorot.value && el instanceof HTMLElement) kartuSorot.value = el
+}
+
+// Menunggu kartunya benar-benar ada. `journalsTampil` terisi sesudah useFetch
+// selesai, jadi onMounted saja akan menggulir ke elemen yang belum tergambar.
+// `flush: 'post'` supaya DOM-nya sudah diperbarui saat callback berjalan.
+watch(kartuSorot, (el) => {
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}, { flush: 'post' })
 </script>
 
 <template>
@@ -117,12 +177,30 @@ const { items: journalsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfinite
 
     <section class="journal-listing">
       <div class="container">
-        <p class="journal-count">{{ teks.hitung(filteredJournals.length) }}</p>
+        <!-- Saat muat pertama, hitungan disembunyikan. Tanpa ini yang terbaca
+             sekejap adalah "0 jurnal ditemukan" — kalimat yang artinya "tidak ada
+             apa-apa di sini", padahal datanya sedang dalam perjalanan. -->
+        <p v-if="memuatAwal" class="journal-count">&nbsp;</p>
+        <p v-else class="journal-count">{{ teks.hitung(filteredJournals.length) }}</p>
+
         <div class="journal-grid">
-          <article v-for="journal in journalsTampil" :key="journal.title" class="journal-card">
+          <article
+            v-for="journal in journalsTampil"
+            :key="journal.slug"
+            :ref="(el) => pasangKartu(el, journal.slug)"
+            class="journal-card"
+            :class="journal.slug === sorot ? 'is-sorot' : ''"
+          >
             <div class="journal-card-icon" :class="`icon-${journal.type}`" :aria-label="typeLabel(journal.type)">{{ typeIcon(journal.type) }}</div>
             <div class="journal-type">{{ typeLabel(journal.type) }}</div>
+            <!-- Nama event DISEMBUNYIKAN sementara atas permintaan — dua baris
+                 huruf kapital bertumpuk (kategori lalu nama event) terbaca berat
+                 di kepala kartu. Datanya tetap utuh: `kegiatanId` tersimpan, kolom
+                 pilihannya tetap ada di halaman sunting admin, dan penyaring
+                 "Nama event" di atas tetap bekerja. Kembalikan barisnya begitu
+                 kepala kartunya ditata ulang.
             <div v-if="journal.event" class="journal-event">{{ journal.event }}</div>
+            -->
             <h2>{{ journal.title }}</h2>
             <p>{{ journal.excerpt }}</p>
             <div class="journal-meta"><strong>{{ journal.contributor }}</strong> · {{ journal.role }}<br><time :datetime="journal.dateValue">{{ journal.date }}</time></div>
@@ -144,7 +222,7 @@ const { items: journalsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfinite
             {{ isEn ? `Load ${sisa} more` : `Muat ${sisa} jurnal lagi` }}
           </UButton>
         </div>
-        <p v-if="!filteredJournals.length" class="journal-empty">{{ teks.kosong }}</p>
+        <p v-if="!filteredJournals.length && !memuatAwal" class="journal-empty">{{ teks.kosong }}</p>
       </div>
     </section>
   </main>

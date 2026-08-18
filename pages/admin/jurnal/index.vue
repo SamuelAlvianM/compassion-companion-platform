@@ -1,93 +1,228 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin' })
 
-const type = ref('all')
-const query = ref('')
-const order = ref<'newest' | 'oldest'>('newest')
+// Daftar jurnal — kini dari database, bukan lagi array tetap di `shared/jurnal.ts`.
+//
+// Penyaring statusnya berbentuk chip, sama seperti tab peserta di halaman event:
+// empat status ini adalah alur kerja, dan alur kerja perlu terlihat sekaligus —
+// berapa yang menunggu direview jauh lebih penting daripada bisa disembunyikan di
+// balik dropdown.
 
-const typeOptions = [
-  { value: 'all', label: 'Semua Tipe' },
-  { value: 'Event Reflection', label: 'Event Reflection' },
-  { value: 'Sharing Journey', label: 'Sharing Journey' },
-  { value: 'Insight', label: 'Insight' },
-  { value: 'Practice', label: 'Practice' },
-]
+const route = useRoute()
 
-const orderOptions = [
-  { value: 'newest', label: 'Terbaru' },
-  { value: 'oldest', label: 'Terlama' },
-]
+/** Status awal boleh ditentukan dari luar lewat `?status=`. Dipakai kartu jurnal
+    di dashboard: "Jurnal direview 3" mendarat langsung pada ketiganya. */
+const tab = ref(String(route.query.status ?? 'semua'))
+const cari = ref('')
+const tipe = ref('semua')
 
-// Daftarnya pindah ke `shared/jurnal.ts`: agregasi dashboard membaca daftar yang
-// sama, dan dua salinan akan menyimpang tanpa menghasilkan galat apa pun.
-// `#shared`, bukan jalur relatif: `../../../shared/jurnal` bekerja di dev tapi
-// gagal saat `nuxt build` — Rollup me-resolve dari berkas hasil bundel, yang
-// letaknya bukan lagi di pages/. Aliasnya disediakan Nuxt untuk direktori ini.
-import { JURNAL as journals } from '#shared/jurnal'
-
-const visibleJournals = computed(() => {
-  const keyword = query.value.toLowerCase().trim()
-  return journals
-    .filter(journal => type.value === 'all' || journal.type === type.value)
-    .filter(journal => !keyword || `${journal.title} ${journal.contributor}`.toLowerCase().includes(keyword))
-    .sort((a, b) => order.value === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
+const { data, status: muatStatus, refresh } = useFetch('/api/admin/jurnal', {
+  query: { status: tab, cari, tipe },
+  // Cookie tidak ikut terbawa $fetch saat SSR; tanpa penerusan ini render pertama
+  // selalu 401.
+  headers: import.meta.server ? useRequestHeaders(['cookie']) : undefined,
 })
 
-const columns = [
-  { accessorKey: 'title', header: 'Judul' },
-  { accessorKey: 'type', header: 'Tipe Jurnal' },
-  { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'contributor', header: 'Kontributor' },
-  { accessorKey: 'created', header: 'Tgl Dibuat' },
-  { accessorKey: 'updated', header: 'Tgl Diperbarui' },
+const { user } = useAuth()
+const level = computed(() => user.value?.level ?? 99)
+const jurnal = computed(() => data.value?.data ?? [])
+const tugasSaya = computed(() => data.value?.meta.tugasSaya ?? 0)
+const hitung = computed<Record<string, number>>(() => data.value?.meta.perStatus ?? {})
+
+/** Rangka hanya saat belum ada data sama sekali — berganti chip atau mengetik di
+    kotak cari membiarkan baris yang sudah tergambar tetap terlihat. */
+const memuatAwal = computed(() => muatStatus.value === 'pending' && !data.value)
+
+// Lima status alur persetujuan. Urutannya mengikuti urutan pekerjaannya, bukan
+// abjad: itu yang membuat baris chip terbaca sebagai perjalanan sebuah tulisan.
+const STATUS = [
+  { key: 'semua', label: 'Semua', warna: 'neutral' },
+  { key: 'draft', label: 'Draft', warna: 'neutral' },
+  { key: 'review', label: 'Direview', warna: 'warning' },
+  { key: 'revisi', label: 'Perlu revisi', warna: 'secondary' },
+  { key: 'approved', label: 'Disetujui', warna: 'accent' },
+  { key: 'published', label: 'Terbit', warna: 'primary' },
 ]
+
+/** Kelas ditulis utuh, bukan disusun saat runtime: Tailwind memindai berkas sebagai
+    teks, dan `bg-cc-${warna}-500` tidak pernah ikut diterbitkan. */
+const warnaChip: Record<string, string> = {
+  neutral: 'bg-cc-stone-700 text-white',
+  warning: 'bg-cc-brown-500 text-white',
+  secondary: 'bg-cc-brown-600 text-white',
+  accent: 'bg-cc-green-600 text-white',
+  primary: 'bg-cc-green-800 text-white',
+}
+
+const warnaBadge: Record<string, 'neutral' | 'warning' | 'secondary' | 'primary'> = {
+  draft: 'neutral',
+  review: 'warning',
+  revisi: 'secondary',
+  approved: 'primary',
+  published: 'primary',
+}
+
+const labelStatus = (s: string) => STATUS.find(x => x.key === s)?.label ?? s
+
+const tipeOptions = [
+  { value: 'semua', label: 'Semua tipe' },
+  { value: 'event-reflection', label: 'Event Reflection' },
+  { value: 'sharing-journey', label: 'Sharing Journey' },
+  { value: 'insight', label: 'Insight' },
+  { value: 'practice', label: 'Practice' },
+]
+
+const labelTipe = (t: string) => tipeOptions.find(o => o.value === t)?.label ?? t
+
+const columns = computed(() => [
+  { accessorKey: 'judul', header: 'Judul' },
+  { accessorKey: 'tipe', header: 'Kategori' },
+  { accessorKey: 'status', header: 'Status' },
+  { accessorKey: 'kontributor', header: 'Penulis' },
+  // Kolom editor hanya berarti bagi yang bisa menugaskan atau yang sedang mencari
+  // bagiannya sendiri; keduanya level <= 3, yaitu semua yang bisa membuka halaman
+  // ini. Tetap dibuat computed karena isinya berbeda untuk admin dan editor.
+  { accessorKey: 'editorNama', header: 'Editor in Charge' },
+  { accessorKey: 'updatedAt', header: 'Diperbarui' },
+])
+
+const tanggal = (nilai: string | number | null) =>
+  nilai
+    ? new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta',
+      }).format(new Date(nilai))
+    : '—'
+
+// Halaman ini bisa dibuka lewat tautan dashboard yang membawa ?status=; kalau
+// chipnya lalu diganti dengan tangan, alamatnya ikut dirapikan supaya menyegarkan
+// halaman tidak melompat kembali ke status yang tadi.
+const router = useRouter()
+watch(tab, (nilai) => {
+  router.replace({ query: nilai === 'semua' ? {} : { status: nilai } })
+})
 </script>
 
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="font-serif text-5xl text-cc-green-800">Jurnal</h1>
-        <p class="mt-2 max-w-3xl text-sm text-cc-stone-600">
-          Kelola cerita peserta, sharing pengalaman, sharing pengetahuan, dan praktik baik
-          dari perjalanan spiritual kepemimpinan.
+        <p class="text-xs font-bold tracking-[0.14em] text-cc-brown-500 uppercase">Admin area</p>
+        <h1 class="mt-1 font-serif text-4xl text-cc-green-800">Jurnal</h1>
+        <p class="mt-1 max-w-3xl text-sm text-cc-stone-600">
+          Cerita peserta, sharing pengalaman, insight, dan praktik baik. Yang mereview
+          editor yang ditugaskan; yang menerbitkan admin.
+        </p>
+        <p v-if="level === 3" class="mt-1 text-sm font-semibold text-cc-green-800">
+          {{ tugasSaya }} jurnal jadi tugas Anda.
         </p>
       </div>
-      <UButton to="/admin/jurnal/new" color="secondary" size="lg" icon="i-lucide-plus" class="shrink-0">
-        Add Jurnal
+      <!-- Editor tidak membuat jurnal baru dari sini: pekerjaannya memeriksa
+           tulisan yang masuk, bukan menambah antrean sendiri. -->
+      <UButton v-if="level <= 2" to="/admin/jurnal/new" color="secondary" icon="i-lucide-plus" class="shrink-0">
+        Tulis jurnal
       </UButton>
     </div>
 
-    <div class="mb-6 grid gap-3 rounded-lg border border-cc-green-800 bg-cc-stone-50 p-3 sm:grid-cols-[220px_1fr_200px]">
-      <UFormField label="Tipe Jurnal" size="sm">
-        <USelect v-model="type" :items="typeOptions" class="w-full" />
-      </UFormField>
-      <UFormField label="Cari" size="sm">
-        <UInput v-model="query" icon="i-lucide-search" placeholder="Cari judul atau kontributor" class="w-full" />
-      </UFormField>
-      <UFormField label="Urutkan" size="sm">
-        <USelect v-model="order" :items="orderOptions" class="w-full" />
-      </UFormField>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div
+        role="group"
+        aria-label="Status jurnal"
+        class="flex flex-wrap items-center gap-1.5 rounded-full bg-cc-stone-100 p-1"
+      >
+        <button
+          v-for="s in STATUS"
+          :key="s.key"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
+          :class="tab === s.key ? warnaChip[s.warna] : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'"
+          :aria-pressed="tab === s.key"
+          @click="tab = s.key"
+        >
+          {{ s.label }}
+          <span
+            class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
+            :class="tab === s.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'"
+          >
+            {{ hitung[s.key] ?? 0 }}
+          </span>
+        </button>
+      </div>
+
+      <div class="flex min-w-0 flex-1 basis-80 flex-nowrap items-center justify-end gap-2">
+        <UInput
+          v-model="cari"
+          icon="i-lucide-search"
+          placeholder="Cari judul atau penulis…"
+          class="min-w-0 flex-1 lg:max-w-72"
+        />
+        <USelect v-model="tipe" :items="tipeOptions" value-key="value" class="w-44 shrink-0" />
+      </div>
     </div>
 
-    <UCard :ui="{ body: 'p-0' }">
-      <UTable :data="visibleJournals" :columns="columns" empty="Tidak ada jurnal yang cocok.">
-        <template #title-cell="{ row }">
+    <div v-if="memuatAwal" class="space-y-2" aria-hidden="true">
+      <USkeleton v-for="n in 5" :key="n" class="h-11 w-full" />
+    </div>
+
+    <UCard v-else :ui="{ body: 'p-0' }">
+      <UTable
+        :data="jurnal"
+        :columns="columns"
+        empty="Belum ada jurnal pada status ini."
+        class="overflow-x-auto"
+      >
+        <template #judul-cell="{ row }">
           <NuxtLink
             :to="`/admin/jurnal/${row.original.id}`"
-            class="font-semibold text-cc-green-800 hover:text-cc-brown-500 hover:underline"
+            class="font-semibold break-words text-cc-green-800 hover:text-cc-brown-500 hover:underline"
           >
-            {{ row.original.title }}
+            {{ row.original.judul }}
           </NuxtLink>
+          <!-- Event yang direfleksikan ikut di baris judul, bukan kolom sendiri:
+               hanya tipe event-reflection yang punya, dan satu kolom yang tiga
+               perempatnya kosong cuma memakan lebar. -->
+          <p v-if="row.original.kegiatanJudul" class="mt-0.5 text-xs break-words text-cc-stone-500">
+            {{ row.original.kegiatanJudul }}
+          </p>
         </template>
+
+        <!-- Kategori boleh kosong sampai admin menentukannya — tulisan titipan
+             member lahir tanpa kategori. Ditandai, bukan dibiarkan kosong: ia
+             syarat terbit, dan yang kosong begitu saja terbaca sebagai "tidak
+             perlu diisi". -->
+        <template #tipe-cell="{ row }">
+          <span v-if="row.original.tipe" class="text-sm break-words text-cc-stone-600">
+            {{ labelTipe(row.original.tipe) }}
+          </span>
+          <UBadge v-else color="warning" variant="subtle" size="sm">Belum ada kategori</UBadge>
+        </template>
+
+        <template #editorNama-cell="{ row }">
+          <span v-if="row.original.editorNama" class="text-sm break-words">
+            {{ row.original.editorNama }}
+            <span v-if="row.original.editorId === user?.id" class="text-xs text-cc-green-800">(Anda)</span>
+          </span>
+          <span v-else class="text-sm text-cc-stone-400">belum ditugaskan</span>
+        </template>
+
         <template #status-cell="{ row }">
-          <UBadge
-            :color="row.original.status === 'Published' ? 'primary' : 'neutral'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.status }}
-          </UBadge>
+          <div class="flex items-center gap-2">
+            <UBadge :color="warnaBadge[row.original.status]" variant="subtle" size="sm">
+              {{ labelStatus(row.original.status) }}
+            </UBadge>
+            <!-- Penanda catatan revisi. Tanpa ini, "perlu revisi" di daftar tidak
+                 memberi tahu apakah alasannya sudah ditulis atau belum. -->
+            <UTooltip v-if="row.original.catatanRevisi" :text="row.original.catatanRevisi">
+              <UIcon name="i-lucide-message-square-warning" class="size-4 text-cc-brown-500" />
+            </UTooltip>
+          </div>
+        </template>
+
+        <template #kontributor-cell="{ row }">
+          <span class="text-sm break-words">{{ row.original.kontributor }}</span>
+        </template>
+
+        <template #updatedAt-cell="{ row }">
+          <span class="text-sm whitespace-nowrap text-cc-stone-600">{{ tanggal(row.original.updatedAt) }}</span>
         </template>
       </UTable>
     </UCard>
