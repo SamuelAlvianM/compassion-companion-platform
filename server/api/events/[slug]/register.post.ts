@@ -11,9 +11,10 @@
 
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '../../../db'
-import { ccKegiatan, ccPeserta } from '../../../db/schema'
+import { ccKegiatan, ccPeserta, LOG_AKSI } from '../../../db/schema'
 import { pendaftaranTerbuka, faseKegiatan } from '../../../utils/kegiatan'
 import { userSaatIni } from '../../../utils/session'
+import { catatLog } from '../../../utils/log'
 
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')
@@ -33,13 +34,17 @@ export default defineEventHandler(async (event) => {
   }
 
   const user = await userSaatIni(event)
-  const body = await readBody<{
+  // Bentuknya diberi nama supaya anotasi pada `body` bisa menampung dua-duanya.
+  // Tanpa itu `.catch(() => ({}))` membuat tipenya union dengan `{}` — dan pada
+  // `{}` tidak ada satu pun kolom di bawah yang boleh dibaca.
+  type BodyDaftar = {
     nama?: string
     email?: string
     noHp?: string
     institusi?: string
     catatan?: string
-  }>(event).catch(() => ({}))
+  }
+  const body: BodyDaftar = await readBody<BodyDaftar>(event).catch(() => ({}))
 
   const nama = (body?.nama ?? user?.fullName ?? '').trim()
   const email = (body?.email ?? user?.email ?? '').trim().toLowerCase()
@@ -54,10 +59,13 @@ export default defineEventHandler(async (event) => {
   // Kuota diperiksa tepat sebelum menulis. Tetap ada celah balapan yang sangat kecil;
   // yang menjaga dari duplikat adalah unique index (kegiatan_id, email) di bawah.
   if (kegiatan.kuota !== null) {
-    const [{ jumlah }] = await db
+    // Baris[0] bertipe undefined menurut tipe hasil drizzle meski `count(*)`
+    // selalu mengembalikan tepat satu baris; `?? 0` menuruti tipenya.
+    const hitung = await db
       .select({ jumlah: sql<number>`count(*)` })
       .from(ccPeserta)
       .where(and(eq(ccPeserta.kegiatanId, kegiatan.id), ne(ccPeserta.status, 'batal')))
+    const jumlah = hitung[0]?.jumlah ?? 0
 
     if (jumlah >= kegiatan.kuota) {
       throw createError({ statusCode: 409, statusMessage: 'Kuota kegiatan sudah penuh.' })
@@ -83,6 +91,18 @@ export default defineEventHandler(async (event) => {
       })
       .returning()
       .all()
+
+    // Masuk ke segmen `member`, bukan `event`: yang dicari master di sini adalah
+    // pergerakan orang, dan pendaftaran adalah tindakan pendaftarnya. Tamu tanpa
+    // akun tetap dicatat — pelakunya null, namanya ada di catatan.
+    catatLog(user, {
+      segmen: 'member',
+      aksi: LOG_AKSI.memberDaftarEvent,
+      objekId: user?.id ?? peserta!.id,
+      objekLabel: nama,
+      objekSlug: null,
+      catatan: `${kegiatan.judul}${user ? '' : ' (pendaftar tamu)'}`,
+    })
 
     setResponseStatus(event, 201)
     return {

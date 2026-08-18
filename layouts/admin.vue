@@ -6,8 +6,30 @@ const route = useRoute()
 // akan kembali terbuka setiap pindah halaman karena layout ikut dirender ulang.
 const dilipat = useCookie<boolean>('cc-admin-sidebar-collapsed', { default: () => false })
 
+/**
+ * Menu kerja. Kembali jadi computed karena sekarang memang bergantung role:
+ * seorang EDITOR hanya mengurus jurnal. Member, event, dan dashboard bukan
+ * pekerjaannya, dan menu yang mengarah ke sana cuma menawarkan halaman yang akan
+ * menolaknya.
+ *
+ * Menu "Statistik" dicabut atas permintaan. Halamannya sendiri masih hidup di
+ * /admin/statistik dan bisa dibuka lewat alamat langsung; yang hilang cuma
+ * jalannya dari sidebar.
+ */
 const menu = computed(() => {
   const level = user.value?.level ?? 99
+
+  if (level === 3) {
+    return [{ to: '/admin/jurnal', label: 'Jurnal', icon: 'i-lucide-notebook-pen' }]
+  }
+
+  // Log kerja hanya untuk master (level 1). Catatan itu merekam pekerjaan admin
+  // dan editor, jadi menunya tidak digambar untuk mereka — dan halamannya juga
+  // ditolak middleware, karena menu yang tidak digambar bukan penjaga.
+  const log = level === 1
+    ? [{ to: '/admin/log', label: 'Log kerja', icon: 'i-lucide-history' }]
+    : []
+
   return [
     { to: '/admin', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
     // Pendaftar tidak lagi jadi menu sendiri: satu pendaftaran selalu milik satu
@@ -21,7 +43,8 @@ const menu = computed(() => {
     // sana hanya menjanjikan sesuatu yang belum ada. Halamannya sendiri tetap
     // hidup di /admin/contributors; kembalikan baris ini kalau sudah tersambung.
     // { to: '/admin/contributors', label: 'Contributors', icon: 'i-lucide-pen-line' },
-  ].filter(item => item.tampil !== false)
+    ...log,
+  ]
 })
 
 // Petunjuk berisi penjelasan role & wewenang. Diletakkan di bagian bawah bersama

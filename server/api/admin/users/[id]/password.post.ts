@@ -12,10 +12,11 @@
 
 import { eq } from 'drizzle-orm'
 import { db } from '../../../../db'
-import { ccUser } from '../../../../db/schema'
+import { ccUser, LOG_AKSI } from '../../../../db/schema'
 import { hashPassword, wajibPanjang } from '../../../../utils/password'
 import { wajibRole } from '../../../../utils/session'
 import { wajibKelolaAkun } from '../../../../utils/wewenang-akun'
+import { catatLog } from '../../../../utils/log'
 
 export default defineEventHandler(async (event) => {
   const aktor = await wajibRole(event, 'admin')
@@ -44,6 +45,20 @@ export default defineEventHandler(async (event) => {
   // memalsukan pencabutan (mis. menaikkan sebuah nomor versi) berarti menambah
   // kolom yang harus diperiksa di setiap permintaan demi kasus yang di sini
   // bukan ancamannya: yang mereset adalah pengelola yang memang berwenang.
+
+  // Yang dicatat cuma bahwa passwordnya direset dan oleh siapa. Nilainya jelas
+  // tidak, dan itu bukan kehati-hatian berlebihan: log ini dibaca lewat halaman
+  // web, dan satu-satunya alasan sebuah password ada di sana adalah supaya bisa
+  // dibaca orang.
+  catatLog(aktor, {
+    segmen: 'member',
+    aksi: LOG_AKSI.memberPassword,
+    objekId: sasaran.id,
+    objekLabel: sasaran.fullName,
+    objekSlug: null,
+    catatan: sasaran.id === aktor.id ? 'Mengatur ulang password sendiri' : null,
+  })
+
   return {
     status: 200,
     message: `Password ${sasaran.username} berhasil diubah`,

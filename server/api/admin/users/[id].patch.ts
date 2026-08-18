@@ -6,10 +6,11 @@
 
 import { eq } from 'drizzle-orm'
 import { db } from '../../../db'
-import { ccUser, ROLE_LABELS, ROLE_LEVELS } from '../../../db/schema'
+import { ccUser, LOG_AKSI, ROLE_LABELS, ROLE_LEVELS } from '../../../db/schema'
 import { wajibRole } from '../../../utils/session'
 import { bacaUser } from '../../../utils/validasi-user'
 import { wajibKelolaAkun } from '../../../utils/wewenang-akun'
+import { catatLog } from '../../../utils/log'
 
 export default defineEventHandler(async (event) => {
   const aktor = await wajibRole(event, 'admin')
@@ -36,6 +37,7 @@ export default defineEventHandler(async (event) => {
     phoneNumber: lama.phoneNumber,
     role: lama.role,
     isActive: lama.isActive,
+    bolehTulisJurnal: lama.bolehTulisJurnal,
     ...body,
   }, { abaikanId: id, usernameSekarang: lama.username })
 
@@ -62,6 +64,39 @@ export default defineEventHandler(async (event) => {
       isActive: ccUser.isActive,
     })
     .get()
+
+  // Tiga perubahan pada akun punya bobot berbeda dan dicatat sebagai baris
+  // sendiri-sendiri: role menentukan wewenang, izin jurnal menentukan siapa yang
+  // boleh menulis, dan nonaktif menentukan siapa yang masih bisa masuk. Sisanya
+  // (nama, telepon, email) tidak dicatat — itu pembetulan data, bukan keputusan.
+  const objek = { objekId: hasil.id, objekLabel: hasil.fullName, objekSlug: null }
+
+  if (data.role !== lama.role) {
+    catatLog(aktor, {
+      segmen: 'member',
+      aksi: LOG_AKSI.memberRole,
+      ...objek,
+      catatan: `${ROLE_LABELS[lama.role]} → ${ROLE_LABELS[hasil.role]}`,
+    })
+  }
+
+  if (data.bolehTulisJurnal !== lama.bolehTulisJurnal) {
+    catatLog(aktor, {
+      segmen: 'member',
+      aksi: LOG_AKSI.memberIzinJurnal,
+      ...objek,
+      catatan: data.bolehTulisJurnal ? 'Izin menulis jurnal DIBUKA' : 'Izin menulis jurnal DITUTUP',
+    })
+  }
+
+  if (data.isActive !== lama.isActive) {
+    catatLog(aktor, {
+      segmen: 'member',
+      aksi: LOG_AKSI.memberStatus,
+      ...objek,
+      catatan: data.isActive ? 'Akun diaktifkan' : 'Akun dinonaktifkan',
+    })
+  }
 
   return {
     data: { ...hasil, level: ROLE_LEVELS[hasil.role], roleLabel: ROLE_LABELS[hasil.role] },

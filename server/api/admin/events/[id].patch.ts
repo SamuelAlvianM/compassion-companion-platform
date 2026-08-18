@@ -5,12 +5,14 @@
 
 import { eq } from 'drizzle-orm'
 import { db } from '../../../db'
-import { ccKegiatan } from '../../../db/schema'
+import { ccKegiatan, LOG_AKSI } from '../../../db/schema'
 import { wajibRole } from '../../../utils/session'
 import { bacaKegiatan, slugUnik } from '../../../utils/validasi-event'
+import { catatLog } from '../../../utils/log'
+import { ringkasPerubahan } from '../../../utils/log-perubahan'
 
 export default defineEventHandler(async (event) => {
-  await wajibRole(event, 'admin')
+  const pengakses = await wajibRole(event, 'admin')
 
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, statusMessage: 'ID kegiatan wajib diisi' })
@@ -65,5 +67,30 @@ export default defineEventHandler(async (event) => {
     .returning()
     .get()
 
+  // Perubahan status dicatat terpisah dari penyuntingan biasa: "draf jadi terbit"
+  // dan "satu kalimat deskripsi dirapikan" bukan kejadian dengan bobot yang sama,
+  // dan yang pertama itulah yang dicari orang saat membuka log.
+  //
+  // Dibandingkan `lama` (baris sebelum disimpan) dengan `data` (nilai yang sudah
+  // divalidasi), BUKAN dengan `hasil`. `hasil` datang dari database dan membawa
+  // `updatedAt` yang selalu berubah, sehingga tiap penyimpanan akan selalu
+  // terlihat mengubah sesuatu meski tidak ada yang disentuh.
+  const rincian = ringkasPerubahan(lama, data)
+
+  // Tidak ada yang berubah -> tidak ada yang dicatat. Menyimpan formulir tanpa
+  // mengubah apa pun adalah hal yang sering terjadi (orang membuka, membaca, lalu
+  // menekan simpan), dan tiap kalinya meninggalkan baris log kosong.
+  if (rincian || data.status !== lama.status) {
+    catatLog(pengakses, {
+      segmen: 'event',
+      aksi: data.status !== lama.status ? LOG_AKSI.eventStatus : LOG_AKSI.eventDiubah,
+      objekId: hasil.id,
+      objekLabel: hasil.judul,
+      objekSlug: hasil.slug,
+      catatan: rincian,
+    })
+  }
+
   return { data: hasil }
 })
+

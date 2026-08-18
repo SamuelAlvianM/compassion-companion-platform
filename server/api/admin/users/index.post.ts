@@ -3,11 +3,12 @@
 // tidak ada pendaftaran mandiri, dan memang tidak direncanakan ada.
 
 import { db } from '../../../db'
-import { ccUser, ROLE_LABELS, ROLE_LEVELS } from '../../../db/schema'
+import { ccUser, LOG_AKSI, ROLE_LABELS, ROLE_LEVELS } from '../../../db/schema'
 import { hashPassword, wajibPanjang } from '../../../utils/password'
 import { wajibRole } from '../../../utils/session'
 import { bacaUser } from '../../../utils/validasi-user'
 import { wajibKelolaAkun } from '../../../utils/wewenang-akun'
+import { catatLog } from '../../../utils/log'
 
 export default defineEventHandler(async (event) => {
   const aktor = await wajibRole(event, 'admin')
@@ -38,6 +39,15 @@ export default defineEventHandler(async (event) => {
       createdAt: ccUser.createdAt,
     })
     .get()
+
+  catatLog(aktor, {
+    segmen: 'member',
+    aksi: LOG_AKSI.memberDibuat,
+    objekId: dibuat.id,
+    objekLabel: dibuat.fullName,
+    objekSlug: null,
+    catatan: `Username ${dibuat.username}, role ${ROLE_LABELS[dibuat.role]}`,
+  })
 
   return {
     data: { ...dibuat, level: ROLE_LEVELS[dibuat.role], roleLabel: ROLE_LABELS[dibuat.role] },

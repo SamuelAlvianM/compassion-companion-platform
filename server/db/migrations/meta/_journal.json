@@ -64,6 +64,27 @@
       "when": 1786616299582,
       "tag": "0008_pengunjung",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787032976234,
+      "tag": "0009_jurnal",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787034843085,
+      "tag": "0010_jurnal-persetujuan",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1787053536068,
+      "tag": "0011_log",
+      "breakpoints": true
     }
   ]
 }

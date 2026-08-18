@@ -26,4 +26,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (user.value.level > 3) {
     return navigateTo('/id/?akses=ditolak')
   }
+
+  // Log kerja hanya untuk master. Ditegakkan di sini, bukan cuma dengan
+  // menyembunyikan menunya: halaman yang dijaga hanya oleh menu yang tidak
+  // digambar tetap bisa dibuka siapa pun yang mengetik alamatnya. Endpointnya
+  // sendiri juga menolak (wajibRole 'master') — ini lapisan yang membuat
+  // penolakannya terbaca sebagai halaman, bukan sebagai tabel yang gagal dimuat.
+  if (to.path.startsWith('/admin/log') && user.value.level > 1) {
+    return navigateTo('/admin?akses=ditolak')
+  }
 })

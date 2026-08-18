@@ -7,11 +7,12 @@
 
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '../../../db'
-import { ccKegiatan, ccPeserta } from '../../../db/schema'
+import { ccKegiatan, ccPeserta, LOG_AKSI } from '../../../db/schema'
 import { wajibRole } from '../../../utils/session'
+import { catatLog } from '../../../utils/log'
 
 export default defineEventHandler(async (event) => {
-  await wajibRole(event, 'admin')
+  const pengakses = await wajibRole(event, 'admin')
 
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, statusMessage: 'ID kegiatan wajib diisi' })
@@ -33,5 +34,15 @@ export default defineEventHandler(async (event) => {
   }
 
   db.delete(ccKegiatan).where(eq(ccKegiatan.id, id)).run()
+
+  catatLog(pengakses, {
+    segmen: 'event',
+    aksi: LOG_AKSI.eventDihapus,
+    objekId: id,
+    objekLabel: kegiatan.judul,
+    objekSlug: null,
+    catatan: `Status terakhir: ${kegiatan.status}`,
+  })
+
   return { ok: true }
 })
