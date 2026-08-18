@@ -75,7 +75,11 @@ useSeoMeta({
   <!-- <UApp> menyediakan konteks untuk tooltip, modal, dan toast Nuxt UI. Tanpa
        pembungkus ini, <UTooltip> melempar "Injection TooltipProviderContext not
        found" saat SSR — komponen overlay-nya butuh provider di akar aplikasi. -->
-  <UApp>
+  <!-- Toast di KANAN ATAS, bukan bawaan kanan bawah. Di dashboard, kabar
+       "tersimpan" datang dari isian yang sedang dipandang di bagian atas layar;
+       muncul di sudut bawah, ia lewat di luar arah pandang dan tidak terbaca
+       sebelum menghilang. -->
+  <UApp :toaster="{ position: 'top-right' }">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

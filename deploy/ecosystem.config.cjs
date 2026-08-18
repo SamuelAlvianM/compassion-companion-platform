@@ -28,6 +28,10 @@ module.exports = {
         HOST: '127.0.0.1',
         DATABASE_URL: process.env.DATABASE_URL || './data/cc.db',
         NUXT_SESSION_PASSWORD: process.env.NUXT_SESSION_PASSWORD,
+        // Ikut masuk ke hash yang membedakan pengunjung. Boleh kosong — kodenya
+        // jatuh ke nilai acak per proses — tapi kalau kosong, hitungan "berapa
+        // orang" terpecah setiap kali PM2 me-restart app di tengah hari.
+        NUXT_KUNJUNGAN_SECRET: process.env.NUXT_KUNJUNGAN_SECRET,
       },
     },
   ],

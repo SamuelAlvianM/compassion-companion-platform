@@ -73,7 +73,18 @@ export const ccKegiatan = sqliteTable(
 
     status: text('status', { enum: KEGIATAN_STATUS }).notNull().default('draft'),
 
+    /** Gambar utama: sampul lebar di kepala halaman detail event. */
     coverMediaId: text('cover_media_id'),
+    /**
+     * Thumbnail: gambar kecil di kartu event.
+     *
+     * Kolom sendiri, bukan turunan `coverMediaId`, karena keduanya dipotong untuk
+     * bingkai yang berbeda — sampul lebar dan kotak kartu. Memakai satu berkas
+     * untuk keduanya berarti salah satu selalu terpotong di tempat yang salah,
+     * biasanya tepat pada wajah orang. Kosong berarti kartunya jatuh kembali ke
+     * gambar utama.
+     */
+    thumbnailMediaId: text('thumbnail_media_id'),
 
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()

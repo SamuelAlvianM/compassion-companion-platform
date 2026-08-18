@@ -18,14 +18,12 @@ const orderOptions = [
   { value: 'oldest', label: 'Terlama' },
 ]
 
-const journals = [
-  { id: 'menemukan-arah', title: 'Menemukan Arah dalam Kebersamaan', status: 'Published', type: 'Sharing Journey', contributor: 'Imanuel Ananta', created: '31 Mar 2026', updated: '12 Mei 2026', date: '2026-05-12' },
-  { id: 'belajar-mendengarkan', title: 'Ketika Saya Belajar Mendengarkan', status: 'Published', type: 'Event Reflection', contributor: 'Nicholas', created: '1 Mei 2026', updated: '1 Mei 2026', date: '2026-05-01' },
-  { id: 'membawa-kegelisahan', title: 'Membawa Kegelisahan kepada Tuhan', status: 'Published', type: 'Event Reflection', contributor: 'Anna', created: '20 Apr 2026', updated: '20 Apr 2026', date: '2026-04-20' },
-  { id: 'kehadiran-membuka-ruang', title: 'Kehadiran yang Membuka Ruang', status: 'Published', type: 'Insight', contributor: 'Henk T. Sengkey', created: '8 Apr 2026', updated: '8 Apr 2026', date: '2026-04-08' },
-  { id: 'tiga-menit', title: 'Tiga Menit untuk Mendengarkan Diri', status: 'Published', type: 'Practice', contributor: 'Tim Compassionate Companion', created: '28 Mar 2026', updated: '28 Mar 2026', date: '2026-03-28' },
-  { id: 'mendampingi-lansia', title: 'Tips Mendampingi Lansia yang Susah Diatur', status: 'Draft', type: 'Practice', contributor: 'Maria', created: '21 Mar 2026', updated: '21 Mar 2026', date: '2026-03-21' },
-]
+// Daftarnya pindah ke `shared/jurnal.ts`: agregasi dashboard membaca daftar yang
+// sama, dan dua salinan akan menyimpang tanpa menghasilkan galat apa pun.
+// `#shared`, bukan jalur relatif: `../../../shared/jurnal` bekerja di dev tapi
+// gagal saat `nuxt build` — Rollup me-resolve dari berkas hasil bundel, yang
+// letaknya bukan lagi di pages/. Aliasnya disediakan Nuxt untuk direktori ini.
+import { JURNAL as journals } from '#shared/jurnal'
 
 const visibleJournals = computed(() => {
   const keyword = query.value.toLowerCase().trim()

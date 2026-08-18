@@ -16,19 +16,23 @@ const TZ = 'Asia/Jakarta'
 const gayaJam = (jam: string) => jam.replace(':', '.')
 
 /**
- * Baris jam sebuah event.
+ * Baris jam sebuah event — hanya dari `jamMulai`/`jamSelesai`, dua kolom yang
+ * benar-benar diisi lewat formulir.
  *
- * `waktu` adalah kolom teks bebas lama ("09.00 – 16.30 WIB"); ia hanya dipakai
- * kalau kedua kolom jam masih kosong, yaitu untuk event yang dibuat sebelum
- * timepicker ada.
+ * Kolom teks bebas lama `waktu` ("09.00 – 16.30 WIB", "16.00 WIB (hari 1) – 12.00
+ * WIB (hari 3)") dulu dipakai sebagai cadangan di sini. Cadangan itu **dicabut**:
+ * tidak ada satu pun formulir yang bisa menyunting `waktu`, jadi event yang jamnya
+ * sengaja dikosongkan admin tetap menampilkan jam warisan seed — dan tidak ada
+ * layar mana pun tempat itu bisa dibetulkan. Kosong lebih jujur; pemanggilnya yang
+ * memutuskan menggambar "—".
  */
 export const rentangJam = (
-  e: { jamMulai?: string | null, jamSelesai?: string | null, waktu?: string | null },
+  e: { jamMulai?: string | null, jamSelesai?: string | null },
   isEn = false,
 ) => {
   if (e.jamMulai && e.jamSelesai) return `${gayaJam(e.jamMulai)} – ${gayaJam(e.jamSelesai)} WIB`
   if (e.jamMulai) return `${isEn ? 'From' : 'Mulai'} ${gayaJam(e.jamMulai)} WIB`
-  return e.waktu ?? ''
+  return ''
 }
 
 /** "12 Agustus 2026" / "12 August 2026". */

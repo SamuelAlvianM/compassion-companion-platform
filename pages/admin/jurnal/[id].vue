@@ -43,8 +43,32 @@ function updateContent(event: Event) {
   content.value = (event.target as HTMLElement).innerHTML
 }
 
+// Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
+// bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
+const wajibKosong = belumDiisi
+
+/** Tombol simpan sudah pernah ditekan — penanda kolom wajib menyala dari sini,
+    bukan sejak formulir dibuka. */
+const dicoba = ref(false)
+
 function saveJournal() {
+  dicoba.value = true
   validationError.value = ''
+
+  // Kolom wajib diperiksa di sini juga, bukan hanya lewat atribut `required`:
+  // yang menyala di kolomnya menunjukkan MANA yang kurang, dan kalimat di sini
+  // menjelaskan kenapa tombolnya tidak melakukan apa-apa.
+  const kurang = [
+    ['Judul Jurnal', form.title],
+    ['Tipe Jurnal', form.journalType],
+    ['Nama Kontributor', form.contributor],
+    ...(form.journalType === 'event-reflection' ? [['Nama Event', form.eventName]] : []),
+  ].filter(([, nilai]) => kosongkah(nilai)).map(([label]) => label)
+
+  if (kurang.length) {
+    validationError.value = `Masih kosong: ${kurang.join(', ')}.`
+    return
+  }
   if (!content.value.trim()) {
     validationError.value = 'Konten jurnal perlu diisi terlebih dahulu.'
     return
@@ -71,12 +95,12 @@ function saveJournal() {
 
     <UCard class="mt-5" :ui="{ body: 'p-8' }">
       <UForm :state="form" class="space-y-6" @submit="saveJournal">
-        <UFormField label="Judul Jurnal" name="title" required>
-          <UInput v-model="form.title" placeholder="Masukkan judul jurnal" required class="w-full" />
+        <UFormField label="Judul Jurnal" name="title" required :error="wajibKosong(form.title, dicoba)">
+          <UInput v-model="form.title" placeholder="Masukkan judul jurnal" class="w-full" />
         </UFormField>
 
         <div class="grid gap-6 sm:grid-cols-2">
-          <UFormField label="Tipe Jurnal" name="journalType" required>
+          <UFormField label="Tipe Jurnal" name="journalType" required :error="wajibKosong(form.journalType, dicoba)">
             <USelect
               v-model="form.journalType"
               :items="journalTypeOptions"
@@ -89,6 +113,7 @@ function saveJournal() {
             label="Nama Event"
             name="eventName"
             required
+            :error="wajibKosong(form.eventName, dicoba)"
           >
             <USelect v-model="form.eventName" :items="events" placeholder="Pilih event" class="w-full" />
           </UFormField>
@@ -121,7 +146,7 @@ function saveJournal() {
               orientation="horizontal"
             />
           </UFormField>
-          <UFormField label="Nama Kontributor" name="contributor" required>
+          <UFormField label="Nama Kontributor" name="contributor" required :error="wajibKosong(form.contributor, dicoba)">
             <USelect
               v-if="form.contributorType === 'member'"
               v-model="form.contributor"
@@ -133,7 +158,6 @@ function saveJournal() {
               v-else
               v-model="form.contributor"
               placeholder="Nama kontributor non member"
-              required
               class="w-full"
             />
           </UFormField>

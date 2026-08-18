@@ -5,6 +5,802 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-14 — Sesi 13: Formulir tambah event berhenti jadi setengah formulir
+
+Revisi tinjauan 14 Agu. Yang menyatukannya: **halaman "Event baru" berhenti jadi
+versi pincang dari halaman ubah.** Ketiga tabnya ada, ketiganya bisa diisi, dan
+tidak ada satu baris pun yang masuk database sampai "Buat event" ditekan.
+
+### Tanggal selesai yang tertinggal di belakang tanggal mulai
+
+Bug yang dilaporkan langsung: pilih 4 Agu (tanggal selesai ikut terisi 4 Agu), lalu
+betulkan tanggal mulai jadi 14 Agu — selesai tetap 4 Agu, dan formulir berdiri
+dengan event yang berakhir sepuluh hari sebelum ia mulai.
+
+Sebabnya satu baris di `watch`: `if (!mulai || sebelumnya) return`. Ia sengaja
+hanya mengisi **sekali**, untuk melindungi event berhari-hari dari disingkat jadi
+sehari tiap tanggal mulainya dibetulkan (catatan Sesi 12). Perlindungannya benar,
+cakupannya yang kurang. Sekarang tiga aturan:
+
+| Keadaan tanggal selesai | Yang terjadi saat tanggal mulai berubah |
+|---|---|
+| kosong | ikut tanggal mulai |
+| sama dengan tanggal mulai **yang lama** | ikut terus — itu event sehari, selesainya cuma cerminan |
+| dipilih sendiri, dan mulai baru melewatinya | **digeser sejauh yang sama**, durasinya utuh |
+| dipilih sendiri, masih di belakang mulai | tidak disentuh |
+
+Terbukti di browser: 4 → 14 membawa selesai ke 14; event 14–17 yang mulainya
+dipindah ke 20 jadi **20–23**, bukan 20–20. `geserYmd()` lewat `Date.UTC`, bukan
+`new Date()` — jalur yang sama yang dulu memundurkan tanggal sehari.
+
+### Draf: tiga tab, nol permintaan, satu tombol
+
+Percobaan pertama sesi ini keliru arah: klik pada tab peserta/materi **melahirkan**
+eventnya lebih dulu supaya tabnya bisa dipakai. Ditolak, dan alasannya benar —
+keluar dari tab pertama jadi tindakan yang akibatnya jauh lebih besar dari yang
+terlihat, dan yang cuma mau *melihat* tab sebelah sudah terlanjur menerbitkan
+sesuatu.
+
+Jadi drafnya ditahan di halaman. `sesi` yang sama dipakai untuk dua-duanya, cuma
+dengan id `tmp-…` pada mode baru, sehingga seluruh template tidak perlu tahu
+bedanya. Empat komponen dapat prop `lokal` yang membuatnya **mengembalikan** draf
+alih-alih menyimpan sendiri: `SesiPengaturan` (lewat `ubah`), `SesiItemModal`,
+`GaleriUnggahModal`, dan `GaleriCropModal` (lewat `draf`).
+
+`buatEvent()` menulis semuanya berurutan — kegiatan → sesi → item → peserta —
+karena sesi butuh `kegiatanId` dan item butuh `sesiId`; tidak ada jalan serentak.
+Urutan tampilnya aman: `urutan` dihitung server dari MAX yang sudah ada, jadi
+mengirim satu per satu sesuai urutan draf sudah cukup. Sesi bawaan yang dibuatkan
+server dipakai ulang untuk draf pertama — kalau tidak, event berdraf satu sesi
+lahir dengan dua.
+
+**Berkas adalah pengecualian yang tidak bisa dihindari.** `mediaId` hanya lahir
+dari unggahan, jadi berkas naik saat dipilih. Kalau event batal dibuat, yang
+tertinggal berkas tanpa pemakai di pustaka — bukan event setengah jadi. Menahan
+belasan foto ponsel di memori sampai tombol ditekan adalah taruhan yang lebih buruk.
+
+### Peserta bisa dimasukkan tangan — endpoint yang selama ini tidak ada
+
+Asumsi awal saya salah dan sempat disampaikan sebagai fakta: "peserta tidak pernah
+dibuat dari dashboard". Benar untuk kode yang ada, keliru sebagai keputusan produk —
+sebagian orang membooking lewat WhatsApp atau di tempat, dan menyuruh mereka
+mendaftar ulang lewat halaman publik berarti mengulang pekerjaan yang sudah selesai.
+
+`POST /api/admin/events/[id]/peserta`. Sengaja lebih longgar dari pendaftaran
+publik: fase dan pendaftaran tertutup tidak diperiksa (pencatatan susulan justru
+paling sering terjadi sesudah pendaftaran ditutup), kuota tidak menolak (admin yang
+menambahkan orang ke-31 tahu betul ia yang ke-31). Yang tetap ketat: unique
+`(kegiatan_id, email)` dan format emailnya.
+
+Emailnya dicocokkan ke `cc_user` supaya `userId` ikut terisi — tanpa itu orang yang
+jelas punya akun muncul sebagai "Non member", lalu ada yang membuatkannya akun kedua.
+
+Formnya (`PesertaFormModal`) menyempit sampai tinggal yang benar-benar ditanyakan:
+
+- **Pilih dari member** — `USelectMenu` dengan pencarian bawaannya, bukan kotak cari
+  + daftar hasil buatan sendiri. Yang didapat gratis: navigasi papan ketik, penutupan
+  saat diklik di luar, dan bentuk yang sama dengan kotak pilihan lain di dashboard.
+  Daftarnya diambil sekali saat modal dibuka lalu disaring di klien; komunitas ini
+  tidak punya jumlah akun yang menuntut paginasi. `filterFields: ['label', 'email']` —
+  emailnya harus benar-benar ada di data yang disaring, kalau cuma digambar di slot,
+  mengetik alamat email tidak menemukan siapa pun.
+- **Institusi dicabut.** Kolomnya masih ada di `cc_peserta` dan masih diisi pendaftaran
+  publik; yang tidak ada gunanya adalah menanyakannya pada orang yang sedang mencatat
+  nama dari catatan WhatsApp.
+- **Status tidak ditanyakan** — selalu `baru`, sama seperti pendaftar publik. Versi
+  pertama menawarkan tiga pilihan dengan `konfirmasi` sebagai bawaan; itu keliru.
+  "Proses" dan "konfirmasi" mewakili pekerjaan nyata (menghubungi, memasukkan ke grup,
+  memverifikasi pembayaran), dan tab peserta sudah punya alur untuk memajukannya.
+  Kotak pilihan di form cuma menawarkan jalan pintas melewati alur itu.
+
+### Penanda kolom wajib, dan kenapa ia menunggu
+
+`utils/wajib.ts` — satu `belumDiisi(nilai, aktif)` untuk seluruh dashboard, keluarannya
+`string | undefined` supaya langsung masuk prop `error` milik `UFormField`. Dipakai
+form event, member, jurnal, dan modal peserta.
+
+Versi pertama menyalakannya sejak formulir dibuka. Diperbaiki: **baru menyala sesudah
+tombol simpan ditekan.** Formulir kosong yang langsung merah di mana-mana berhenti
+dibaca sebagai penanda, dan yang benar-benar terlewat nanti tenggelam di antaranya.
+
+Dua konsekuensi yang harus diikuti, dan keduanya sempat menggigit:
+
+- **Tombol simpan tidak boleh mati saat isian belum lengkap.** Kalau mati, tidak ada
+  yang bisa ditekan untuk memunculkan penandanya. Ia tetap hidup; menekannya
+  memindahkan halaman ke tab yang bermasalah dan menyalakan kolomnya.
+- **Atribut `required` bawaan HTML harus dicabut dari `<UInput>`.** Ia membatalkan
+  submit sebelum satu baris pun kode kita jalan, jadi penandanya tidak pernah sempat
+  menyala — yang muncul cuma balon peramban yang bentuknya bukan bentuk aplikasi ini.
+  `required` di `UFormField` tetap ada; itu yang menggambar bintangnya.
+
+`GambarField` dapat dua prop terpisah: `wajib` (bintang, sejak awal) dan `tandaGalat`
+(bingkai merah + "Belum diisi", sesudah ditekan). Gambar event kini **wajib saat
+membuat** — tidak ditegakkan pada mode ubah, karena event lama tanpa gambar akan
+membuat autosave menolak setiap perbaikan salah ketik yang tidak ada hubungannya.
+
+### Teks kepotong diganti teks membungkus
+
+`truncate` dicabut dari sepuluh tempat, diganti `break-words`. Nama panjang di
+sidebar admin, judul sesi, judul materi, nama berkas, baris pemilih member, label di
+`AdminAgregasi` — semuanya dulu berakhir dengan "…" yang menyembunyikan justru bagian
+yang membedakan satu baris dari baris lain. Kotaknya tumbuh sedikit; yang dibaca orang
+tidak lagi hilang.
+
+`line-clamp` di `RefleksiGrid` **dibiarkan** — itu kutipan refleksi di kartu berukuran
+tetap, bukan identitas yang harus terbaca utuh.
+
+### Sisanya, yang kecil-kecil
+
+- Kepala sesi jadi **satu baris**: lingkaran bernomor, judul, penanda simpan, sakelar
+  Tampil, geser, hapus. Sebelumnya empat baris untuk tiga hal — kepalanya digambar
+  induk, sakelarnya di tengah kotak isian, tombolnya di baris ketiga. Sekarang
+  `SesiPengaturan` menggambarnya sendiri bila diberi prop `nomor`; tanpa `nomor`
+  (penyuntingan di halaman event publik) bentuknya tidak berubah.
+- **Animasi saat urutan berubah** — `TransitionGroup name="urut"` di daftar sesi,
+  daftar item, dan pita galeri. `-leave-active { position: absolute }` wajib ada:
+  tanpa itu baris yang dihapus tetap memakan tempatnya sampai animasinya habis, dan
+  sisanya melompat dua kali.
+- Deskripsi ID & EN jadi **satu baris** dengan `autoresize` (maks 6). Kotak setinggi
+  tiga baris menjanjikan karangan panjang untuk kalimat pengantar kartu.
+- Batas akhir pendaftaran: tanggal dan jam dipisah **"–"**. Dua kotak bersebelahan
+  tanpa penghubung terbaca sebagai dua isian yang berdiri sendiri.
+- "Kuota" → **"Kuota peserta"**. Kolom tabel peserta: "Member" → "Status member",
+  "Pendaftaran" → "Status Pendaftaran", dan kolom tombol yang dulu tanpa judul kini
+  "Aksi".
+- Tombol "Tambah peserta" naik ke baris judul kartunya — di event baru maupun event
+  tersimpan, supaya tombol yang sama tidak berpindah tempat hanya karena eventnya
+  sudah punya baris di database. Judul modalnya diperbesar ke `font-serif text-2xl`;
+  ukuran bawaan `UModal` setara teks biasa, sehingga satu-satunya yang membedakan
+  judul dari kalimat di bawahnya cuma tebalnya.
+- **Kotak berkas di form materi jadi tombol** selebar satu baris penuh. `<input
+  type=file>` digambar peramban sendiri — "Choose File / No file chosen" dengan huruf,
+  tinggi, dan sudut yang tidak mengikuti satu pun isian lain di formulir itu. Persoalan
+  yang sama dengan `input type=date` yang dicabut di Sesi 12; jalan keluarnya juga
+  sama: inputnya disembunyikan, tombol yang mengkliknya.
+- **Tooltip `i` dicabut** dari kepala tab peserta, kepala "Sesi & materi", dan ketiga
+  bagian (materi/galeri/referensi). `petunjuk` di `BAGIAN` ikut dibuang — keterangan
+  yang tidak digambar di mana pun cuma menunggu dipakai lagi oleh yang mengira ia
+  masih tampil.
+
+### Video unggahan berhenti jadi warga kelas dua
+
+Dua hal yang membuatnya berperilaku beda dari YouTube, padahal bagi pembacanya
+keduanya sama-sama "rekaman sesi".
+
+**Diputar di halaman, bukan dilempar ke tab baru.** `bukaMateri()` dulu hanya
+menahan YouTube; video unggahan jatuh ke `window.open()`, dan di tab itu yang muncul
+pemutar telanjang milik peramban di atas latar hitam — tanpa judul, tanpa jalan
+kembali selain menutup tabnya. Sekarang satu modal untuk dua jenis: bingkai, judul,
+dan lebarnya sama, yang berbeda cuma isinya (`<iframe>` atau `<video>`). Sumbernya
+dilepas saat modal ditutup, kalau tidak `<video>` terus memutar di balik layar dan
+suaranya tetap terdengar sesudah modalnya hilang.
+
+**Server sekarang melayani `Range`.** Ini yang membuat videonya benar-benar bisa
+dipakai: tanpa permintaan sebagian, menggeser ke menit ke-10 berarti mengunduh
+sembilan menit pertama dulu, dan Safari menolak memutar sama sekali. Rekaman satu jam
+praktis mati. `[...path].get.ts` kini menjawab 206 dengan `Content-Range`, mengumumkan
+`Accept-Ranges: bytes` untuk semua berkas (peramban tidak bertanya dulu — ia mengirim
+`Range` kalau tahu itu didukung), dan menjawab 416 beserta ukuran sebenarnya untuk
+jangkauan di luar berkas. Dibuktikan di peramban: `bytes=1000-1999` → **206,
+`bytes 1000-1999/34763941`**, dan menggeser video 74 detik ke detik ke-60 mendarat
+tepat dengan `readyState` 4.
+
+### Unggahan besar akhirnya punya angka
+
+`utils/unggah.ts` — `unggahMedia(berkas, { onProgres })`, dipakai form materi.
+
+**XMLHttpRequest, bukan `$fetch`**, dan itu bukan kemunduran: `fetch` tidak punya cara
+melaporkan berapa banyak yang sudah terkirim (request body streaming ada di
+spesifikasi tapi belum bisa diandalkan lintas peramban), sementara
+`xhr.upload.onprogress` tidak punya pengganti yang setara. XHR di sini API bawaan
+peramban — bukan dependensi baru, bukan dari Nuxt UI. Yang dibungkus cuma satu
+permintaan; sisanya tetap `$fetch`.
+
+Rekaman sesi bisa puluhan MB — beberapa menit pada koneksi rumahan. Sebelum ini
+satu-satunya tandanya lingkaran berputar di tombol, bentuk yang sama persis dengan
+menyimpan tautan YouTube yang selesai dalam sekejap.
+
+Satu keputusan kecil yang menentukan: **`onprogress` tidak pernah dilaporkan sebagai
+100.** Ia menghitung byte yang TERKIRIM, bukan yang sudah diterima dan disimpan;
+antara byte terakhir berangkat dan balasan server tiba masih ada jeda yang pada
+berkas besar terasa penuh beberapa detik. "100%" yang menetap di situ terbaca sebagai
+macet. Angkanya ditahan di 99, dan 100 dipasang pemakainya sesudah promise selesai —
+dengan label yang ikut berganti dari "Mengunggah" jadi "Menyimpan".
+
+### Judul modal diatur sekali untuk semua
+
+`app.config.ts` → `ui.modal.slots.title`. Serif, 16px, tanpa penebalan. Bawaan Nuxt UI
+`font-semibold` tanpa serif, sehingga yang membedakan judul dari kalimat di bawahnya
+cuma tebalnya.
+
+Ditaruh di app config, bukan `:ui="{ title: … }"` di tiap UModal: modal tersebar di
+sebelas berkas, dan menempelkan kelas yang sama di sebelas tempat berarti yang
+berikutnya dibuat pasti terlewat — lalu ada satu modal berjudul lain sendiri di antara
+sepuluh. Percobaan pertama memakai `text-2xl` dan serif tebal; itu terbaca sebagai
+judul halaman, bukan judul kotak dialog.
+
+### Satu baris CSS yang menahan seluruh kerangka admin
+
+Judul kolom yang lebih panjang ("Status member", "Status Pendaftaran") membuat tabel
+peserta melebihi lebar kartu — dan yang bergeser ternyata **bukan tabelnya melainkan
+seluruh halaman**: judul, tab, dan sidebar ikut lari ke kiri, tombol "Tambah peserta"
+hilang di luar layar.
+
+Sebabnya bukan tabelnya. `.admin-shell` adalah grid `254px 1fr`, dan item grid punya
+`min-width: auto` — kolom `1fr` menolak menyusut di bawah lebar min-content isinya.
+`overflow-x-auto` pada tabelnya tidak menolong sama sekali selama kolom induknya
+masih boleh melebar. Yang memperbaiki satu baris di `.admin-main`: **`min-width: 0`**.
+Sesudah itu yang menggulir elemen yang memang punya overflow-nya sendiri.
+
+Percobaan pertama saya justru merusak halamannya: `<div class="overflow-x-auto">`
+disisipkan sebagai pembungkus UTable — padahal UTable di sana cabang `v-else` dari
+rangka pemuatan di atasnya. "v-else/v-else-if has no adjacent v-if", dan halaman admin
+mati sebelum tergambar. Pembungkus tidak boleh berdiri di antara dua cabang v-if.
+
+### Angka level tidak lagi diperlihatkan
+
+Sidebar dan halaman Petunjuk menampilkan "level 2" kepada admin dan editor. Bagi
+mereka itu nomor tanpa rujukan: tidak ada layar lain yang menyebutkannya, dan yang
+benar-benar menentukan apa yang bisa dikerjakan adalah nama rolenya — yang sudah
+tertulis di sebelahnya. Sekarang hanya master yang melihat angkanya, badge "Level n",
+dan kalimat yang menjelaskan perbandingan `level <= n`; sisanya membaca "Tiap role
+mencakup wewenang role di bawahnya." Rekap role di `/admin` sudah master-only sejak
+Sesi 11, jadi tidak perlu disentuh.
+
+### Bukti dari database
+
+| Uji | Hasil |
+|---|---|
+| `cck-SpGPsVgL` | peserta "User Percobaan" status `baru`, `user_id` tertaut, cover tersimpan |
+| `cck-mGGrKAB4` | referensi "Template refleksi harian" masuk ke sesi 1, `urutan` 0 |
+
+Keenam kegiatan uji (empat di antaranya duplikat hasil reload HMR) **sudah dihapus**
+beserta sesi, item, dan pesertanya; lima kegiatan asli utuh. Salinan database sebelum
+penghapusan ditaruh di scratchpad sesi ini, bukan di dalam repo.
+
+### Simpan member berakhir di daftarnya
+
+Add dan Edit Member kini sama-sama kembali ke `/admin/members` sesudah menyimpan.
+Sebelumnya hanya Edit yang begitu; Add tinggal di formulir karena passwordnya harus
+tetap terbaca, dan yang membuat tiga akun berturut-turut menekan "Kembali" sendiri
+tiap kali.
+
+Passwordnya tidak ikut hilang: ia dititipkan lewat `useState`, **bukan query di
+alamat** — password tidak boleh mampir ke riwayat peramban atau apa pun yang menyalin
+URL. Daftar member menampilkannya dalam pita yang menetap sampai ditutup (bukan toast
+yang lewat tiga detik), berikut tombol WhatsApp berisi pesan yang sudah tersusun.
+Dibaca sekali lalu dibuang, jadi menyegarkan halaman tidak memunculkannya lagi.
+
+**Password tidak bisa dilihat ulang, dan itu bukan kekurangan yang bisa ditambal.**
+Ditanyakan sesi ini: "bukain hash-nya lalu hash lagi, tidak bisa?" Tidak — scrypt
+bukan enkripsi, tidak ada kunci untuk membukanya; yang tersimpan cuma 64 byte hasil
+akhir, dan huruf aslinya tidak ada di dalamnya dalam bentuk apa pun. Login bekerja
+dengan MENGHITUNG ULANG hash dari yang diketik lalu membandingkannya. Aplikasi lain
+pun tidak menampilkan ulang — mereka menggantinya. Yang ditawarkan sebagai gantinya
+(tombol "buat & kirim ulang password", digerbangi password admin) belum jadi
+dikerjakan; alur reset lewat Edit Member yang sudah ada dianggap cukup.
+
+### Deploy
+
+Dikirim ke `compassionate-companion.com` (rsync `.output` + restart PM2), **tanpa**
+`--migrasi` dan **tanpa** `--kirim-db`: ketiga migrasi (0006–0008) sudah ada di server,
+sesi ini tidak mengubah skema, dan produksi memegang 4 kegiatan, 5 peserta, 6 akun
+yang tidak boleh tertimpa.
+
+Pemeriksaan origin bawaan deploy.sh menjawab `HTTP 000000` — **salah alarm**: ia
+menembak satu detik sesudah PM2 restart, sebelum Nitro sempat mendengarkan. Dicek
+ulang beberapa detik kemudian: `/` → 302, `/id` → 200.
+
+Bukti build barunya yang jalan, bukan yang lama: permintaan `Range: bytes=0-99` ke
+sebuah berkas di produksi dijawab **206 `bytes 0-77/78`** — handler yang ditulis hari
+ini, sekaligus membuktikan pemotongan jangkauannya benar pada berkas yang lebih kecil
+dari yang diminta.
+
+### Yang tertinggal
+
+- Kalau POST peserta gagal di tengah `buatEvent()` (email bentrok antar draf),
+  eventnya sudah tersimpan lengkap dan halaman sudah pindah ke mode ubah — yang perlu
+  diulang cuma baris peserta itu. Disengaja: peserta ditulis paling akhir justru
+  supaya kegagalan di situ tidak menyeret apa pun.
+- `EventRegisterPanel` (form pendaftaran publik) belum memakai `belumDiisi`. Ia
+  formulir untuk pengunjung, bukan admin, dan penanda yang menyala di sana menuntut
+  keputusan tersendiri.
+- **Bar progres unggahan belum pernah terlihat bergerak.** Di localhost unggahan
+  selesai terlalu cepat; yang terverifikasi jalur kodenya dan tampilannya, bukan
+  angkanya berjalan. Butuh video puluhan MB dari koneksi sungguhan untuk memastikan.
+- `[Icon] failed to load icon lucide:*` memenuhi log PM2 di server. Bukan hal baru dan
+  tidak menjatuhkan apa pun — ikonnya tetap tergambar di klien — tapi log jadi sulit
+  dibaca, dan sebabnya (koleksi ikon tidak ikut terbundel untuk sisi server) belum
+  ditelusuri.
+- `data/cc.db` lokal kini **73 MB**, 69 MB di antaranya blob video. Tidak
+  memperlambat query mana pun, tapi memperlambat tiap penyalinan dan pencadangan —
+  dan akan terus tumbuh tiap video diunggah. Produksi masih 16 MB.
+
+### Kecelakaan yang perlu dicatat
+
+`pages/admin/member/[id].vue` sempat **terhapus isinya**. Skrip Python yang dipakai
+menyunting gagal sesudah `open(p, 'w')` mengosongkan berkasnya — 279 baris jadi nol.
+Pemulihan lewat `git checkout HEAD` memperburuk: berkas itu punya perubahan yang belum
+di-commit dari sesi sebelumnya, dan checkout ikut membuangnya.
+
+Yang menyelamatkan: **source map di `node_modules/.cache/nuxt/`**. Vite menyimpan
+sumber asli tiap modul di `sourcesContent`, jadi versi 311 baris bisa diambil utuh
+dari sana. Pelajarannya dua, dan keduanya sudah berlaku sejak saat itu: sunting berkas
+dengan alat sunting, bukan skrip yang membuka berkas dalam mode tulis; dan jangan
+sekali-kali `git checkout HEAD --` pada berkas yang statusnya `M` tanpa tahu apa yang
+sedang dibuang.
+
+---
+
+## 2026-08-13 — Sesi 12: Formulir berhenti minta ditekan
+
+Menutup task yang disiapkan di awal sesi ini (revisi tinjauan 13 Agu). Dua puluh
+tiga butir; semuanya dikerjakan. Yang menyatukan sebagian besarnya satu kalimat:
+**isian di dashboard berhenti punya bentuknya sendiri-sendiri.**
+
+### Kotak tanggal akhirnya sewarna dengan yang lain
+
+`<input type="date">` dicabut dari empat tempat, digantikan **`TanggalPicker`** —
+`UPopover` + `UCalendar`, pasangan `WaktuPicker` yang sudah ada sejak Sesi 9.
+Tampilan `input type="date"` ditentukan browser, jadi ia berdiri sebagai satu-
+satunya kotak berbeda wajah di tengah formulir yang seluruh isiannya sudah seragam.
+
+Polanya pernah ada di project ini (filter tanggal halaman event, Sesi 4) lalu
+hilang bersama filternya di Sesi 10. Kali ini ia komponen, bukan salinan di tiap
+formulir. Dua jebakan lama yang sudah tercatat dan tetap berlaku: nilai kosong
+harus `undefined` bukan `null` (Reka UI membaca `null` sebagai nilai), dan
+`YYYY-MM-DD` disusun dari `year/month/day` langsung — tidak lewat `Date` maupun
+`toISOString()`, jalur yang dulu memundurkan tanggal sehari.
+
+`@internationalized/date` **dipromosikan jadi dependency eksplisit** di
+`package.json`. Ia sudah dipakai sejak Sesi 4 sebagai paket transitif `@nuxt/ui`;
+sekarang ada berkas yang mengimpornya langsung, jadi menggantungkannya pada pohon
+dependensi orang lain tidak lagi pantas.
+
+### Tombol simpan di form event dicabut, kecuali satu
+
+Tab identitas event kini menyimpan sendiri 800 ms sesudah pengetikan berhenti —
+pola yang sama dengan `SesiPengaturan` di tab sebelah. Yang berbeda cuma kabarnya:
+di sana ada baris "menyimpan…/tersimpan" yang menetap, di sini **toast satu detik**.
+Baris menetap masuk akal untuk satu baris pengaturan; di formulir sepanjang ini ia
+jadi teks yang berkedip di sudut mata tiap satu huruf diketik.
+
+**Tombol "Buat event" tetap ada pada event baru**, dan itu bukan kelalaian: event
+baru belum punya baris di database, jadi autosave berarti POST pertama terjadi
+tanpa ditekan siapa pun — pada formulir yang judulnya masih kosong dan pasti
+ditolak server. Sesudah eventnya lahir, halaman berpindah ke `/admin/event/<id>`
+dan autosave mengambil alih.
+
+Dua hal yang menahan autosave dari menuliskan sampah:
+
+- **`tersimpan`, sidik isian yang terakhir diketahui sudah tersimpan.** Tanpa itu
+  `muat()` — yang mengganti seluruh `form` dengan isi dari server — terbaca oleh
+  pengamat sebagai perubahan, lalu menuliskan balik persis apa yang barusan dibaca.
+  Menambah satu sesi pun akan memicu PATCH kegiatan yang tidak diminta siapa pun.
+- **`peringatan` menahan pengiriman.** Isian yang belum sah tidak dikirim; pesannya
+  sudah tergambar di layar, dan mengirimnya cuma menukar pesan itu dengan galat
+  server yang berbunyi sama.
+
+Galat **tidak** lewat toast. Yang gagal harus tetap terbaca sesudah beberapa detik
+berlalu, jadi ia mengendap di `UAlert` di kepala halaman.
+
+### Dua gambar, dua bingkai, dua berkas
+
+`coverMediaId` sudah hidup di form sejak lama tapi **tidak punya satu pun isian di
+layar** — satu-satunya jalan memasangnya adalah lewat database. Sekarang ada dua:
+**gambar utama** (16:9, sampul halaman detail) dan **thumbnail** (4:3, kartu daftar).
+
+Kolom baru `thumbnail_media_id` di `cc_kegiatan` (migrasi `0006`), bukan satu
+berkas untuk keduanya: bingkainya berbeda bentuk, dan memakai satu foto untuk
+keduanya berarti salah satu selalu terpotong di tempat yang salah — biasanya tepat
+pada wajah orang. Thumbnail kosong berarti kartunya jatuh kembali ke gambar utama,
+jadi tidak ada event yang mendadak kehilangan sampul.
+
+Alatnya tidak ditulis ulang: **`GambarField`** membungkus `GambarEditor` +
+`potongGambar` yang sudah dipakai unggahan galeri massal. `GambarEditor` dapat dua
+prop baru — `rasioTetap` (mengunci rasio; pada bingkai yang ukurannya sudah
+ditentukan, "bebas" bukan kebebasan melainkan jebakan) dan `tanpaGanti`.
+
+Yang diunggah **hasil potongannya**, bukan berkas aslinya. Menyimpan yang asli lalu
+memotongnya dengan CSS berarti pengunjung mengunduh foto ponsel 4 MB untuk melihat
+kartu selebar 320px.
+
+### PDF & video yang tidak bisa dibuka — sebabnya satu baris di server
+
+`sesi-payload.ts` mengirim `url: row.url`, dan **`row.url` selalu null untuk item
+berjenis berkas**: `SesiItemModal` menyimpan `url: null` bila jenisnya memakai
+unggahan. Alamat berkasnya ada, tapi ditaruh di `thumbnail`. Di klien
+`bukaMateri()` berbunyi `if (item.url) window.open(...)` — jadi klik pada PDF dan
+video **tidak melakukan apa pun, tanpa satu pun galat**.
+
+Sekarang `row.url ?? media?.url`. Dibuktikan dengan satu baris media + item
+sementara yang disisipkan langsung ke `data/cc.db`: endpoint publik menjawab
+`url: /api/storage/uploads/…/ccm-UJICOBA.pdf`, dan alamat itu menjawab **200
+`application/pdf`**. Kedua baris uji dihapus lagi sesudahnya.
+
+Perlu diketahui: seluruh materi di database sekarang masih memakai URL contoh
+(`https://example.org/modul.pdf`) dari seed. Itu **juga** tidak bisa dibuka, dan
+sebabnya berbeda — alamatnya memang tidak ada. Yang diperbaiki sesi ini jalur
+berkas yang sungguh-sungguh diunggah.
+
+### Materi: tiga jenis, dan saringan yang benar-benar menyaring
+
+Bagian materi kini menawarkan **PDF, video unggahan, YouTube** saja. Yang dibuang
+(Word/Excel/PPT, gambar, tautan web) bukan jenis yang tidak bisa ditampung
+melainkan jenis yang tidak bisa **dibuka** di halaman event: dokumen Office
+terunduh alih-alih terbaca, gambar tunggal sebenarnya galeri, tautan web sebenarnya
+referensi.
+
+Item lama berjenis yang sudah tidak ditawarkan **tetap muncul di kotak pilihannya
+sendiri** (`jenisTersedia`, berlabel "jenis lama"). Tanpa itu, membuka item lama
+menghasilkan `USelect` kosong dan menyimpannya akan diam-diam mengganti jenisnya.
+
+Dua hal yang dulu cuma disebutkan kini ditegakkan: **`accept`** mengikuti jenis
+yang dipilih (memilih PDF berarti dialog berkasnya hanya menawarkan PDF), dan
+**batas ukuran menolak berkasnya sebelum ia naik** — berkas dilepas dari input,
+bukan sekadar ditandai, karena kalau tetap menempel tombol "Tambah" akan
+mengirimnya juga. Menyebut batas tanpa menegakkannya berarti unggahan 300 MB
+berjalan beberapa menit hanya untuk dijawab 413 di ujungnya.
+
+**"Pilih dari pustaka" dicabut**, dan `PustakaMediaModal.vue` **dihapus** — bukan
+ditinggal menggantung; ia tidak punya pemakai lain. Endpoint `/api/media` yang
+melayaninya dibiarkan.
+
+### Galeri: pensil yang akhirnya memotong
+
+Tombol sunting & hapus pindah ke **pojok kanan atas fotonya** sebagai overlay.
+Keduanya bekerja pada gambar itu sendiri; berbaris di bawah bersama tombol geser,
+"hapus" duduk sejauh satu piksel dari "geser kanan". Yang tinggal di bawah cuma
+urutan.
+
+Pensilnya kini membuka **`GaleriCropModal`** — putar & potong foto yang sudah
+terunggah — bukan form "pilih berkas pengganti" seperti sebelumnya. Itu menjawab
+pertanyaan yang salah: yang biasanya ingin dilakukan orang pada foto yang sudah
+masuk bukan menggantinya, melainkan meluruskan yang miring.
+
+Hasilnya diunggah sebagai media **baru**, lalu `mediaId` item diarahkan ke sana.
+Menimpa berkas lama akan mengubah foto yang mungkin dipakai di tempat lain — dan
+alamat media di situs ini dicache `immutable`, sehingga berkas yang isinya berubah
+di alamat yang sama tidak akan pernah tergambar ulang di browser yang sudah pernah
+membukanya.
+
+### Peserta: tabel, dan modal yang jadi daftar periksa
+
+Kartu → **tabel enam kolom**: nama, email, WhatsApp, member, pendaftaran, aksi.
+Kartu masuk akal ketika tiap baris dibaca sebagai satu orang; yang sebenarnya
+dikerjakan di sini membandingkan kolom yang sama pada banyak orang — siapa yang
+belum punya akun, siapa yang belum dikonfirmasi — dan itu hanya terbaca kalau
+kolomnya sejajar.
+
+**"Status member" sebelumnya salah.** `berakun` adalah `Boolean(userId)`, dan
+`userId` hanya terisi bila orangnya mendaftar sambil sudah masuk. Peserta yang
+dibuatkan akun oleh admin sesudah mendaftar tetap terbaca "belum punya akun"
+selamanya — persis kebalikan dari apa yang baru saja dikerjakan admin. Sekarang
+emailnya ikut dicocokkan ke `cc_user`.
+
+Isi modal berubah dari "yakin?" jadi **daftar periksa**: yang dikonfirmasi bukan
+perpindahan statusnya melainkan pekerjaan di luar layar yang seharusnya sudah
+dikerjakan — menghubungi orangnya, memasukkannya ke grup WhatsApp, memastikan
+pembayarannya. Karena isinya daftar periksa dan bukan peringatan bahaya, ia bisa
+dimatikan lewat centang **"Jangan tampilkan pesan ini lagi"**.
+
+Keputusan-keputusan kecil di sekitar centang itu:
+
+- **`localStorage`, dua kunci terpisah.** Proses dan konfirmasi mengingatkan
+  pekerjaan yang berbeda; yang hafal langkah proses belum tentu hafal soal
+  pembayaran. Disimpan di peramban karena ini kebiasaan orang di depan layar,
+  bukan sifat akunnya — dan project ini belum punya satu pun kolom preferensi.
+- **`batal` dan `pulihkan` tidak pernah bisa dimatikan.** Keduanya mengubah
+  keikutsertaan orang, bukan menandai pekerjaan yang sudah selesai.
+- **Pendaftar non-member tidak ditawari centang.** Di sana ada langkah ketiga yang
+  berupa tautan ke form Add Member; mematikan pesannya berarti mematikan
+  satu-satunya jalan ke form itu.
+- Centang baru ditulis saat aksinya dijalankan. Membatalkan modal berarti tidak
+  ada yang berubah, termasuk centangnya.
+
+Tautan "buatkan akun untuk peserta" membawa **nama, email, dan WhatsApp** pendaftar
+sebagai query, jadi tidak perlu diketik ulang dari layar sebelah. Passwordnya
+sendiri **tidak** lewat alamat halaman — yang lewat cuma penanda `asal=peserta`,
+dan form mengisinya dari tetapan `PASSWORD_PESERTA` di `utils/akun.ts`. Angka yang
+tertulis di modal dan angka yang benar-benar terpasang datang dari satu tempat.
+
+### Daftar event: lima kolom jadi empat, dan urutan yang akhirnya jalan
+
+**Urutannya memang belum pernah jalan.** `urutan` dideklarasikan dan kotaknya
+tergambar, tapi nilainya tidak pernah dibaca siapa pun — tiap pilihan mengubah
+tulisan di kotaknya sendiri dan tidak lebih. Sekarang diurutkan di klien: daftar
+ini tidak berpaginasi, seluruh barisnya memang sudah di tangan. A–Z lewat
+`localeCompare('id')`, bukan `<` — yang terakhir mengurutkan menurut kode karakter,
+sehingga "wawancara" mendarat sebelum "Zoom" tapi sesudah "Bengkel".
+
+Penyusutan Sesi 10 menggabungkan kolom tanpa membuang isinya: lima kolom itu masih
+memuat tujuh angka per baris dan barisnya tiga tingkat tinggi. Yang benar-benar
+ditanyakan orang pada daftar ini cuma dua — event yang mana, dan mana yang menuntut
+dikerjakan sekarang. Sisanya satu klik dari sini, dalam bentuk yang bisa langsung
+disunting.
+
+Penanda pendaftar belum terkonfirmasi membawa **angkanya sendiri**; ikon telanjang
+cuma menyuruh membuka eventnya untuk tahu seberapa mendesak. Dihitung di SQL yang
+sama dengan jumlah peserta (`status in ('baru','proses')`).
+
+### Waktu event yang tidak pernah diisi siapa pun
+
+Yang tampil di halaman publik datang dari kolom lama `waktu` — teks bebas seperti
+`"16.00 WIB (hari 1) – 12.00 WIB (hari 3)"` — yang dipakai `rentangJam()` sebagai
+cadangan saat kedua kolom jam kosong. Kelima baris di `data/cc.db` memang begitu:
+`waktu` terisi dari seed, `jam_mulai`/`jam_selesai` null. Tidak ada satu pun form
+yang bisa menyunting `waktu`, jadi yang tampil tidak bisa dibetulkan dari layar
+mana pun.
+
+Cadangannya dicabut, kolomnya dikosongkan di database, dan `waktu` berhenti dikirim
+kedua endpoint publik. Halaman detail sekarang menggambar **—**. Kolomnya sendiri
+dibiarkan ada; menghapusnya menuntut migrasi yang tidak sebanding.
+
+### Sisanya
+
+- **"Area admin" → "Dashboard"** di menu profil, satu kata untuk kedua bahasa.
+- **Tanggal sesi dicabut.** Sesi adalah partisi sebuah event dan tanggalnya sudah
+  ditentukan tanggal eventnya; kolomnya menuntut diisi tanpa menentukan apa pun,
+  dan yang diisi asal justru bisa berselisih dengan jadwal di sebelahnya. Kolom
+  `tanggal` di `cc_sesi` dibiarkan — tidak ada halaman yang menggambarnya.
+- **Tanggal selesai mengikuti tanggal mulai, sekali.** Kalau ia terus mengikuti,
+  event tiga hari akan disingkat jadi sehari tiap kali tanggal mulainya
+  dibetulkan — dan itu baru terlihat setelah kartunya terbit.
+- **Batas pendaftaran tidak boleh melewati tanggal mulai**, ditegakkan di kalender
+  (`maksimal`), di `peringatan`, dan di `validasi-event.ts`. Dibandingkan sebagai
+  hari, bukan sebagai saat: batas "23.55 di hari acara" itu sah dan lazim.
+- **Empat tooltip `i` dicabut** dari form event (tautan daring, jam mulai, batas
+  akhir, kuota). Yang di kepala tab peserta & sesi tinggal — keduanya menjelaskan
+  alur kerja, bukan satu kolom isian.
+- **Member, mode ubah: simpan lalu kembali ke daftar.** Mode buat tetap tinggal —
+  pesan suksesnya memuat peringatan bahwa passwordnya tidak bisa dibaca lagi, dan
+  pergi ke daftar akan membawa peringatan itu pergi bersama halamannya. Kabar
+  "tersimpan" pindah ke toast, yang ikut berpindah bersama halaman.
+- **Sakelar akun aktif pindah ke paling bawah**, sesudah password, berbunyi "Akun
+  non aktif akan kehilangan akses untuk login." Menonaktifkan akun bukan bagian
+  dari mengisi datanya melainkan keputusan tersendiri.
+- **Keterangan di bawah judul field dibuang** di form member (Email, Role,
+  isActive, Password mode ubah).
+
+### Lingkaran hijau untuk tiap penyimpanan
+
+Diminta menyusul: tiap penyimpanan harus terlihat sedang berjalan. Tombol yang
+punya `:loading` sudah membawa lingkarannya sendiri; yang tidak punya tombol —
+autosave, dan tindakan yang menyimpan seketika — sebelumnya cuma menghasilkan
+kabar sesudah semuanya selesai.
+
+**`IndikatorSimpan`** menyatukan bentuknya: cincin berputar yang digambar sendiri
+(`border-2 border-current border-t-transparent`, bukan ikon — cincin yang satu
+sisinya transparan terbaca "sedang berjalan" tanpa perlu menebak arah putarannya)
+dalam **hijau situs**, `cc-green-800`. Hanya 'gagal' yang keluar dari hijau: ia
+menuntut dibaca, bukan diikuti. Ia menggantikan penanda teks di `SesiPengaturan`,
+sehingga "sedang menyimpan" tidak lagi punya dua wajah dalam satu halaman.
+
+Pada form event ia berdiri **di tempat tombol simpan dulu berada** — mata yang
+mencari "sudah tersimpan belum" mendarat di tempat yang sama seperti sebelumnya.
+`menunggu` menyala sejak ketikan berhenti, bukan sejak permintaannya berangkat:
+jeda 800 ms itu bagian dari penyimpanan bagi yang menatap layar.
+
+Tindakan sesi & item (tambah, geser, hapus) dulu **tidak punya umpan balik sama
+sekali**, padahal masing-masing memuat ulang seluruh halaman event sesudahnya.
+Sekarang lewat `jalankanAksi(kunci, kerja, pesanGagal)` dengan satu `aksiSibuk`
+berisi **kunci** tindakan yang sedang jalan — bukan satu boolean. Dengan boolean,
+menggeser satu foto akan membuat seluruh tombol di panel berputar sekaligus, dan
+yang mana yang sedang dikerjakan justru jadi tidak terbaca. `SesiPengaturan` dapat
+prop `aksiSibuk` untuk alasan yang sama.
+
+### "426 Upgrade Required" akhirnya punya sebab
+
+Tiga sesi menutup catatannya dengan keluhan yang sama: `localhost:3009` menjawab
+**426 Upgrade Required** sementara `127.0.0.1:3009` menjawab 200, dan itu dikira
+kendala pratinjau.
+
+Sebabnya bukan pratinjau. Dev stack Nuxt membuka **dua pendengar** pada port yang
+sama: aplikasinya di alamat yang disebut `devServer.host`, dan sebuah server
+**WebSocket** yang mengikat `::` — wildcard IPv6, yang di Windows ikut menerima
+IPv4. Permintaan HTTP biasa ke server WebSocket dijawab 426; itu bunyi protokolnya,
+bukan galat. Pendengar beralamat spesifik menang atas wildcard, jadi **hanya satu
+keluarga alamat yang benar-benar sampai ke aplikasi** — yang lain mendarat di
+WebSocket.
+
+`devServer.host` diubah `127.0.0.1` → **`localhost`**, karena itu yang diketik
+orang. Konsekuensinya terbalik dari sebelumnya dan perlu diingat: sekarang
+**`http://localhost:3009` yang benar, `http://127.0.0.1:3009` yang menjawab 426.**
+Keduanya tetap loopback, jadi niat semula (tidak mendengarkan di 0.0.0.0, tidak
+memicu izin firewall) tidak berubah.
+
+Dua hal sudah dicoba dan tidak berpengaruh, jadi tidak perlu diulang: memindahkan
+WebSocket itu lewat `vite.server.hmr.port` (ia bukan HMR Vite) dan mematikan
+`devtools` (bukan itu pemiliknya). Siapa pemilik pendengar `::` itu belum
+ditelusuri sampai tuntas.
+
+### Dashboard: sembilan angka, dan satu yang harus dibuat dulu
+
+Bagian agregasi diganti isinya mengikuti daftar peninjau. Judul "Agregasi" dan
+kalimat pengantarnya dicabut: keduanya menamai bentuk datanya, bukan menjawab apa
+pun yang dibawa orang ke halaman ini.
+
+Delapan dari sembilan angka sudah ada sumbernya. Satu tidak: **jumlah pengunjung
+web** — tidak ada satu pun penghitung kunjungan di project ini. Jadi dibuat.
+
+**Penghitung kunjungan, tanpa data pribadi.** Dua tabel: `cc_kunjungan` (satu
+angka per hari, berapa kali halaman dibuka) dan `cc_pengunjung` (satu baris per
+orang per hari). Orang dibedakan lewat hash dari IP + user-agent + **tanggal** +
+rahasia server. Tanggal ikut masuk ke dalam hash-nya dengan sengaja: itu membuat
+sidik orang yang sama berbeda tiap hari, sehingga tidak ada yang bisa dilacak dari
+satu hari ke hari berikutnya — bahkan oleh pemilik databasenya. Rahasianya
+mencegah hash dicocokkan balik ke IP yang ditebak satu per satu.
+
+Konsekuensinya jujur dan tertulis di layar: **satu orang yang datang tiga hari
+terhitung tiga.** Yang dijawab "berapa orang datang hari itu", bukan "berapa orang
+yang pernah datang".
+
+Middleware-nya menyaring keras — bukan `/api`, bukan `/_nuxt`, bukan `/admin`,
+bukan apa pun yang punya ekstensi berkas. Tanpa itu satu kali buka halaman
+terhitung puluhan kali. Kegagalan menulis ditelan diam-diam: penghitung statistik
+tidak boleh menjatuhkan halaman.
+
+**Jurnal pindah ke `shared/jurnal.ts`.** Daftarnya masih data tetap (jurnal belum
+punya CRUD), tapi sekarang punya dua pembaca — layar `/admin/jurnal` dan agregasi.
+Dua salinan akan menyimpang begitu salah satunya disunting, tanpa galat apa pun.
+
+Yang tergambar sekarang: enam kartu angka (kunjungan website, orang mengikuti
+event, member, jurnal dibuat, video, dokumen) dan empat grafik (kunjungan per
+bulan, pendaftar per bulan, jumlah event dengan sakelar bulan/minggu/tahun, event
+dan pesertanya). Kartu video, dokumen, jurnal, dan "orang mengikuti event" membuka
+daftar pembentuknya; kartu member menuju halamannya.
+
+Beberapa keputusan kecil yang menempel di angkanya:
+
+- **"Orang mengikuti event" dihitung per ORANG**, dibedakan lewat email — satu
+  orang yang ikut tiga event tetap satu. Yang `batal` tidak dihitung.
+- **Event dikelompokkan menurut tanggal mulai acaranya**, bukan tanggal barisnya
+  dibuat. Periode tanpa event tidak digambar: minggu-minggu kosong sepanjang
+  setahun membuat tiap batang setipis garis.
+- **Member menyaring master**, mengikuti aturan `/admin/members` — kalau tidak,
+  angka dashboard tidak akan pernah cocok dengan jumlah baris yang bisa dilihat.
+
+### Penanda simpan: yang berlangsung saja
+
+Putaran kedua atas permintaan peninjau. `IndikatorSimpan` sekarang **hanya
+menggambar keadaan yang sedang berlangsung** — lingkaran berputar hijau. Keadaan
+"tersimpan" dan "gagal" dicabut dari halaman.
+
+Alasannya bukan sekadar selera: penanda hasil yang menetap di tengah formulir
+menumpuk jadi kabar lama yang tidak pernah dibaca lagi. Begitu satu isian
+disunting, "Tersimpan" di sebelahnya sudah bohong. Hasil disampaikan **toast**
+(untuk yang berhasil) dan `UAlert` di kepala halaman (untuk yang gagal). Toast
+lewat, alert menetap — dan itu memang beda bobotnya.
+
+Toast dipindahkan ke **kanan atas** (`<UApp :toaster="{ position: 'top-right' }">`).
+Di dashboard, kabar "tersimpan" datang dari isian yang sedang dipandang di bagian
+atas layar; di sudut bawah ia lewat di luar arah pandang. `SesiPengaturan` ikut
+memakai toast, karena penanda teksnya baru saja dicabut.
+
+### Yang dikerjakan sesi ini
+
+- [x] Agregasi dashboard: judul & pengantar dicabut, isinya jadi enam kartu +
+      empat grafik mengikuti sembilan poin tinjauan
+- [x] `cc_kunjungan` + `cc_pengunjung` + middleware penghitung (migrasi 0007, 0008)
+- [x] `shared/jurnal.ts` — satu sumber untuk layar jurnal & agregasi
+- [x] `IndikatorSimpan` hanya menggambar "sedang menyimpan"; toast pindah ke
+      kanan atas; `SesiPengaturan` ikut memakai toast
+- [x] `components/IndikatorSimpan.vue` baru (cincin hijau); dipakai autosave form
+      event & `SesiPengaturan`
+- [x] `jalankanAksi` + `aksiSibuk` — tambah/geser/hapus sesi & item akhirnya punya
+      penanda per tombol
+- [x] `devServer.host` → `localhost`; sebab 426 dicatat
+- [x] `components/TanggalPicker.vue` baru; `<input type="date">` dicabut dari form
+      event, `SesiPengaturan`, dan `EventJadwal`
+- [x] `@internationalized/date` jadi dependency eksplisit
+- [x] Autosave + toast 1 detik di tab identitas event; tombol simpan tinggal di
+      mode buat; `tersimpan` menahan tulis-balik sesudah `muat()`
+- [x] Kolom `thumbnail_media_id` + migrasi `0006`; dibaca/ditulis GET, PATCH,
+      `validasi-event`, dan endpoint events publik (kartu memakai thumbnail dulu)
+- [x] `components/GambarField.vue` baru; `GambarEditor` dapat `rasioTetap` &
+      `tanpaGanti`
+- [x] `sesi-payload`: `row.url ?? media?.url` — PDF & video unggahan bisa dibuka
+- [x] Jenis materi jadi pdf/video/youtube; `jenisTersedia` menampung jenis lama
+- [x] `accept` per jenis + penolakan ukuran sebelum unggah di `SesiItemModal`
+- [x] "Pilih dari pustaka" dicabut; `PustakaMediaModal.vue` dihapus
+- [x] Tombol galeri pindah ke pojok foto; `components/GaleriCropModal.vue` baru
+- [x] `AdminPesertaTab` jadi tabel enam kolom; modal jadi daftar periksa dengan
+      centang senyap (localStorage, dua kunci) dan tautan buat-akun terisi
+- [x] `berakun` dicocokkan ke `cc_user` lewat email
+- [x] `utils/akun.ts` (`PASSWORD_PESERTA`) + prefill form Add Member dari query
+- [x] Urutan `/admin/events` tersambung (4 pilihan, `localeCompare('id')`); tabel
+      jadi 4 kolom; penanda `belumKonfirmasi` berangka
+- [x] `rentangJam` berhenti memakai `waktu`; kolomnya dikosongkan di `data/cc.db`;
+      `waktu` berhenti dikirim endpoint publik
+- [x] Batas pendaftaran ≤ tanggal mulai (kalender, peringatan, server)
+- [x] Tanggal sesi dicabut; tanggal selesai ikut tanggal mulai sekali
+- [x] Menu profil: "Dashboard"; form member: kembali ke daftar, sakelar pindah,
+      keterangan field dibuang
+- [x] Diuji: `nuxt build` sukses (48,1 MB); typecheck 29 galat — 27 baseline
+      Sesi 11 + 2 dari pekerjaan Highcharts yang belum di-commit, nol tambahan;
+      halaman event publik menggambar "—"; berkas unggahan dibuktikan terbuka
+      (200 `application/pdf`) lewat baris uji yang lalu dihapus
+
+### Deploy ke produksi
+
+`bash deploy/deploy.sh --migrasi`, didahului snapshot database produksi
+(`backup/backup-pra-sesi12-2026-08-13-2245.db`, 18,6 MB) — dokumen deploy
+menegaskan itu sebelum tiap migrasi, dan migrasi SQLite tidak punya rollback.
+
+**Build gagal pada percobaan pertama**, dan sebabnya layak diingat:
+`import { JURNAL } from '../../../shared/jurnal'` bekerja di dev tapi runtuh di
+`nuxt build` — `Could not resolve "../shared/jurnal.ts"`. Rollup me-resolve dari
+berkas hasil bundel, yang letaknya bukan lagi di `pages/`. Jalurnya diganti alias
+**`#shared/jurnal`** di kedua pemakainya. Dev server tidak akan pernah
+memperlihatkan kesalahan ini.
+
+Tiga migrasi jalan bersih di server (0006, 0007, 0008 → 14 tabel). Smoke test
+lolos: PM2 online, origin `127.0.0.1:3010` menjawab 302 ke `/id`, domain
+menjawab HTTP/2 200, `cloudflared` active, media BLOB terlayani
+(`200 image/png` — bukti tambalan sharp linux masih utuh), dan log aplikasi
+bersih.
+
+Yang dibuktikan di produksi, bukan cuma di lokal:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| Kolom `thumbnail_media_id` | ada di `cc_kegiatan` |
+| `cc_kunjungan` & `cc_pengunjung` | tercipta, dan langsung terisi (7 kunjungan, 1 orang) |
+| Baris "Waktu" halaman event | `—`, walau kolom `waktu` di 3 baris produksi masih terisi |
+
+Kolom `waktu` di produksi **tidak dikosongkan** — di lokal ia dikosongkan, di
+produksi tidak perlu: cadangannya sudah dicabut dari `rentangJam()`, jadi isinya
+tidak lagi sampai ke layar mana pun. Membersihkannya bisa menunggu.
+
+`NUXT_KUNJUNGAN_SECRET` diisi di `deploy/.env` (tidak ikut git) dan diteruskan
+lewat `ecosystem.config.cjs`. Tanpa itu hitungan orang terpecah tiap PM2 restart.
+
+### Catatan / risiko
+
+**Belum ada satu pun commit.** Seluruh sesi ini masih berupa perubahan di pohon
+kerja, sementara produksi sudah menjalankannya — deploy mengirim `.output`, bukan
+git. Selama itu belum di-commit, tidak ada satu pun titik yang bisa dijadikan
+acuan kalau harus mundur.
+
+**Layar admin belum disaksikan sesi ini.** Rute admin 302 tanpa sesi, dan
+memasukkan password bukan sesuatu yang boleh saya lakukan. Yang belum pernah
+tergambar di layar: tabel peserta enam kolom, modal daftar periksa, dua kotak
+gambar dan pemotongnya, toast autosave, `TanggalPicker`, tabel event empat kolom,
+dan tombol galeri di pojok foto. Semuanya lolos build & typecheck, tapi itu bukan
+hal yang sama.
+
+**`nuxt build` menimpa `.nuxt` milik server dev yang sedang jalan.** Terjadi sesi
+ini: bundel klien server di port 3009 jadi basi (`entry.js` 404) sementara SSR
+tetap benar. Jangan menjalankan `build`/`prepare` selagi `dev` hidup — atau
+jalankan ulang `dev` sesudahnya.
+
+**"Kadang tidak bisa disimpan, sepertinya corrupt" belum ketemu.** Tidak
+direproduksi, jadi tidak ditebak-tebak perbaikannya. Yang dicurigai tetap sama:
+seluruh berkas dibaca ke memori sebagai satu Buffer (`readMultipartFormData`) lalu
+disimpan sebagai blob SQLite, dan tidak ada batas ukuran badan permintaan yang
+disetel di mana pun. Penolakan ukuran di sisi klien yang ditambahkan sesi ini
+menutup pemicu yang paling mungkin — unggahan melebihi batas yang dulu tetap
+berangkat — tapi itu bukan bukti bahwa sebabnya memang itu.
+
+**Angka kunjungan mulai dari nol hari ini.** Penghitungnya baru ada sejak sesi
+ini (13 Agu 2026), jadi grafik dua belas bulan hanya berisi satu titik yang tidak
+nol. Tidak ada cara mengisi mundur — data itu memang belum pernah dikumpulkan.
+
+**Rahasia sidik pengunjung belum dipasang di `.env`.** Tanpa
+`NUXT_KUNJUNGAN_SECRET`, middleware memakai nilai acak yang lahir bersama proses
+— artinya hitungan orang bisa terpecah setelah server dijalankan ulang di tengah
+hari (satu orang terhitung dua). Layak diisi sebelum dipakai sungguhan.
+
+**Seed masih menulis `waktu`.** `server/db/seed.ts` tetap memasang teks jam bebas.
+Kolomnya sudah tidak dibaca siapa pun, jadi tidak berbahaya — tapi `db:seed` pada
+database kosong akan mengisinya lagi.
+
+**Item materi berjenis lama masih ada di database.** Yang berjenis `dokumen`,
+`gambar`, atau `tautan` di bagian materi tetap tergambar dan bisa dihapus, tapi
+tidak bisa dibuat lagi. Tidak ada migrasi yang memindahkannya ke bagian yang benar.
+
+---
+
 ## 2026-08-12 — Sesi 11: Halaman member berhenti jadi tempat membaca
 
 Menutup task yang disiapkan di akhir Sesi 10 (tinjauan pukul 13.22 & 13.26).
@@ -180,6 +976,266 @@ dikerjakan tanpa diminta.
 
 **Bawaan `GET /api/events` berubah arah.** Kalau suatu saat ada pemakai kedua
 endpoint itu, ia akan menerima urutan menurun — bukan menaik seperti dulu.
+
+### Task berikutnya: revisi tinjauan 13 Agu — dashboard event, peserta, materi
+
+Belum dikerjakan; ini catatan persiapannya. Empat kelompok, dan yang menyatukan
+tiga di antaranya satu kalimat: **isian di dashboard harus berbentuk sama dengan
+isian lain di situs ini.** Tanggal masih `<input type="date">` bawaan browser
+sementara jam sudah punya `WaktuPicker`; form event masih punya tombol simpan
+sementara sesi di sebelahnya sudah menyimpan sendiri; peserta masih kartu
+sementara member sudah tabel.
+
+#### Keadaan pohon kerja saat task ini ditulis
+
+Ada perubahan **belum di-commit** yang menyentuh berkas yang sama dengan task ini:
+`pages/admin/events.vue`, `pages/admin/index.vue`, `pages/events/index.vue`, plus
+tiga berkas baru (`components/AdminAgregasi.vue`, `components/GrafikHighcharts.vue`,
+`server/api/admin/agregasi.get.ts`) dan `highcharts` di `package.json`. Dari
+situlah kotak urutan di `/admin/events` berasal. Periksa dulu sebelum menyunting —
+jangan sampai pekerjaan yang belum tercatat itu tertimpa.
+
+#### 1. `/admin/events` — urutan yang belum tersambung, tabel yang terlalu penuh
+
+**Urutannya memang belum jalan.** `urutan` dideklarasikan di `events.vue:101` dan
+kotaknya tergambar di `:353`, tapi nilainya tidak pernah dipakai: `events`
+(`:40`) mengembalikan `data.value.data` apa adanya, dan `useFetch` (`:33`) tidak
+mengirimkannya sebagai query. Server pun tidak menerimanya —
+`server/api/admin/events/index.get.ts:32` mengunci `orderBy(desc(tanggalMulai))`.
+
+Daftar ini **tidak berpaginasi** (seluruh baris dikirim sekaligus), jadi urutkan
+di klien: satu `computed` di atas `events`, persis seperti `switch` di
+`pages/events/index.vue:144–155` yang sudah bekerja untuk keempat pilihan yang
+sama. A–Z lewat `localeCompare('id')`, bukan `<` — tanpa itu judul berawalan
+huruf besar/kecil terurut menurut kode karakter.
+
+**Tabelnya disederhanakan.** Lima kolom sekarang (`:143–149`) memuat tujuh angka:
+judul + lokasi, tanggal mulai + selesai + jam + batas pendaftaran, sesi + materi +
+terdaftar/kuota, fase, aksi. Yang perlu dijawab daftar ini cuma "event mana" dan
+"mana yang menuntut dikerjakan" — sisanya ada di halaman eventnya.
+
+**Penanda peserta belum terkonfirmasi.** `terdaftar` di endpoint (`:69`) menghitung
+semua yang bukan `batal`, jadi belum bisa membedakan yang menunggu. Tambahkan satu
+hitungan lagi di query peserta (`:33–38`) — `status in ('baru','proses')` — lalu
+ikon orang merah muncul hanya bila angkanya > 0, dengan tooltip yang menyebut
+angkanya. Ikon tanpa angka menyuruh orang membuka eventnya hanya untuk tahu
+apakah perlu dibuka.
+
+#### 2. Form event: bentuk isian, autosave, dan dua gambar
+
+Add dan edit **sudah satu berkas** (`pages/admin/event/[id].vue`, `baru = id ===
+'new'`). Yang membedakan cuma tab: pada event baru hanya "Informasi utama" yang
+ada (`:232–238`), karena peserta & materi butuh `kegiatanId`. Peninjau menyebut
+itu boleh tetap begitu — jadi yang dikerjakan bukan menyamakan tabnya, melainkan
+menyamakan **isian di dalamnya** dengan sisa situs.
+
+**Datepicker.** Ini menyentuh lebih dari satu berkas dan sebaiknya jadi satu
+komponen `TanggalPicker`, sejajar `WaktuPicker`:
+
+| Berkas | Baris | Kolom |
+|---|---|---|
+| `pages/admin/event/[id].vue` | 320, 326 | tanggal mulai, tanggal selesai |
+| `pages/admin/event/[id].vue` | 359 | tanggal batas pendaftaran |
+| `components/SesiPengaturan.vue` | 136 | tanggal sesi (lihat §4 — mungkin dicabut) |
+| `components/EventJadwal.vue` | 191 | batas pendaftaran, mode sunting di halaman publik |
+
+Polanya sudah pernah ada di project ini: `UPopover` + `UCalendar`, dipakai filter
+tanggal halaman event sampai dicabut di Sesi 10 — catatannya di Sesi 4
+("Datepicker: `<input type=date>` → `UCalendar`"). Dua jebakan yang sudah tercatat
+di sana dan masih berlaku: `UCalendar` memakai `DateValue` dari
+`@internationalized/date` (transitif dari `@nuxt/ui`, **belum** ada di
+`package.json` — pantas dipromosikan sekalian), dan kosong harus `undefined`
+bukan `null`, karena Reka UI membaca `null` sebagai nilai. `keYmd()` disusun dari
+`d.year/month/day` langsung, jangan lewat `Date` — di situlah bug "tanggal mundur
+sehari" dulu lahir.
+
+**Tanggal selesai mengikuti tanggal mulai.** Isi otomatis saat tanggal mulai
+diketik **pertama kali** dan kolom selesai masih kosong; sesudah itu tidak lagi —
+`watch` yang menimpa terus akan membatalkan event tiga hari setiap tanggal
+mulainya dibetulkan. Hint `"boleh sama dengan tanggal mulai"` (`:322`) dibuang.
+
+**Batas pendaftaran tidak boleh mendahului tanggal mulai.** Sekarang tidak ada
+yang mencegahnya, di klien maupun di server. Pasang `max` pada picker-nya,
+tambahkan satu kalimat di `peringatan` (`:98–107`, tempat dua aturan sejenis sudah
+tinggal), dan tegakkan ulang di `server/utils/validasi-event.ts` — atribut picker
+tidak berlaku bagi permintaan yang datang bukan dari form ini.
+
+**Autosave, tombol simpan dicabut.** Polanya sudah ada di `SesiPengaturan.vue`:
+jeda 800 ms setelah pengetikan berhenti (`:102`), perbandingan draf lama vs baru
+supaya tidak menyimpan yang tidak berubah (`:51`). Yang diminta berbeda di
+tampilannya — **bukan** teks "menyimpan…/tersimpan" seperti di sana, melainkan
+toast sekejap (±1 detik). Tiga hal yang menuntut keputusan sebelum ditulis:
+
+- **Event baru belum punya baris di database.** Autosave berarti POST pertama
+  terjadi tanpa ditekan siapa pun, dan judul kosong akan ditolak server. Usul:
+  pada mode `baru` tombol "Buat event" **tetap ada**, dan autosave baru menyala
+  setelah eventnya lahir. Itu juga yang membuat pindahnya ke `/admin/event/<id>`
+  tetap punya pemicu yang jelas.
+- **Galat autosave tidak boleh jadi toast yang lewat begitu saja.** Yang gagal
+  harus tetap terbaca sesudah toast-nya hilang — `UAlert` di `:283` sudah ada,
+  pakai itu untuk gagal, toast hanya untuk berhasil.
+- `useToast()` dari Nuxt UI belum dipakai di mana pun dalam project ini; ini
+  pemakaian pertamanya.
+
+**Tooltip `i` dicabut** di empat kolom: tautan daring (`:310–315`), jam mulai
+(`:336–341`), batas akhir pendaftaran (`:352–357`), kuota (`:364–369`). Bukan
+tooltip: yang di kepala tab peserta (`:389`) dan sesi (`:405`) — keduanya
+menjelaskan alur kerja, bukan satu kolom isian.
+
+**Thumbnail & gambar utama.** `coverMediaId` sudah hidup di form (`:32`, `:76`)
+tapi **tidak punya satu pun isian di layar** — jalan satu-satunya memasangnya
+sekarang lewat database. Yang diminta dua gambar, dan database baru punya satu
+kolom, jadi ini menyentuh skema: tambah `thumbnail_media_id` di `cc_kegiatan` +
+migrasi `0006_*.sql` (`npm run db:generate`), lalu ikutkan di
+`server/api/admin/events/[id].patch.ts:48` dan di kedua endpoint baca.
+
+Alat potongnya sudah ada dan tidak perlu ditulis ulang: `GambarEditor.vue`
+(putar/potong/zoom, rasio terkunci) + `utils/potongGambar.ts`, dipakai
+`GaleriUnggahModal.vue`. Kunci rasionya per peran — sampul kartu event dirender
+setinggi 176px dengan `background-image` (lihat Sesi 4), jadi rasio lebar untuk
+gambar utama dan kotak untuk thumbnail; ukuran pastinya disepakati saat
+dikerjakan.
+
+#### 3. Tab peserta: tabel, dan modal yang menyebut pekerjaannya
+
+**Kartu → tabel** (`components/AdminPesertaTab.vue:232–301`). Enam kolom: nama,
+email, WA (`noHp`), status member, status pendaftaran, aksi. Chip filter di
+`:176–198` tetap — ia menjawab pertanyaan lain.
+
+**"Status member" belum benar-benar ada.** Yang dikirim server adalah `berakun`
+(`peserta.get.ts:76`), dan itu `Boolean(userId)` — true hanya bila orangnya
+mendaftar **sambil sudah masuk**. Peserta yang dibuatkan akun oleh admin sesudah
+mendaftar akan tetap terbaca "non member", padahal akunnya ada — dan justru itu
+yang menentukan modal mana yang muncul di §berikut. Yang benar: cocokkan
+`ccPeserta.email` ke `cc_user` di endpoint yang sama, satu `leftJoin`.
+
+**Modal per aksi.** Modalnya sudah ada (`:308–351`) dengan isi yang ditentukan
+`dialog` (`:94–138`); yang berubah isinya, dan salah satunya bercabang menurut
+status member:
+
+- **Proses, non member** — daftar tiga langkah, dan baris ketiga ("buatkan akun
+  untuk peserta, default pass: 123456") **bisa diklik** ke form add member. Perlu
+  diputuskan: tautannya membawa nama/email/WA peserta lewat query supaya formnya
+  sudah terisi (`/admin/member/new?nama=…&email=…`), atau polos. Yang pertama
+  jauh lebih berguna dan `pages/admin/member/[id].vue` tinggal membaca
+  `route.query` saat `baru`. Perlu diputuskan juga apakah membuka form itu
+  meninggalkan halaman event — kalau ya, statusnya belum sempat dimajukan.
+- **Proses, member** — dua langkah + checkbox "Jangan tampilkan pesan ini lagi".
+- **Konfirmasi** — kalimat pembayaran & hak atas materi + checkbox yang sama.
+
+Checkbox itu perlu tempat menyimpan. Usul: `localStorage`, dua kunci terpisah
+(proses dan konfirmasi punya arti berbeda, mematikan yang satu tidak boleh ikut
+mematikan yang lain). Kalau disimpan per akun di database, ia jadi kolom
+preferensi pertama di project ini — layak ditanyakan lebih dulu. Yang penting:
+saat pesannya dimatikan, aksi tetap harus punya cara dibatalkan — jangan sampai
+satu klik langsung mengubah status tanpa jalan mundur (`pulihkan` sudah ada untuk
+`batal`, tapi tidak ada yang memundurkan `proses` → `baru`).
+
+Semua kalimat baru butuh versi EN — lihat syarat dwibahasa; `AdminPesertaTab`
+sekarang **belum** punya `isEn` sama sekali, tidak seperti komponen event lain.
+
+#### 4. Materi: jenis yang disempitkan, berkas yang tidak bisa dibuka
+
+**Bug: berkas unggahan memang tidak bisa dibuka, dan sebabnya di server.**
+`server/utils/sesi-payload.ts:102` mengirim `url: gembok ? null : row.url` — dan
+`row.url` **selalu null untuk item berjenis berkas**, karena `SesiItemModal`
+menyimpan `url: null` bila `pakaiBerkas` (`SesiItemModal.vue:164–165`). Alamat
+berkasnya ada, tapi ditaruh di `thumbnail` (`sesi-payload.ts:104`,
+`media?.url`). Di klien, `bukaMateri()` (`EventResources.vue:145`) berbunyi
+`if (item.url) window.open(...)` — jadi klik pada PDF dan video **tidak melakukan
+apa pun**, tanpa galat. Perbaikannya di server, satu baris: `row.url ?? media?.url`.
+Endpoint `/api/storage/[...path]` sendiri sudah benar (PDF & video inline,
+`Content-Disposition` di `:33–36`).
+
+**"Kadang tidak bisa disimpan, sepertinya corrupt" — belum ketemu, ini yang
+dicurigai.** Seluruh berkas dibaca ke memori sebagai satu Buffer
+(`readMultipartFormData`, `upload.post.ts:20`) lalu disimpan sebagai blob SQLite;
+video 100 MB melewati jalur itu utuh. Batas ukuran badan permintaan tidak disetel
+di mana pun (`nuxt.config.ts` tidak punya blok `nitro`), jadi yang berlaku bawaan
+Nitro — dan kegagalannya bisa muncul sebagai permintaan yang putus, bukan sebagai
+galat yang terbaca. Reproduksi dulu dengan satu video besar sambil membaca log
+dev sebelum menulis perbaikan apa pun; jangan menebak.
+
+**Jenis materi jadi tiga**: `pdf`, `video (unggah)`, `youtube`
+(`SesiItemModal.vue:82–89`). Yang dibuang: dokumen Word/Excel/PPT, gambar, tautan
+web. Perhatikan — daftar itu **hanya untuk bagian "materi"**; `referensi`
+(`:75–81`) tetap butuh tautan web dan `galeri` tetap gambar. Item lama berjenis
+yang dihapus masih ada di database: pastikan yang sudah tersimpan tetap tergambar
+dan bisa dihapus, jangan sampai `USelect` kosong menolak menyimpan barisnya.
+
+**Saringan berkas mengikuti jenis.** `<UInput type="file">` di `:227–231` tidak
+punya `accept` sama sekali, jadi dialog berkas menawarkan segalanya. Petakan
+jenis → `accept` (`application/pdf`, `video/*`).
+
+**Batas ukuran ditegakkan sebelum unggah.** `batasBerkas` (`:97–101`) hanya
+*menyebutkan* batasnya; yang melebihi tetap terkirim lalu ditolak server 413
+setelah seluruh berkasnya naik. Periksa `berkas.size` di `@change` dan tolak di
+situ, dengan pesan yang menyebut ukuran berkasnya **dan** batasnya. Angkanya
+harus tetap cermin `MEDIA_LIMITS` (`server/utils/media-services.ts:19–23`).
+
+**"Pilih dari pustaka" dicabut** (`:232–240`). Ikut terbawa: `pustakaTerbuka`,
+`namaDariPustaka`, `pilihDariPustaka`, `<PustakaMediaModal>` di `:293–298`, dan
+`namaPilihan` (`:124–128`) yang tinggal punya dua cabang. `PustakaMediaModal.vue`
+sendiri **jangan dihapus** sebelum dipastikan tidak ada pemakai lain.
+
+**Tanggal sesi dicabut** — `SesiPengaturan.vue:136` beserta `tanggalYmd` di draf
+(`:43`, `:51`, `:85`) dan pemetaan di `[id].vue:80`. Kolom `tanggal` di `cc_sesi`
+dibiarkan; yang dicabut isiannya. Periksa dulu apakah halaman event publik
+menggambar tanggal sesi di suatu tempat — kalau ya, ia akan jadi baris kosong.
+
+**Galeri.** Tombol hapus dan ubah pindah ke **pojok kanan atas gambarnya** sebagai
+overlay (`pages/admin/event/[id].vue:521–538`; sekarang keempat tombol berbaris di
+bawah foto). Tombol geser kiri/kanan tetap di bawah — keduanya soal urutan, bukan
+soal foto itu sendiri. Pensilnya harus membuka **editor potong**, bukan
+`SesiItemModal` seperti sekarang (`bukaUbahItem`, `:198–204`): pakai `GambarEditor`
+yang sama dengan `GaleriUnggahModal`, dan hasil potongannya diunggah sebagai media
+baru lalu `mediaId` item ditunjuk ulang lewat PATCH.
+
+#### 5. Yang berdiri sendiri
+
+- **`layouts/default.vue:20`** — "Area admin" / "Admin area" jadi **"Dashboard"**
+  di menu profil. Satu kata untuk kedua bahasa.
+- **Waktu event yang tidak pernah diisi admin.** Yang tampil di halaman publik
+  datang dari kolom lama `waktu` — teks bebas seperti
+  `"16.00 WIB (hari 1) – 12.00 WIB (hari 3)"` — yang dipakai `rentangJam()`
+  sebagai cadangan saat `jamMulai`/`jamSelesai` kosong
+  (`utils/waktuEvent.ts:31`). Keempat baris di `data/cc.db` memang begitu:
+  `waktu` terisi dari seed, `jam_mulai`/`jam_selesai` **null**. Tidak ada satu pun
+  form yang bisa menyunting `waktu`, jadi yang tampil tidak bisa dibetulkan
+  siapa pun dari layar mana pun. Buang cadangannya (baris itu jadi `return ''`),
+  sehingga `EventJadwal.vue:46` menggambar `—`; kosongkan juga kolomnya di
+  database supaya tidak ada yang menghidupkannya lagi tanpa sengaja. Kolomnya
+  sendiri boleh tetap ada — menghapusnya menuntut migrasi yang tidak sebanding.
+- **Member: simpan lalu kembali ke daftar.** `pages/admin/member/[id].vue:111–156`.
+  **Ini bertabrakan dengan Sesi 11**: pada mode add, `sukses` menyuruh mengirim
+  passwordnya lewat WhatsApp sekarang juga karena tidak bisa dibaca lagi, dan
+  tautan "Lanjut ubah akun ini" (`:265–274`) sengaja ditaruh di situ. Pergi ke
+  daftar berarti pesan itu hilang bersama halamannya. Usul: **mode edit** kembali
+  ke daftar (tidak ada yang hilang di sana), **mode add** tetap tinggal — atau
+  passwordnya ikut ditampilkan sekali lagi di daftar, yang jelas lebih buruk.
+  Perlu diputuskan peninjau.
+- **Sakelar akun aktif pindah ke paling bawah**, sesudah password
+  (`:209–211` → sesudah `:248`), dengan bunyi **"Akun non aktif akan kehilangan
+  akses untuk login."**
+- **Keterangan di bawah field dibuang**: `description` di `:197` (Email), `:205`
+  (Role), `:209` (isActive — diganti wording di atas), `:221` (Password mode
+  edit). `hint` di `:219` bukan keterangan di bawah judul; ia menempel di kanan
+  label dan boleh tinggal.
+
+#### Yang perlu diperiksa setelah dikerjakan
+
+- Autosave tidak boleh menyimpan pada saat form baru selesai dimuat — `muat()`
+  mengganti seluruh `form`, dan `watch` yang polos akan membaca itu sebagai
+  perubahan lalu menulis balik apa yang baru saja dibaca.
+- Empat pilihan urutan di `/admin/events` disaksikan langsung, dua arah masing-
+  masing — ini persis kesalahan Sesi 11 (label tertukar arah) pada halaman lain.
+- PDF dan video yang diunggah benar-benar terbuka dari halaman event publik,
+  sebagai peserta maupun sebagai pengelola.
+- Peserta non-member vs member membuka modal yang berbeda, sesudah akunnya
+  dibuatkan admin (itu kasus yang sekarang salah).
+- Teks EN untuk setiap kalimat baru — modal peserta, toast, wording sakelar akun.
+- Typecheck: baseline 27 galat lama (Sesi 11), nol tambahan.
+- Pratinjau lewat **`127.0.0.1:3009`**, bukan `localhost:3009` (Sesi 11).
 
 ---
 

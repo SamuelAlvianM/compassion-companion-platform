@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // Daftar event admin — kini dari database, bukan array literal.
 // Draft ikut tampil di sini (berbeda dari /api/events publik yang menyaringnya).
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: "admin" });
 
-const cari = ref('')
+const cari = ref("");
 // 'semua' sebagai sentinel: Reka UI memesan string kosong untuk keadaan "belum
 // dipilih" dan melempar error kalau ada item bernilai ''.
 //
@@ -11,90 +11,168 @@ const cari = ref('')
 // (draft/terbit/selesai/batal) sudah tidak dipasang formulir mana pun sejak fase
 // dijadikan murni turunan tanggal, jadi menyaringnya hanya akan menawarkan
 // pembedaan yang tidak bisa lagi dibuat siapa pun.
-const fase = ref('semua')
+const fase = ref("semua");
 
 // Pencarian di-debounce supaya tiap ketikan tidak jadi satu permintaan.
 // Ditulis manual, mengikuti pola yang sama di pages/admin/members.vue — VueUse
 // tidak terpasang sebagai modul Nuxt di project ini, jadi refDebounced tidak
 // tersedia lewat auto-import.
-const cariDebounce = ref('')
-let timer: ReturnType<typeof setTimeout> | undefined
+const cariDebounce = ref("");
+let timer: ReturnType<typeof setTimeout> | undefined;
 watch(cari, (nilai) => {
-  clearTimeout(timer)
-  timer = setTimeout(() => { cariDebounce.value = nilai }, 300)
-})
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    cariDebounce.value = nilai;
+  }, 300);
+});
 
-const { data, status: muat, refresh } = useFetch('/api/admin/events', {
+const {
+  data,
+  status: muat,
+  refresh,
+} = useFetch("/api/admin/events", {
   query: computed(() => ({
     cari: cariDebounce.value || undefined,
-    fase: fase.value === 'semua' ? undefined : fase.value,
+    fase: fase.value === "semua" ? undefined : fase.value,
   })),
-})
+});
 
-const events = computed(() => data.value?.data ?? [])
-const perFase = computed(() => data.value?.meta?.perFase ?? ({} as Record<string, number>))
+const perFase = computed(
+  () => data.value?.meta?.perFase ?? ({} as Record<string, number>),
+);
 
 const faseOptions = computed(() => [
-  { value: 'semua', label: 'Semua fase', icon: 'i-lucide-layers' },
-  { value: 'mendatang', label: 'Mendatang', icon: 'i-lucide-calendar-clock' },
-  { value: 'berlangsung', label: 'Berlangsung', icon: 'i-lucide-radio' },
-  { value: 'selesai', label: 'Selesai', icon: 'i-lucide-check' },
-  { value: 'batal', label: 'Dibatalkan', icon: 'i-lucide-x' },
-])
+  { value: "semua", label: "Semua fase" },
+  { value: "mendatang", label: "Mendatang" },
+  { value: "berlangsung", label: "Berlangsung" },
+  { value: "selesai", label: "Selesai" },
+  { value: "batal", label: "Dibatalkan" },
+]);
 
-const ikonFase = computed(() =>
-  faseOptions.value.find(o => o.value === fase.value)?.icon ?? 'i-lucide-layers')
+const ikonFase = computed(
+  () =>
+    faseOptions.value.find((o) => o.value === fase.value)?.icon ??
+    "i-lucide-layers",
+);
 
-const tanggal = (nilai: string | null) => nilai
-  ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(nilai))
-  : '—'
+const tanggal = (nilai: string | null) =>
+  nilai
+    ? new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(nilai))
+    : "—";
 
-const warnaFase = (f: string) => ({
-  mendatang: 'primary', berlangsung: 'secondary', selesai: 'neutral', batal: 'error',
-}[f] ?? 'neutral') as 'neutral' | 'primary' | 'secondary' | 'error'
+const warnaFase = (f: string) =>
+  (({
+    mendatang: "primary",
+    berlangsung: "secondary",
+    selesai: "neutral",
+    batal: "error",
+  })[f] ?? "neutral") as "neutral" | "primary" | "secondary" | "error";
 
 // ── Hapus ────────────────────────────────────────────────────────────────────
-const hapusTarget = ref<{ id: string, judul: string } | null>(null)
-const galat = ref('')
-const sibuk = ref(false)
+const hapusTarget = ref<{ id: string; judul: string } | null>(null);
+const galat = ref("");
+const sibuk = ref(false);
 
 const hapus = async () => {
-  if (!hapusTarget.value) return
-  sibuk.value = true
-  galat.value = ''
+  if (!hapusTarget.value) return;
+  sibuk.value = true;
+  galat.value = "";
   try {
-    await $fetch(`/api/admin/events/${hapusTarget.value.id}`, { method: 'DELETE' })
-    hapusTarget.value = null
-    await refresh()
-  }
-  catch (e: any) {
+    await $fetch(`/api/admin/events/${hapusTarget.value.id}`, {
+      method: "DELETE",
+    });
+    hapusTarget.value = null;
+    await refresh();
+  } catch (e: any) {
     // Server menolak menghapus event yang sudah punya peserta; pesannya
     // ditampilkan apa adanya karena ia sudah menjelaskan jalan keluarnya.
-    galat.value = e?.data?.statusMessage ?? e?.statusMessage ?? 'Gagal menghapus event.'
+    galat.value =
+      e?.data?.statusMessage ?? e?.statusMessage ?? "Gagal menghapus event.";
+  } finally {
+    sibuk.value = false;
   }
-  finally {
-    sibuk.value = false
-  }
-}
+};
+const urutan = ref("terbaru");
 
-// Kolom "Biaya" dan "Status" dihapus lebih dulu; sekarang delapan kolom disusutkan
-// jadi lima.
+const urutanOptions = computed(() => [
+  {
+    value: "terbaru",
+    label: "Terbaru",
+    icon: "i-lucide-arrow-down-wide-narrow",
+  },
+  {
+    value: "terlama",
+    label: "Terlama",
+    icon: "i-lucide-arrow-up-narrow-wide",
+  },
+  {
+    value: "az",
+    label: "Judul A–Z",
+    icon: "i-lucide-arrow-down-a-z",
+  },
+  {
+    value: "za",
+    label: "Judul Z–A",
+    icon: "i-lucide-arrow-up-a-z",
+  },
+]);
+
+const ikonUrutan = computed(
+  () =>
+    urutanOptions.value.find((o) => o.value === urutan.value)?.icon ??
+    "i-lucide-arrow-down-wide-narrow",
+);
+
+// Diurutkan di klien, bukan lewat query ke server: daftar ini tidak berpaginasi —
+// seluruh barisnya memang sudah ada di tangan — dan A–Z tidak bisa diminta ke
+// SQLite dengan hasil yang sama. `localeCompare('id')` menyamakan huruf besar dan
+// kecil; `<` biasa mengurutkan menurut kode karakter, sehingga "wawancara" mendarat
+// sebelum "Zoom" tapi sesudah "Bengkel".
 //
-// Delapan kolom tidak muat di layar mana pun, dan yang terdorong keluar justru
-// kolom aksi di ujung kanan — tombol ubah & hapus baru terlihat setelah tabelnya
-// digulir mendatar, padahal itu yang paling sering dicari orang di halaman ini.
+// Sebelumnya kotak urutannya tergambar tapi nilainya tidak pernah dibaca siapa pun:
+// tiap pilihan mengubah tulisan di kotaknya sendiri dan tidak lebih.
+const waktuMulai = (nilai: string | null) =>
+  nilai ? new Date(nilai).getTime() : 0;
+
+const events = computed(() => {
+  const baris = [...(data.value?.data ?? [])];
+  switch (urutan.value) {
+    case "terlama":
+      return baris.sort(
+        (a, b) => waktuMulai(a.tanggalMulai) - waktuMulai(b.tanggalMulai),
+      );
+    case "az":
+      return baris.sort((a, b) => a.judul.localeCompare(b.judul, "id"));
+    case "za":
+      return baris.sort((a, b) => b.judul.localeCompare(a.judul, "id"));
+    default:
+      return baris.sort(
+        (a, b) => waktuMulai(b.tanggalMulai) - waktuMulai(a.tanggalMulai),
+      );
+  }
+});
+
+// Delapan kolom → lima (Sesi 10) → empat.
 //
-// Yang digabung dipilih menurut apa yang dibaca bersamaan: lokasi menempel ke nama
-// event (keduanya menjawab "event yang mana"), batas pendaftaran menempel ke
-// tanggal (keduanya jadwal), dan jumlah peserta menempel ke sesi/materi (keduanya
-// isi). Tidak ada informasi yang hilang — yang berubah hanya letaknya.
+// Penyusutan sebelumnya menggabungkan kolom, bukan membuang isinya: lima kolom itu
+// masih memuat tujuh angka per baris — lokasi, jam, batas pendaftaran, jumlah sesi,
+// jumlah materi, terdaftar, kuota — dan barisnya jadi tiga tingkat tinggi.
+//
+// Yang benar-benar ditanyakan orang pada daftar ini cuma dua: event yang mana, dan
+// mana yang menuntut dikerjakan sekarang. Sisanya ada di halaman eventnya, satu
+// klik dari sini, dalam bentuk yang bisa langsung disunting. Yang tinggal: nama,
+// tanggal, fase, dan penanda pendaftar yang belum selesai diurus.
 const columns = [
-  { accessorKey: 'judul', header: 'Event' },
-  { accessorKey: 'tanggalMulai', header: 'Jadwal' },
-  { accessorKey: 'isi', header: 'Isi & peserta' },
-  { accessorKey: 'fase', header: 'Fase' },
-  { accessorKey: 'aksi', header: '' },
-]
+  { accessorKey: "judul", header: "Event" },
+  { accessorKey: "tanggalMulai", header: "Tanggal" },
+  { accessorKey: "fase", header: "Fase" },
+  { accessorKey: "aksi", header: "" },
+];
 </script>
 
 <template>
@@ -102,9 +180,17 @@ const columns = [
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="font-serif text-5xl text-cc-green-800">Event</h1>
-        <p class="mt-2 text-sm text-cc-stone-600">Kelola program, peserta, materi, dan dokumentasi.</p>
+        <p class="mt-2 text-sm text-cc-stone-600">
+          Kelola program, peserta, materi, dan dokumentasi.
+        </p>
       </div>
-      <UButton to="/admin/event/new" color="secondary" size="lg" icon="i-lucide-plus" class="shrink-0">
+      <UButton
+        to="/admin/event/new"
+        color="secondary"
+        size="lg"
+        icon="i-lucide-plus"
+        class="shrink-0"
+      >
         Event baru
       </UButton>
     </div>
@@ -116,11 +202,26 @@ const columns = [
         placeholder="Cari judul atau slug…"
         class="w-72"
       />
-      <USelect v-model="fase" :items="faseOptions" value-key="value" :icon="ikonFase" class="w-48" />
+      <USelect
+        v-model="fase"
+        :items="faseOptions"
+        value-key="value"
+        :icon="ikonFase"
+        class="w-48"
+      />
+
+      <USelect
+        v-model="urutan"
+        :items="urutanOptions"
+        value-key="value"
+        :icon="ikonUrutan"
+        :aria-label="'Urutkan Data'"
+        class="w-48"
+      />
 
       <!-- Hitungan per fase dipasang sebagai chip: ia menjawab "berapa yang sedang
            berjalan" tanpa perlu mengganti filter satu per satu untuk membacanya. -->
-      <div class="flex flex-wrap items-center gap-1.5">
+      <!-- <div class="flex flex-wrap items-center gap-1.5">
         <UBadge
           v-for="o in faseOptions.slice(1)"
           :key="o.value"
@@ -134,7 +235,9 @@ const columns = [
         </UBadge>
       </div>
 
-      <span class="ml-auto text-sm text-cc-stone-600">{{ events.length }} event</span>
+      <span class="ml-auto text-sm text-cc-stone-600"
+        >{{ events.length }} event</span
+      > -->
     </div>
 
     <UCard :ui="{ body: 'p-0' }">
@@ -144,74 +247,78 @@ const columns = [
         :loading="muat === 'pending'"
         empty="Belum ada event. Klik “Event baru” untuk membuat yang pertama."
       >
-        <!-- Nama event + lokasinya. Slug dibuang dari tampilan: ia hanya berarti
-             saat menyusun tautan, dan barisnya menggandakan tinggi tiap baris tabel
-             untuk sesuatu yang tidak dibaca sambil lalu. -->
+        <!-- Nama event, dan di sebelahnya satu-satunya hal di daftar ini yang
+             menuntut tindakan: pendaftar yang belum selesai diurus.
+
+             Yang terlihat cuma IKONNYA; angkanya pindah ke tooltip. Daftar ini
+             dibaca dengan menyapu ke bawah untuk menemukan baris yang menuntut
+             dikerjakan — untuk itu cukup "ada" atau "tidak ada", dan lencana
+             berangka di samping tiap judul menambah satu benda yang harus dibaca
+             pada baris yang justru sedang tidak dicari. Seberapa banyaknya baru
+             berarti sesudah barisnya ketemu, dan di situ tangannya sudah di atas
+             barisnya. -->
         <template #judul-cell="{ row }">
-          <NuxtLink
-            :to="`/admin/event/${row.original.id}`"
-            class="font-semibold text-cc-green-800 hover:text-cc-brown-500 hover:underline"
-          >
-            {{ row.original.judul }}
-          </NuxtLink>
-          <div class="flex items-center gap-1 text-xs text-cc-stone-500">
-            <UIcon name="i-lucide-map-pin" class="size-3 shrink-0" />
-            <span class="truncate">{{ row.original.lokasi ?? '—' }}</span>
+          <div class="flex items-center gap-2">
+            <NuxtLink
+              :to="`/admin/event/${row.original.id}`"
+              class="font-semibold text-cc-green-800 hover:text-cc-brown-500 hover:underline"
+            >
+              {{ row.original.judul }}
+            </NuxtLink>
+            <UTooltip
+              v-if="row.original.belumKonfirmasi"
+              :delay-duration="0"
+              :text="`Masih ada ${row.original.belumKonfirmasi} peserta yang perlu diproses`"
+            >
+              <!-- Angkanya ikut muncul saat disentuh, bukan hanya di dalam tooltip:
+                   yang sudah mengarahkan tetikus ke sini sedang menimbang apakah
+                   baris ini perlu dibuka sekarang, dan "satu" berbeda jauh dari
+                   "dua belas". Ia melebar dari nol, jadi baris di sebelahnya tidak
+                   ikut bergeser saat diam.
+
+                   `tabindex` supaya tooltipnya juga terbuka lewat papan ketik, dan
+                   `aria-label` supaya yang memakai pembaca layar tidak cuma mendengar
+                   sebuah ikon tanpa nama. -->
+              <span
+                class="group inline-flex items-center rounded-full bg-red-50 p-1 text-red-700"
+                tabindex="0"
+                role="img"
+                :aria-label="`Masih ada ${row.original.belumKonfirmasi} peserta yang perlu diproses`"
+              >
+                <UIcon name="i-lucide-user-round-x" class="size-3.5 shrink-0" />
+                <span
+                  class="max-w-0 overflow-hidden text-xs font-semibold tabular-nums transition-[max-width,padding] duration-150 group-hover:max-w-8 group-hover:ps-1 group-focus:max-w-8 group-focus:ps-1"
+                >
+                  {{ row.original.belumKonfirmasi }}
+                </span>
+              </span>
+            </UTooltip>
           </div>
         </template>
 
-        <!-- Jadwal: tanggal acara di atas, batas pendaftaran di bawahnya. Yang
-             batasnya sudah lewat ditandai merah — baris seperti itu masih menerima
-             klik "Ubah" tapi tidak lagi menerima pendaftar. -->
         <template #tanggalMulai-cell="{ row }">
-          <div class="whitespace-nowrap text-sm">
+          <div class="text-sm whitespace-nowrap">
             {{ tanggal(row.original.tanggalMulai) }}
-            <template v-if="row.original.tanggalSelesai && row.original.tanggalSelesai !== row.original.tanggalMulai">
+            <template
+              v-if="
+                row.original.tanggalSelesai &&
+                row.original.tanggalSelesai !== row.original.tanggalMulai
+              "
+            >
               – {{ tanggal(row.original.tanggalSelesai) }}
             </template>
-            <span v-if="rentangJam(row.original)" class="text-cc-stone-500">
-              · {{ rentangJam(row.original) }}
-            </span>
-          </div>
-          <div
-            class="flex items-center gap-1 text-xs whitespace-nowrap"
-            :class="row.original.tutupPendaftaran && batasLewat(row.original.tutupPendaftaran)
-              ? 'text-red-700'
-              : 'text-cc-stone-500'"
-          >
-            <UIcon name="i-lucide-hourglass" class="size-3 shrink-0" />
-            <span v-if="row.original.tutupPendaftaran">
-              {{ tanggalJamSingkat(row.original.tutupPendaftaran) }}
-            </span>
-            <span v-else>Sampai acara mulai</span>
-          </div>
-        </template>
-
-        <!-- Kolom ini yang memberi tahu event mana yang materinya masih kosong,
-             sekaligus berapa yang sudah mendaftar. -->
-        <template #isi-cell="{ row }">
-          <div class="flex items-center gap-1.5">
-            <UBadge color="neutral" variant="subtle" size="sm">{{ row.original.jumlahSesi }} sesi</UBadge>
-            <UBadge
-              :color="row.original.jumlahItem ? 'secondary' : 'neutral'"
-              variant="subtle"
-              size="sm"
-            >
-              {{ row.original.jumlahItem }} materi
-            </UBadge>
-          </div>
-          <div class="flex items-center gap-1 text-xs text-cc-stone-500">
-            <UIcon name="i-lucide-users" class="size-3 shrink-0" />
-            <span class="tabular-nums">
-              {{ row.original.terdaftar }}<template v-if="row.original.kuota">/{{ row.original.kuota }}</template>
-            </span>
           </div>
         </template>
 
         <!-- Fase, bukan status: dihitung dari tanggal setiap kali dibaca, jadi tidak
              ada yang perlu diperbarui manual saat tanggalnya terlewat. -->
         <template #fase-cell="{ row }">
-          <UBadge :color="warnaFase(row.original.fase)" variant="subtle" size="sm" class="rounded-full">
+          <UBadge
+            :color="warnaFase(row.original.fase)"
+            variant="subtle"
+            size="sm"
+            class="rounded-full"
+          >
             {{ row.original.fase }}
           </UBadge>
         </template>
@@ -235,7 +342,13 @@ const columns = [
                 size="sm"
                 icon="i-lucide-trash-2"
                 aria-label="Hapus"
-                @click="hapusTarget = { id: row.original.id, judul: row.original.judul }; galat = ''"
+                @click="
+                  hapusTarget = {
+                    id: row.original.id,
+                    judul: row.original.judul,
+                  };
+                  galat = '';
+                "
               />
             </UTooltip>
           </div>
@@ -243,17 +356,30 @@ const columns = [
       </UTable>
     </UCard>
 
-    <UModal :open="Boolean(hapusTarget)" title="Hapus event" @update:open="hapusTarget = null">
+    <UModal
+      :open="Boolean(hapusTarget)"
+      title="Hapus event"
+      @update:open="hapusTarget = null"
+    >
       <template #body>
         <p class="text-sm text-cc-stone-700">
-          Hapus <strong>{{ hapusTarget?.judul }}</strong>? Seluruh sesi dan materinya ikut terhapus.
-          Berkas di pustaka media tetap tersimpan.
+          Hapus <strong>{{ hapusTarget?.judul }}</strong
+          >? Seluruh sesi dan materinya ikut terhapus. Berkas di pustaka media
+          tetap tersimpan.
         </p>
-        <UAlert v-if="galat" color="error" variant="subtle" class="mt-3" :description="galat" />
+        <UAlert
+          v-if="galat"
+          color="error"
+          variant="subtle"
+          class="mt-3"
+          :description="galat"
+        />
       </template>
       <template #footer>
         <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="hapusTarget = null">Batal</UButton>
+          <UButton color="neutral" variant="ghost" @click="hapusTarget = null"
+            >Batal</UButton
+          >
           <UButton color="error" :loading="sibuk" @click="hapus">Hapus</UButton>
         </div>
       </template>

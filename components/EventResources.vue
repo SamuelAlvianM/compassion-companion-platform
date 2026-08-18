@@ -141,13 +141,28 @@ const tolakOpen = ref(false)
 
 const bukaMateri = (item: SesiItem) => {
   if (item.tergembok) { tolakOpen.value = true; return }
-  if (item.jenis === 'youtube' && item.embed) { videoOpen.value = true; videoAktif.value = item; return }
+  // Video diputar DI HALAMAN INI, apa pun asalnya — YouTube lewat iframe, unggahan
+  // lewat <video>. Sebelumnya hanya YouTube yang begitu; video unggahan dilempar ke
+  // tab baru, dan di sana yang muncul pemutar telanjang milik peramban di atas latar
+  // hitam, tanpa judul, tanpa jalan kembali selain menutup tabnya. Dua jenis yang
+  // bagi pembacanya sama-sama "rekaman sesi" tidak boleh berperilaku berbeda.
+  if (bisaDiputar(item)) { videoAktif.value = item; videoOpen.value = true; return }
   if (item.url) window.open(item.url, '_blank', 'noopener')
 }
 
-// ── Video YouTube ────────────────────────────────────────────────────────────
+// ── Pemutar video ────────────────────────────────────────────────────────────
 const videoOpen = ref(false)
 const videoAktif = ref<SesiItem | null>(null)
+
+/** Bisa diputar di dalam modal: YouTube yang punya alamat embed, atau berkas video
+    yang sudah punya alamat. */
+const bisaDiputar = (item: SesiItem) =>
+  (item.jenis === 'youtube' && Boolean(item.embed)) || (item.jenis === 'video' && Boolean(item.url))
+
+// Sumber dilepas saat modal ditutup. Tanpa itu <video> tetap memutar di balik
+// layar — suaranya terus terdengar sesudah modalnya hilang — dan unduhannya
+// berlanjut untuk video yang sudah tidak dilihat siapa pun.
+watch(videoOpen, (terbuka) => { if (!terbuka) videoAktif.value = null })
 
 // ── Galeri ───────────────────────────────────────────────────────────────────
 const lightboxOpen = ref(false)
@@ -328,7 +343,7 @@ const hapusItem = async () => {
            tanpa penanda ini tidak ada cara membedakannya dari sesi yang terbit. -->
       <template #default="{ item }">
         <span class="flex min-w-0 flex-1 items-center gap-2">
-          <span class="truncate">{{ item.label }}</span>
+          <span class="break-words">{{ item.label }}</span>
           <UBadge v-if="aktif && !item.tampil" color="neutral" variant="subtle" size="sm" class="shrink-0">
             tersembunyi
           </UBadge>
@@ -530,18 +545,32 @@ const hapusItem = async () => {
       </template>
     </UModal>
 
-    <!-- Pemutar YouTube; `unlisted` tidak butuh perlakuan khusus, ia tetap bisa di-embed -->
+    <!-- Satu pemutar untuk dua jenis video. Bingkai, judul, dan lebarnya sama;
+         yang berbeda cuma isi kotaknya — iframe untuk YouTube (`unlisted` tidak butuh
+         perlakuan khusus, ia tetap bisa di-embed), <video> untuk berkas unggahan. -->
     <UModal v-model:open="videoOpen" :title="videoAktif ? judulItem(videoAktif) : ''" :ui="{ content: 'max-w-4xl' }">
       <template #body>
         <div class="aspect-video w-full overflow-hidden rounded-lg bg-black">
           <iframe
-            v-if="videoAktif?.embed"
+            v-if="videoAktif?.jenis === 'youtube' && videoAktif?.embed"
             :src="videoAktif.embed"
             class="h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
             referrerpolicy="strict-origin-when-cross-origin"
             :title="judulItem(videoAktif)"
+          />
+          <!-- `controls` saja, tanpa autoplay: video rekaman sesi bisa panjang dan
+               berisi suara orang, dan yang membukanya belum tentu sedang sendirian.
+               `preload="metadata"` supaya durasinya terbaca tanpa mengunduh isinya. -->
+          <video
+            v-else-if="videoAktif?.url"
+            :key="videoAktif.id"
+            :src="videoAktif.url"
+            class="h-full w-full"
+            controls
+            playsinline
+            preload="metadata"
           />
         </div>
       </template>

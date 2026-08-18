@@ -16,11 +16,13 @@
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.123",
+    "@internationalized/date": "^3.12.3",
     "@nuxt/image": "2.0.0",
     "@nuxt/ui": "^4.10.0",
     "@nuxtjs/i18n": "^10.2.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
+    "highcharts": "^13.0.0",
     "nuxt": "^4.1.0"
   },
   "devDependencies": {

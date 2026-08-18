@@ -9,7 +9,27 @@ export default defineNuxtConfig({
   // situs yang belum jadi ikut terbuka bagi siapa pun yang sejaringan.
   // Kalau suatu saat perlu diuji dari ponsel, jalankan sekali dengan
   // `npm run dev -- --host` — flag CLI menang atas nilai di sini.
-  devServer: { port: 3009, host: '127.0.0.1' },
+  //
+  // `localhost`, bukan `127.0.0.1` — dan itu menyelesaikan "426 Upgrade Required"
+  // yang sejak Sesi 9 dikira kendala pratinjau.
+  //
+  // Sebabnya: dev stack Nuxt membuka DUA pendengar pada port ini. Satu untuk
+  // aplikasinya (di alamat yang disebut `host` ini), satu lagi server WebSocket
+  // yang mengikat `::` — wildcard IPv6, yang di Windows ikut menerima IPv4.
+  // Permintaan HTTP biasa ke server WebSocket dijawab 426, dan itulah yang muncul
+  // di layar.
+  //
+  // Pendengar beralamat spesifik menang atas wildcard, jadi alamat yang disebut di
+  // sini adalah satu-satunya yang benar-benar sampai ke aplikasi. Dipilih
+  // `localhost` karena itu yang diketik orang. Konsekuensinya terbalik dari
+  // sebelumnya: **`http://localhost:3009` yang benar, `http://127.0.0.1:3009`
+  // sekarang yang menjawab 426.**
+  //
+  // Dua hal sudah dicoba dan TIDAK berpengaruh, jadi tidak perlu diulang:
+  // memindahkan WebSocket itu lewat `vite.server.hmr.port` (ia bukan HMR Vite),
+  // dan mematikan `devtools` (bukan itu pemiliknya). Yang tersisa cuma memilih
+  // keluarga alamat mana yang dilayani, dan `localhost` adalah yang diketik orang.
+  devServer: { port: 3009, host: 'localhost' },
   // Satu entry saja: tailwind.css meng-import main.css sebagai layer `components`.
   // Lihat komentar di berkas itu — urutan layer menentukan siapa yang menang.
   css: ['~/assets/css/tailwind.css'],

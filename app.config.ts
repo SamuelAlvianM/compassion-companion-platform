@@ -11,5 +11,24 @@ export default defineAppConfig({
       secondary: 'cc-brown',
       neutral: 'cc-stone',
     },
+
+    /**
+     * Judul modal: serif 16px, tanpa penebalan.
+     *
+     * Diatur SEKALI di sini, bukan lewat `:ui="{ title: … }"` di tiap UModal.
+     * Modal tersebar di sebelas berkas — form peserta, form materi, unggah galeri,
+     * pemotong gambar, pemutar video, konfirmasi status, panel pendaftaran — dan
+     * menempelkan kelas yang sama di sebelas tempat berarti yang berikutnya dibuat
+     * pasti terlewat, lalu satu modal berjudul lain sendiri di antara sepuluh.
+     *
+     * `font-normal` ditulis eksplisit: bawaan Nuxt UI `font-semibold`, dan serif
+     * yang ditebalkan terbaca sebagai judul halaman, bukan judul kotak dialog.
+     * Yang membedakannya dari teks di bawahnya cukup huruf serif dan warnanya.
+     */
+    modal: {
+      slots: {
+        title: 'font-serif text-base font-normal text-cc-green-800',
+      },
+    },
   },
 })

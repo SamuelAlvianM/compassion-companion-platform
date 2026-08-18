@@ -53,7 +53,6 @@ export default defineEventHandler(async (event) => {
       lokasi: row.lokasi,
       jamMulai: row.jamMulai,
       jamSelesai: row.jamSelesai,
-      waktu: row.waktu,
       ajakan: row.ajakan,
       ajakanEn: row.ajakanEn,
       ajakanIsi: row.ajakanIsi,

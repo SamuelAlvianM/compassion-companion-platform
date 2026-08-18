@@ -466,7 +466,19 @@ h3,
 }
 
 .admin-main {
-    padding: 38px 46px
+    padding: 38px 46px;
+
+    /* Tanpa ini, tabel lebar mendorong SELURUH kerangka admin ke samping.
+
+       .admin-shell adalah grid `254px 1fr`, dan item grid punya `min-width: auto` —
+       artinya kolom `1fr` menolak menyusut di bawah lebar min-content isinya. Satu
+       tabel berkolom banyak (mis. daftar peserta) karena itu melebarkan main
+       melewati layar, dan yang bergeser bukan tabelnya melainkan judul halaman, tab,
+       dan sidebar sekaligus.
+
+       `min-width: 0` mengembalikan hak kolomnya untuk menyusut; yang menggulir lalu
+       jadi elemen yang memang punya overflow-nya sendiri — tabelnya. */
+    min-width: 0
 }
 
 .admin-top {
@@ -1742,4 +1754,37 @@ a[href^="https://wa.me/"]::before {
        lebar dokumen sehingga tidak memunculkan gulir horizontal. */
     box-shadow: 0 0 0 100vw var(--color-primary);
     clip-path: inset(0 -100vw)
+}
+
+/* Bar tak-tentu: dipakai saat berkas sudah habis terkirim dan yang ditunggu tinggal
+   server menyimpannya. Lamanya tidak bisa diketahui dari sisi klien, jadi yang
+   digambar bukan seberapa jauh melainkan bahwa ia masih berjalan.
+
+   `translateX` saja, bukan `left`/`width`: keduanya memaksa layout dihitung ulang
+   enam puluh kali sedetik, tepat ketika utas utama sedang juga menunggu balasan
+   unggahan. Transform dijalankan compositor dan tidak menyentuh layout sama sekali. */
+@keyframes sapu {
+    0% {
+        transform: translateX(-100%)
+    }
+
+    100% {
+        transform: translateX(300%)
+    }
+}
+
+.animate-sapu {
+    animation: sapu 1.1s ease-in-out infinite
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    /* Yang meminta gerak dikurangi tetap butuh tahu bahwa prosesnya berjalan.
+       Gantinya denyut opasitas: perubahan yang terbaca tanpa ada yang bergerak
+       melintasi layar. */
+    .animate-sapu {
+        animation: none;
+        width: 100%;
+        opacity: .45
+    }
 }

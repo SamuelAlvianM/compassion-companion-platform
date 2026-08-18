@@ -99,7 +99,11 @@ export const susunSesi = async (
       urutan: row.urutan,
       terkunci: row.terkunci,
       tergembok: gembok,
-      url: gembok ? null : row.url,
+      // Item berjenis berkas (pdf, video, gambar, dokumen) menyimpan `url` NULL —
+      // alamatnya milik media yang ditunjuk `mediaId`. Tanpa cadangan ini,
+      // `bukaMateri()` di klien menerima null dan klik pada PDF/video tidak
+      // melakukan apa pun, tanpa satu pun galat yang bisa dibaca.
+      url: gembok ? null : (row.url ?? media?.url ?? null),
       embed: gembok || row.jenis !== 'youtube' || !row.url ? null : embedYoutube(row.url),
       thumbnail: row.jenis === 'youtube' && row.url ? thumbnailYoutube(row.url) : (gembok ? null : media?.url ?? null),
       mediaId: gembok ? null : row.mediaId,

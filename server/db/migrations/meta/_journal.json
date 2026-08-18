@@ -43,6 +43,27 @@
       "when": 1786481623645,
       "tag": "0005_jam-kegiatan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786611978222,
+      "tag": "0006_thumbnail-kegiatan",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1786615789093,
+      "tag": "0007_kunjungan",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786616299582,
+      "tag": "0008_pengunjung",
+      "breakpoints": true
     }
   ]
 }

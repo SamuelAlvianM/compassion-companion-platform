@@ -56,10 +56,9 @@ const SEMUA_ROLES = [
  * role yang tidak akan pernah ditemui pembacanya di daftar user maupun di form
  * akun hanya menimbulkan pertanyaan yang tidak ada jawabannya di layar mana pun.
  */
-const roles = computed(() =>
-  user.value?.role === 'master'
-    ? SEMUA_ROLES
-    : SEMUA_ROLES.filter(r => r.kunci !== 'master'))
+const master = computed(() => user.value?.role === 'master')
+
+const roles = computed(() => master.value ? SEMUA_ROLES : SEMUA_ROLES.filter(r => r.kunci !== 'master'))
 
 const alur = [
   { no: 1, judul: 'Terbitkan event', detail: 'Buat kegiatan, isi tanggal, kuota, harga, lalu ubah statusnya jadi "terbit". Hanya event terbit yang tampil di situs publik.', peran: 'Admin' },
@@ -88,21 +87,29 @@ const warnaLevel = (level: number) =>
       variant="subtle"
       icon="i-lucide-badge-check"
       :title="`Anda masuk sebagai ${user.fullName}`"
-      :description="`Role ${user.role}, level ${user.level}. Angka level kecil berarti wewenang lebih besar.`"
+      :description="master
+        ? `Role ${user.role}, level ${user.level}. Angka level kecil berarti wewenang lebih besar.`
+        : `Role ${user.role}. Wewenang yang menyertainya ada di daftar di bawah.`"
     />
 
     <section class="mb-10">
       <h2 class="mb-1 font-serif text-3xl text-cc-green-800">Role & wewenang</h2>
-      <p class="mb-4 text-sm text-cc-stone-600">
+      <!-- Kalimat ini menjelaskan cara server memeriksa hak akses. Itu keterangan
+           implementasi: berguna bagi master yang mengatur role, tidak berguna bagi
+           admin yang cuma perlu tahu apa yang boleh ia kerjakan. -->
+      <p v-if="master" class="mb-4 text-sm text-cc-stone-600">
         Pemeriksaan hak akses memakai perbandingan
         <code class="rounded bg-cc-stone-100 px-1 py-0.5 text-xs">level &lt;= n</code>, jadi satu
         aturan otomatis mencakup semua role di atasnya.
+      </p>
+      <p v-else class="mb-4 text-sm text-cc-stone-600">
+        Tiap role mencakup wewenang role di bawahnya.
       </p>
 
       <div class="space-y-3">
         <UCard v-for="r in roles" :key="r.kunci" :ui="{ body: 'p-5' }">
           <div class="flex flex-wrap items-center gap-3">
-            <UBadge :color="warnaLevel(r.level)" variant="subtle">Level {{ r.level }}</UBadge>
+            <UBadge v-if="master" :color="warnaLevel(r.level)" variant="subtle">Level {{ r.level }}</UBadge>
             <h3 class="font-serif text-2xl text-cc-green-800">{{ r.nama }}</h3>
             <span class="text-xs text-cc-stone-500">{{ r.kunci }}</span>
           </div>

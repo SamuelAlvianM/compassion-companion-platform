@@ -16,7 +16,6 @@ const props = defineProps<{
   event: {
     jamMulai: string | null
     jamSelesai: string | null
-    waktu: string | null
     tanggalMulai: string
     tanggalSelesai: string | null
     tutupPendaftaran: string | null
@@ -188,7 +187,12 @@ const simpanJadwal = async () => {
       </p>
       <div class="mt-1.5 grid gap-3 sm:grid-cols-2">
         <UFormField :label="t.tanggal" size="sm">
-          <UInput v-model="draf.batasTanggal" type="date" class="w-full" size="sm" />
+          <TanggalPicker
+            v-model="draf.batasTanggal"
+            size="sm"
+            :maksimal="keYmd(props.event.tanggalMulai)"
+            :is-en="isEn"
+          />
         </UFormField>
         <UFormField :label="t.jam" size="sm">
           <WaktuPicker v-model="draf.batasJam" size="sm" :disabled="!draf.batasTanggal" />

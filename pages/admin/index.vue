@@ -41,52 +41,6 @@ const ringkasan = computed(() => [
   },
 ])
 
-/** Alur kerja admin dari kiri ke kanan. `selesai` menentukan warna & ikon langkah. */
-const alur = computed(() => {
-  const s = stats.value
-  const event = s?.kegiatan.perStatus.terbit ?? 0
-  const daftar = s?.peserta.total ?? 0
-  const konfirmasi = s?.peserta.perStatus.konfirmasi ?? 0
-  const media = s?.media.total ?? 0
-
-  return [
-    {
-      no: 1,
-      judul: 'Terbitkan event',
-      detail: 'Buat kegiatan, tetapkan tanggal, kuota, dan harga, lalu ubah statusnya jadi terbit.',
-      angka: `${event} terbit`,
-      selesai: event > 0,
-      aksi: { label: 'Kelola event', ke: '/admin/events' },
-    },
-    {
-      no: 2,
-      judul: 'Terima pendaftaran',
-      detail: 'Pendaftar masuk dari halaman event publik, termasuk yang mendaftar tanpa akun.',
-      angka: `${daftar} pendaftar`,
-      selesai: daftar > 0,
-      // Daftar pendaftar tidak lagi berdiri sendiri: ia tab di dalam event yang
-      // bersangkutan, karena satu pendaftaran selalu milik satu event.
-      aksi: { label: 'Lihat pendaftar', ke: '/admin/events' },
-    },
-    {
-      no: 3,
-      judul: 'Konfirmasi & catat pembayaran',
-      detail: 'Buka tab "Daftar peserta" pada event, majukan status pendaftar dari baru ke proses lalu konfirmasi.',
-      angka: `${konfirmasi} terkonfirmasi`,
-      selesai: konfirmasi > 0,
-      aksi: { label: 'Proses pendaftar', ke: '/admin/events' },
-    },
-    {
-      no: 4,
-      judul: 'Unggah materi & terbitkan jurnal',
-      detail: 'Setelah acara: unggah dokumentasi, bagikan materi ke peserta, terbitkan refleksi.',
-      angka: `${media} berkas`,
-      selesai: media > 0,
-      aksi: { label: 'Kelola jurnal', ke: '/admin/jurnal' },
-    },
-  ]
-})
-
 const roleColumns = [
   { accessorKey: 'level', header: 'Level' },
   { accessorKey: 'label', header: 'Role' },
@@ -158,62 +112,16 @@ const warnaLevel = (level: number) =>
       </UCard>
     </div>
 
-    <!-- Alur kerja -->
-    <section class="mt-10">
-      <h2 class="font-serif text-3xl text-cc-green-800">Alur kerja</h2>
-      <p class="mt-1 mb-4 text-sm text-cc-stone-600">
-        Empat langkah dari membuat event sampai menerbitkan dokumentasinya.
-      </p>
-
-      <div class="grid gap-4 lg:grid-cols-4">
-        <UCard
-          v-for="(langkah, index) in alur"
-          :key="langkah.no"
-          class="relative"
-          :ui="{ body: 'p-5 flex flex-col h-full' }"
-        >
-          <!-- Panah penghubung, hanya muncul saat keempat kartu sejajar. -->
-          <UIcon
-            v-if="index < alur.length - 1"
-            name="i-lucide-chevron-right"
-            class="absolute top-1/2 -right-3 z-10 hidden size-6 -translate-y-1/2 text-cc-stone-300 lg:block"
-          />
-
-          <div class="flex items-center gap-2">
-            <UBadge
-              :color="langkah.selesai ? 'primary' : 'neutral'"
-              :variant="langkah.selesai ? 'solid' : 'subtle'"
-              size="sm"
-            >
-              Langkah {{ langkah.no }}
-            </UBadge>
-            <UIcon
-              v-if="langkah.selesai"
-              name="i-lucide-circle-check"
-              class="size-4 text-cc-green-600"
-            />
-          </div>
-
-          <h3 class="mt-3 font-serif text-2xl leading-tight text-cc-green-800">{{ langkah.judul }}</h3>
-          <p class="mt-2 flex-1 text-sm leading-relaxed text-cc-stone-600">{{ langkah.detail }}</p>
-
-          <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-cc-brown-500">
-            {{ langkah.angka }}
-          </p>
-          <UButton
-            :to="langkah.aksi.ke"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            block
-            class="mt-3"
-            trailing-icon="i-lucide-arrow-right"
-          >
-            {{ langkah.aksi.label }}
-          </UButton>
-        </UCard>
-      </div>
-    </section>
+    <!-- Agregasi menggantikan blok "Alur kerja".
+         Alur kerja itu empat kartu berisi kalimat tetap — isinya sama persis
+         apa pun keadaan datanya, dan satu-satunya angka di tiap kartu sudah ada
+         di baris ringkasan tepat di atasnya. Yang menggantikannya menjawab
+         pertanyaan yang benar-benar dibawa orang ke dashboard: event mana yang
+         pendaftarnya menumpuk belum dikonfirmasi, bulan mana yang sepi, dan
+         dokumentasi event mana yang masih kosong. -->
+    <div class="mt-10">
+      <AdminAgregasi />
+    </div>
 
     <!-- Role & wewenang — khusus master.
          Admin dan editor tidak melihat rekap akun ini; penjelasan aturannya
@@ -250,16 +158,8 @@ const warnaLevel = (level: number) =>
 
     </section>
 
-    <!-- Pengganti bagi admin & editor: aturannya tetap bisa dibaca, tanpa rekap akun. -->
-    <UAlert
-      v-else
-      class="mt-10"
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-book-open"
-      title="Bingung siapa boleh apa?"
-      description="Pembagian wewenang antar role dan urutan kerja pengelolaan ada di halaman Petunjuk."
-      :actions="[{ label: 'Buka Petunjuk', color: 'secondary', variant: 'soft', to: '/admin/petunjuk' }]"
-    />
+    <!-- Kotak "Bingung siapa boleh apa?" dihapus. Ia menempati satu blok penuh di
+         dasar halaman hanya untuk mengulang tautan yang sudah berdiri sendiri di
+         sidebar sebagai menu Petunjuk — dan tidak pernah berubah isinya. -->
   </div>
 </template>

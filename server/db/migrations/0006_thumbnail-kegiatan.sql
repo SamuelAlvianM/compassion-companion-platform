@@ -1,0 +1,1 @@
+ALTER TABLE `cc_kegiatan` ADD `thumbnail_media_id` text;

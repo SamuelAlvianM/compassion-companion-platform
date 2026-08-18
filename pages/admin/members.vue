@@ -9,6 +9,36 @@ definePageMeta({ layout: 'admin' })
 // select-nya. Pola yang sama dipakai filter di halaman event dan form refleksi.
 const SEMUA = 'semua'
 
+/**
+ * Akun yang baru dibuat di /admin/member/new, dititipkan lewat state.
+ *
+ * Halaman itu kini kembali ke sini sesudah menyimpan — sama seperti mode ubah.
+ * Yang tidak boleh ikut hilang cuma passwordnya: ia hanya bisa dibaca sekali, dan
+ * seluruh alur akun di situs ini bergantung padanya sampai di WhatsApp pemiliknya.
+ *
+ * Dibaca sekali lalu dibuang: menyegarkan halaman tidak boleh menampilkan password
+ * lagi, dan yang sudah dikirim tidak perlu menetap di layar orang lain.
+ */
+const akunBaru = useState<{ nama: string, email: string, noHp: string, password: string } | null>(
+  'akun-baru-dibuat',
+  () => null,
+)
+
+const kabarAkun = ref(akunBaru.value)
+akunBaru.value = null
+
+/** Pesan WhatsApp yang sudah tersusun — tinggal ditekan. Nomor dinormalkan ke
+    bentuk internasional; `wa.me` menolak yang berawalan 0. */
+const tautanWa = computed(() => {
+  const k = kabarAkun.value
+  if (!k?.noHp) return ''
+  const nomor = k.noHp.replace(/\D/g, '').replace(/^0/, '62')
+  const teks = `Halo ${k.nama}, akun Anda di Compassionate Companion sudah dibuat.\n\n`
+    + `Email: ${k.email}\nPassword: ${k.password}\n\n`
+    + 'Silakan masuk dan ganti passwordnya setelah login.'
+  return `https://wa.me/${nomor}?text=${encodeURIComponent(teks)}`
+})
+
 const q = ref('')
 const role = ref(SEMUA)
 const aktif = ref(SEMUA)
@@ -82,6 +112,44 @@ const warnaLevel = (level: number) =>
         Add Member
       </UButton>
     </div>
+
+    <!-- Kabar akun baru, berikut passwordnya.
+         Ia menetap sampai ditutup, bukan lewat sebagai toast: passwordnya hanya
+         bisa dibaca sekali, dan kabar yang menghilang sendiri setelah tiga detik
+         adalah tempat paling buruk untuk menaruhnya. Tombol WhatsApp-nya membawa
+         pesan yang sudah tersusun, jadi tidak ada yang perlu disalin dengan tangan —
+         di situlah salah ketik satu huruf berakhir jadi "kok tidak bisa login". -->
+    <UAlert
+      v-if="kabarAkun"
+      color="primary"
+      variant="subtle"
+      class="mb-6"
+      icon="i-lucide-user-check"
+      :title="`Akun ${kabarAkun.nama} dibuat`"
+      :close="true"
+      @update:open="kabarAkun = null"
+    >
+      <template #description>
+        <p>Berikan password ini kepada pemiliknya.</p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <code class="rounded bg-white px-2 py-1 font-mono text-sm text-cc-green-800 ring-1 ring-cc-stone-200">
+            {{ kabarAkun.password }}
+          </code>
+          <UButton
+            v-if="tautanWa"
+            :to="tautanWa"
+            target="_blank"
+            external
+            color="primary"
+            variant="soft"
+            size="sm"
+            icon="i-lucide-message-circle"
+          >
+            Kirim lewat WhatsApp
+          </UButton>
+        </div>
+      </template>
+    </UAlert>
 
     <div class="mb-6 grid gap-3 rounded-lg border border-cc-green-800 bg-cc-stone-50 p-3 sm:grid-cols-[1fr_200px_170px_auto] sm:items-end">
       <UFormField label="Cari" size="sm">

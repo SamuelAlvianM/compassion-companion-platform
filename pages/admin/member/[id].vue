@@ -30,10 +30,24 @@ const form = reactive({
   password: '',
 })
 
+const toast = useToast()
 const lihatPassword = ref(true)
 const sibuk = ref(false)
 const galat = ref('')
 const sukses = ref('')
+
+/**
+ * Akun yang baru lahir, dititipkan ke halaman daftar member.
+ *
+ * `useState`, bukan query di alamat: yang dititipkan termasuk password, dan
+ * password tidak boleh mampir ke riwayat peramban, tangkapan layar bilah alamat,
+ * atau apa pun yang menyalin URL. State ini hidup di memori satu tab dan dibuang
+ * halaman penerima begitu terbaca.
+ */
+const akunBaru = useState<{ nama: string, email: string, noHp: string, password: string } | null>(
+  'akun-baru-dibuat',
+  () => null,
+)
 
 /**
  * Id akun yang baru saja dibuat di layar ini.
@@ -52,7 +66,22 @@ const sukses = ref('')
 const dibuatId = ref('')
 
 const muat = async () => {
-  if (baru.value) return
+  if (baru.value) {
+    // Form ini juga jadi tempat mendarat tombol "buatkan akun untuk peserta" di
+    // tab peserta event. Yang dibawa lewat query cuma tiga kolom yang memang sudah
+    // diketik pendaftar — mengetik ulang nama dan email dari layar sebelah adalah
+    // kesempatan salah ketik tanpa satu pun manfaat.
+    Object.assign(form, {
+      fullName: String(route.query.nama ?? ''),
+      email: String(route.query.email ?? ''),
+      phoneNumber: String(route.query.wa ?? ''),
+      // Akun peserta lahir dengan password bawaan yang sama, dan itu bagian dari
+      // alur yang tertulis di modal tab peserta. Passwordnya sendiri TIDAK ikut
+      // lewat alamat halaman — yang lewat cuma penanda asalnya.
+      password: route.query.asal === 'peserta' ? PASSWORD_PESERTA : '',
+    })
+    return
+  }
   // Saat SSR, $fetch tidak ikut membawa cookie browser — tanpa penerusan ini
   // endpoint admin menjawab 401 pada render pertama.
   const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
@@ -108,7 +137,29 @@ const pesan = (e: any, bawaan: string) => e?.data?.statusMessage ?? e?.statusMes
  *
  * Kolom password kosong berarti "jangan diubah", bukan "kosongkan passwordnya".
  */
+// Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
+// bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
+const wajibKosong = belumDiisi
+
+/** Tombol simpan sudah pernah ditekan — penanda kolom wajib menyala dari sini,
+    bukan sejak formulir dibuka. */
+const dicoba = ref(false)
+
 const simpan = async () => {
+  dicoba.value = true
+
+  // Diperiksa di sini, bukan lewat atribut `required` bawaan HTML: atribut itu
+  // membatalkan submit sebelum satu baris pun kode ini jalan, sehingga penanda yang
+  // mestinya menyala tidak pernah sempat menyala — yang muncul cuma balon peramban
+  // yang bentuknya bukan bentuk aplikasi ini.
+  const kurang: string[] = []
+  if (kosongkah(form.fullName)) kurang.push('Nama lengkap')
+  if (baru.value && kosongkah(form.password)) kurang.push('Password')
+  if (kurang.length) {
+    galat.value = `Masih kosong: ${kurang.join(', ')}.`
+    return
+  }
+
   sibuk.value = true
   galat.value = ''
   sukses.value = ''
@@ -118,11 +169,23 @@ const simpan = async () => {
         method: 'POST',
         body: { ...form },
       })
-      // Pindah ke halaman ubah supaya alamatnya tidak lagi `/new` — menekan segar
-      // di situ akan membuat akun kedua.
-      await router.replace(`/admin/member/${res.data.id}`)
-      dibuatId.value = res.data.id
-      sukses.value = `Akun ${res.data.email ?? res.data.username} dibuat. Kirimkan passwordnya lewat WhatsApp sekarang — ia tidak bisa dibaca lagi setelah halaman ini ditinggalkan.`
+
+      // Kembali ke daftar member, sama seperti mode ubah. Dua formulir yang tombolnya
+      // berbunyi sama tidak boleh berakhir di tempat berbeda — yang membuat tiga akun
+      // berturut-turut sebelumnya harus menekan "Kembali" sendiri tiap kali,
+      // sementara yang menyunting langsung sampai.
+      //
+      // Yang harus ikut selamat cuma passwordnya: ia hanya bisa dibaca sekali, dan
+      // meninggalkan halaman ini menghilangkannya. Ia dititipkan lewat state di
+      // memori, BUKAN lewat query di alamat — password tidak boleh mampir ke riwayat
+      // peramban maupun apa pun yang menyalin URL.
+      akunBaru.value = {
+        nama: res.data.fullName ?? form.fullName,
+        email: res.data.email ?? '',
+        noHp: form.phoneNumber ?? '',
+        password: form.password,
+      }
+      await navigateTo('/admin/members')
       return
     }
 
@@ -135,21 +198,30 @@ const simpan = async () => {
           method: 'POST',
           body: { passwordBaru: password },
         })
-        sukses.value = 'Perubahan tersimpan. Password baru sudah dipasang — kirimkan lewat WhatsApp sekarang, ia tidak bisa dibaca lagi setelah halaman ini ditinggalkan.'
       }
       catch (e: any) {
+        // Galat password menahan kepergian: kalau halamannya ikut ditinggalkan,
+        // yang tersisa cuma kabar "tersimpan" untuk perubahan yang setengah jadi.
         galat.value = pesan(e, 'Password gagal diganti.') + ' Perubahan data lainnya tetap tersimpan.'
         return
       }
     }
-    else {
-      sukses.value = 'Perubahan tersimpan.'
-    }
 
-    // Password sengaja tidak ikut dimuat ulang dari server (tidak ada yang bisa
-    // dibaca), jadi kolomnya dikosongkan supaya menekan simpan sekali lagi tidak
-    // memasang ulang password yang sama.
-    await muat()
+    // Mode ubah selesai di daftar member, bukan di formulir yang baru saja
+    // disimpan: tidak ada satu pun yang perlu dibaca lagi di sini sesudahnya.
+    // Kabarnya lewat toast, yang ikut berpindah bersama halamannya.
+    //
+    // Mode buat TIDAK ikut kembali — di sana pesan suksesnya memuat peringatan
+    // bahwa passwordnya tidak bisa dibaca lagi, dan pergi ke daftar akan membawa
+    // peringatan itu pergi bersama halamannya.
+    toast.add({
+      title: password
+        ? 'Perubahan tersimpan. Password baru sudah dipasang — kirimkan lewat WhatsApp sekarang.'
+        : 'Perubahan tersimpan.',
+      color: 'primary',
+      icon: 'i-lucide-check',
+    })
+    await navigateTo('/admin/members')
   }
   catch (e: any) { galat.value = pesan(e, 'Gagal menyimpan akun.') }
   finally { sibuk.value = false }
@@ -190,11 +262,11 @@ const acakPassword = () => {
 
     <UCard>
       <UForm :state="form" class="space-y-5" @submit="simpan">
-        <UFormField label="Nama lengkap" name="fullName" required>
-          <UInput v-model="form.fullName" placeholder="Nama pemilik akun" required class="w-full" />
+        <UFormField label="Nama lengkap" name="fullName" required :error="wajibKosong(form.fullName, dicoba)">
+          <UInput v-model="form.fullName" placeholder="Nama pemilik akun" class="w-full" />
         </UFormField>
 
-        <UFormField label="Email" name="email" description="Dipakai untuk masuk ke situs.">
+        <UFormField label="Email" name="email">
           <UInput v-model="form.email" type="email" placeholder="nama@email.com" class="w-full" />
         </UFormField>
 
@@ -202,12 +274,8 @@ const acakPassword = () => {
           <UInput v-model="form.phoneNumber" placeholder="08xx xxxx xxxx" class="w-full" />
         </UFormField>
 
-        <UFormField label="Role" name="role" description="Menentukan halaman apa saja yang bisa dibuka.">
+        <UFormField label="Role" name="role">
           <USelect v-model="form.role" :items="roleOptions" value-key="value" class="w-full" />
-        </UFormField>
-
-        <UFormField v-if="!baru" name="isActive" description="Akun nonaktif langsung kehilangan akses, tanpa menunggu sesinya kedaluwarsa.">
-          <USwitch v-model="form.isActive" label="Akun aktif" />
         </UFormField>
 
         <!-- Kolom yang sama di kedua mode. Pada mode ubah ia boleh dikosongkan;
@@ -218,14 +286,13 @@ const acakPassword = () => {
           name="password"
           :hint="baru ? 'minimal 6 karakter' : 'kosongkan bila tidak diganti'"
           :required="baru"
-          :description="baru ? undefined : 'Password lama tidak diperlukan. Sesi pemilik akun yang sedang berjalan tidak ikut terputus.'"
+          :error="wajibKosong(form.password, baru && dicoba)"
         >
           <UInput
             v-model="form.password"
             :type="lihatPassword ? 'text' : 'password'"
             autocomplete="new-password"
             :placeholder="baru ? 'Password yang akan dikirim lewat WhatsApp' : 'Password baru'"
-            :required="baru"
             class="w-full"
           >
             <template #trailing>
@@ -246,6 +313,17 @@ const acakPassword = () => {
         >
           Buatkan password acak
         </UButton>
+
+        <!-- Paling bawah, sesudah password: menonaktifkan akun bukan bagian dari
+             mengisi datanya melainkan keputusan tersendiri, dan di tengah formulir
+             sakelar itu mudah tersentuh saat yang dituju kolom di bawahnya. -->
+        <UFormField v-if="!baru" name="isActive">
+          <USwitch
+            v-model="form.isActive"
+            label="Akun aktif"
+            description="Akun non aktif akan kehilangan akses untuk login."
+          />
+        </UFormField>
 
         <div class="flex flex-wrap items-center gap-3 pt-2">
           <UButton

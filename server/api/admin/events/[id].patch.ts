@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
     harga: lama.harga,
     status: lama.status,
     coverMediaId: lama.coverMediaId,
+    thumbnailMediaId: lama.thumbnailMediaId,
     ...body,
   }
 

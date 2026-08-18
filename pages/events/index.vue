@@ -1,14 +1,15 @@
 <script setup lang="ts">
-const route = useRoute()
-const base = computed(() => route.path.startsWith('/en') ? '/en' : '/id')
-const isEn = computed(() => base.value === '/en')
+const route = useRoute();
+const base = computed(() => (route.path.startsWith("/en") ? "/en" : "/id"));
+const isEn = computed(() => base.value === "/en");
 
 useSeoMeta({
-  title: () => isEn.value ? 'Events' : 'Event',
-  description: () => isEn.value
-    ? 'Workshops, learning programs, and practicums on compassionate leadership — upcoming, ongoing, and past gatherings.'
-    : 'Lokakarya, program pembelajaran, dan practicum kepemimpinan penuh belas kasih — event mendatang, sedang berlangsung, dan yang telah selesai.',
-})
+  title: () => (isEn.value ? "Events" : "Event"),
+  description: () =>
+    isEn.value
+      ? "Workshops, learning programs, and practicums on compassionate leadership — upcoming, ongoing, and past gatherings."
+      : "Lokakarya, program pembelajaran, dan practicum kepemimpinan penuh belas kasih — event mendatang, sedang berlangsung, dan yang telah selesai.",
+});
 
 // ── Filter ───────────────────────────────────────────────────────────────────
 // Fase dulunya tab; sekarang jadi filter agar bisa dipakai bersamaan dengan
@@ -19,25 +20,33 @@ useSeoMeta({
 // Nilai "semua" dipakai sebagai sentinel, bukan string kosong: Reka UI (penyokong
 // USelect) memesan '' untuk keadaan "belum dipilih" dan melempar error kalau ada
 // item yang nilainya kosong.
-const fase = ref('semua')
+const fase = ref("semua");
 
 // Ikonnya sama persis dengan ikon badge fase di kartu, supaya pilihan di dropdown
 // dan penanda di kartu terbaca sebagai satu hal yang sama.
+// const faseOptions = computed(() => [
+//   { value: 'semua', label: isEn.value ? 'All events' : 'Semua event', icon: 'i-lucide-layers' },
+//   { value: 'mendatang', label: isEn.value ? 'Upcoming' : 'Mendatang', icon: 'i-lucide-calendar-clock' },
+//   { value: 'berlangsung', label: isEn.value ? 'Ongoing' : 'Berlangsung', icon: 'i-lucide-radio' },
+//   { value: 'selesai', label: isEn.value ? 'Completed' : 'Selesai', icon: 'i-lucide-check' },
+// ])
 const faseOptions = computed(() => [
-  { value: 'semua', label: isEn.value ? 'All events' : 'Semua event', icon: 'i-lucide-layers' },
-  { value: 'mendatang', label: isEn.value ? 'Upcoming' : 'Mendatang', icon: 'i-lucide-calendar-clock' },
-  { value: 'berlangsung', label: isEn.value ? 'Ongoing' : 'Berlangsung', icon: 'i-lucide-radio' },
-  { value: 'selesai', label: isEn.value ? 'Completed' : 'Selesai', icon: 'i-lucide-check' },
-])
-
+  { value: "semua", label: isEn.value ? "All events" : "Semua event" },
+  { value: "mendatang", label: isEn.value ? "Upcoming" : "Mendatang" },
+  { value: "berlangsung", label: isEn.value ? "Ongoing" : "Berlangsung" },
+  { value: "selesai", label: isEn.value ? "Completed" : "Selesai" },
+]);
 /** Ikon yang tampil di tombol dropdown, mengikuti pilihan yang sedang aktif. */
-const ikonFase = computed(() =>
-  faseOptions.value.find(o => o.value === fase.value)?.icon ?? 'i-lucide-layers')
+const ikonFase = computed(
+  () =>
+    faseOptions.value.find((o) => o.value === fase.value)?.icon ??
+    "i-lucide-layers",
+);
 
 // Pencarian disaring di klien, bukan lewat query API: daftar event sebuah
 // komunitas berukuran puluhan, bukan ribuan, jadi satu perjalanan ke server per
 // ketikan hanya menambah jeda tanpa menambah ketepatan.
-const cari = ref('')
+const cari = ref("");
 
 // ── Urutan ───────────────────────────────────────────────────────────────────
 // Diurutkan di klien dengan alasan yang sama seperti pencarian: seluruh daftar
@@ -56,17 +65,36 @@ const cari = ref('')
 // dicabut atas permintaan: keduanya mengurutkan menurut hal yang tidak terbaca di
 // kartu — tanggal baris itu dibuat, dan tenggat yang hanya sebagian event punya —
 // sehingga hasilnya tampak acak bagi yang memilihnya.
-const urutan = ref('terbaru')
+const urutan = ref("terbaru");
 
 const urutanOptions = computed(() => [
-  { value: 'terbaru', label: isEn.value ? 'Newest' : 'Terbaru', icon: 'i-lucide-arrow-down-wide-narrow' },
-  { value: 'terlama', label: isEn.value ? 'Oldest' : 'Terlama', icon: 'i-lucide-arrow-up-narrow-wide' },
-  { value: 'az', label: isEn.value ? 'Title A–Z' : 'Judul A–Z', icon: 'i-lucide-arrow-down-a-z' },
-  { value: 'za', label: isEn.value ? 'Title Z–A' : 'Judul Z–A', icon: 'i-lucide-arrow-up-a-z' },
-])
+  {
+    value: "terbaru",
+    label: isEn.value ? "Newest" : "Terbaru",
+    icon: "i-lucide-arrow-down-wide-narrow",
+  },
+  {
+    value: "terlama",
+    label: isEn.value ? "Oldest" : "Terlama",
+    icon: "i-lucide-arrow-up-narrow-wide",
+  },
+  {
+    value: "az",
+    label: isEn.value ? "Title A–Z" : "Judul A–Z",
+    icon: "i-lucide-arrow-down-a-z",
+  },
+  {
+    value: "za",
+    label: isEn.value ? "Title Z–A" : "Judul Z–A",
+    icon: "i-lucide-arrow-up-a-z",
+  },
+]);
 
-const ikonUrutan = computed(() =>
-  urutanOptions.value.find(o => o.value === urutan.value)?.icon ?? 'i-lucide-arrow-down-wide-narrow')
+const ikonUrutan = computed(
+  () =>
+    urutanOptions.value.find((o) => o.value === urutan.value)?.icon ??
+    "i-lucide-arrow-down-wide-narrow",
+);
 
 // Penyaring tanggal dicabut atas permintaan. Tiga kontrol yang tersisa — cari,
 // kategori, urutan — sudah menjawab pertanyaan yang sama untuk daftar sepanjang
@@ -74,101 +102,156 @@ const ikonUrutan = computed(() =>
 // selalu menghasilkan daftar kosong. Parameter `dari` di GET /api/events masih
 // diterima server; yang hilang hanya pemakainya di sini.
 const query = computed(() => ({
-  fase: fase.value === 'semua' ? [] : [fase.value],
-}))
+  fase: fase.value === "semua" ? [] : [fase.value],
+}));
 
 // Sengaja TANPA `await`. Dengan await, <script setup> jadi async dan Vue menahan
 // seluruh komponen sampai fetch selesai; digabung pageTransition mode 'out-in',
 // halaman lama keluar dulu lalu yang baru ditahan — itu yang membuat layar kosong
 // beberapa saat saat berpindah bahasa atau keluar akun. Tanpa await, kerangka
 // halaman langsung tergambar dan hanya isinya yang dirangkai.
-const { data, status } = useFetch('/api/events', { query })
+const { data, status } = useFetch("/api/events", { query });
 
 /** Muat pertama: belum ada data sama sekali. Muat ulang karena filter tidak
     dihitung di sini — kartu yang sudah ada lebih baik tetap terlihat. */
-const memuatAwal = computed(() => status.value === 'pending' && !data.value)
+const memuatAwal = computed(() => status.value === "pending" && !data.value);
 
-const semuaEvent = computed(() => data.value?.data ?? [])
-const perFase = computed(() => data.value?.meta.perFase ?? {})
+const semuaEvent = computed(() => data.value?.data ?? []);
+const perFase = computed(() => data.value?.meta.perFase ?? {});
 
 const tersaring = computed(() => {
-  const kata = cari.value.trim().toLowerCase()
-  if (!kata) return semuaEvent.value
-  return semuaEvent.value.filter((e: any) => [e.judul, e.judulEn, e.deskripsi, e.deskripsiEn, e.lokasi]
-    .some(nilai => String(nilai ?? '').toLowerCase().includes(kata)))
-})
+  const kata = cari.value.trim().toLowerCase();
+  if (!kata) return semuaEvent.value;
+  return semuaEvent.value.filter((e: any) =>
+    [e.judul, e.judulEn, e.deskripsi, e.deskripsiEn, e.lokasi].some((nilai) =>
+      String(nilai ?? "")
+        .toLowerCase()
+        .includes(kata),
+    ),
+  );
+});
 
-const waktuDari = (nilai: string | null) => nilai ? new Date(nilai).getTime() : 0
+const waktuDari = (nilai: string | null) =>
+  nilai ? new Date(nilai).getTime() : 0;
 
 /** Judul menurut bahasa yang sedang dibuka — mengurutkan /en menurut judul
     Indonesia akan menghasilkan abjad yang tidak terbaca di layar. */
-const judulUrut = (e: any) => String((isEn.value ? e.judulEn ?? e.judul : e.judul) ?? '')
+const judulUrut = (e: any) =>
+  String((isEn.value ? (e.judulEn ?? e.judul) : e.judul) ?? "");
 
 const events = computed(() => {
-  const daftar = [...tersaring.value]
+  const daftar = [...tersaring.value];
   switch (urutan.value) {
-    case 'terlama':
-      return daftar.sort((a, b) => waktuDari(a.tanggalMulai) - waktuDari(b.tanggalMulai))
-    case 'az':
-      return daftar.sort((a, b) => judulUrut(a).localeCompare(judulUrut(b), isEn.value ? 'en' : 'id'))
-    case 'za':
-      return daftar.sort((a, b) => judulUrut(b).localeCompare(judulUrut(a), isEn.value ? 'en' : 'id'))
+    case "terlama":
+      return daftar.sort(
+        (a, b) => waktuDari(a.tanggalMulai) - waktuDari(b.tanggalMulai),
+      );
+    case "az":
+      return daftar.sort((a, b) =>
+        judulUrut(a).localeCompare(judulUrut(b), isEn.value ? "en" : "id"),
+      );
+    case "za":
+      return daftar.sort((a, b) =>
+        judulUrut(b).localeCompare(judulUrut(a), isEn.value ? "en" : "id"),
+      );
     default:
-      return daftar.sort((a, b) => waktuDari(b.tanggalMulai) - waktuDari(a.tanggalMulai))
+      return daftar.sort(
+        (a, b) => waktuDari(b.tanggalMulai) - waktuDari(a.tanggalMulai),
+      );
   }
-})
+});
 
 // Render bertahap. `events` sudah tersaring, jadi pencarian tetap menjangkau
 // seluruh data meski baru sebagian kartu yang tergambar.
-const { items: eventsTampil, sentinel, adaLagi, sisa, muatLagi } = useInfiniteList(events, { awal: 9, tambah: 6 })
+const {
+  items: eventsTampil,
+  sentinel,
+  adaLagi,
+  sisa,
+  muatLagi,
+} = useInfiniteList(events, { awal: 9, tambah: 6 });
 
-const adaFilter = computed(() =>
-  fase.value !== 'semua' || Boolean(cari.value.trim()) || urutan.value !== 'terbaru')
+const adaFilter = computed(
+  () =>
+    fase.value !== "semua" ||
+    Boolean(cari.value.trim()) ||
+    urutan.value !== "terbaru",
+);
 
 const resetFilter = () => {
-  fase.value = 'semua'
-  cari.value = ''
-  urutan.value = 'terbaru'
-}
+  fase.value = "semua";
+  cari.value = "";
+  urutan.value = "terbaru";
+};
 
 // ── Tampilan ─────────────────────────────────────────────────────────────────
 // Semua badge dibuat `solid` karena kini duduk di atas gambar sampul — varian
 // `subtle` yang transparan jadi tidak terbaca di sana.
-const badge = (f: string) => ({
-  mendatang: { color: 'primary' as const, variant: 'solid' as const, icon: 'i-lucide-calendar-clock', label: isEn.value ? 'Upcoming' : 'Mendatang' },
-  berlangsung: { color: 'secondary' as const, variant: 'solid' as const, icon: 'i-lucide-radio', label: isEn.value ? 'Ongoing' : 'Berlangsung' },
-  selesai: { color: 'neutral' as const, variant: 'solid' as const, icon: 'i-lucide-check', label: isEn.value ? 'Completed' : 'Selesai' },
-  batal: { color: 'error' as const, variant: 'solid' as const, icon: 'i-lucide-x', label: isEn.value ? 'Cancelled' : 'Dibatalkan' },
-}[f] ?? { color: 'neutral' as const, variant: 'solid' as const, icon: 'i-lucide-circle', label: f })
+const badge = (f: string) =>
+  ({
+    mendatang: {
+      color: "primary" as const,
+      variant: "solid" as const,
+      icon: "i-lucide-calendar-clock",
+      label: isEn.value ? "Upcoming" : "Mendatang",
+    },
+    berlangsung: {
+      color: "secondary" as const,
+      variant: "solid" as const,
+      icon: "i-lucide-radio",
+      label: isEn.value ? "Ongoing" : "Berlangsung",
+    },
+    selesai: {
+      color: "neutral" as const,
+      variant: "solid" as const,
+      icon: "i-lucide-check",
+      label: isEn.value ? "Completed" : "Selesai",
+    },
+    batal: {
+      color: "error" as const,
+      variant: "solid" as const,
+      icon: "i-lucide-x",
+      label: isEn.value ? "Cancelled" : "Dibatalkan",
+    },
+  })[f] ?? {
+    color: "neutral" as const,
+    variant: "solid" as const,
+    icon: "i-lucide-circle",
+    label: f,
+  };
 
 /** Sampul: dari DB bila ada, kalau tidak jatuh ke gambar statis milik event itu. */
 const SAMPUL: Record<string, string> = {
-  'listening-as-leadership': '/images/listening-as-leadership.png',
-  'leadership-with-compassion': '/images/leadership-with-compassion.png',
-}
-const sampul = (e: { slug: string, cover?: string | null }) =>
-  e.cover || SAMPUL[e.slug] || '/images/event-gallery-placeholder.png'
+  "listening-as-leadership": "/images/listening-as-leadership.png",
+  "leadership-with-compassion": "/images/leadership-with-compassion.png",
+};
+const sampul = (e: { slug: string; cover?: string | null }) =>
+  e.cover || SAMPUL[e.slug] || "/images/event-gallery-placeholder.png";
 
 // Tanggal disimpan sebagai timestamp UTC; tampilkan dalam WIB supaya tidak
 // bergeser sehari bagi pembaca di Indonesia.
 const tanggal = (nilai: string | null, panjang = false) => {
-  if (!nilai) return ''
-  return new Intl.DateTimeFormat(isEn.value ? 'en-GB' : 'id-ID', {
-    day: 'numeric',
-    month: panjang ? 'long' : 'short',
-    year: 'numeric',
-    timeZone: 'Asia/Jakarta',
-  }).format(new Date(nilai))
-}
+  if (!nilai) return "";
+  return new Intl.DateTimeFormat(isEn.value ? "en-GB" : "id-ID", {
+    day: "numeric",
+    month: panjang ? "long" : "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(nilai));
+};
 
 /** Apakah dua timestamp jatuh pada hari yang sama menurut WIB. */
 const hariSama = (a: string | null, b: string | null) => {
-  if (!a || !b) return true
-  const ymd = (n: string) => new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Jakarta',
-  }).format(new Date(n))
-  return ymd(a) === ymd(b)
-}
+  if (!a || !b) return true;
+  const ymd = (n: string) =>
+    new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: "Asia/Jakarta",
+    }).format(new Date(n));
+  return ymd(a) === ymd(b);
+};
 
 /**
  * Baris tanggal pada kartu.
@@ -182,12 +265,12 @@ const hariSama = (a: string | null, b: string | null) => {
  */
 const barisTanggal = (e: any) => {
   if (!hariSama(e.tanggalMulai, e.tanggalSelesai)) {
-    return `${tanggal(e.tanggalMulai)} – ${tanggal(e.tanggalSelesai)}`
+    return `${tanggal(e.tanggalMulai)} – ${tanggal(e.tanggalSelesai)}`;
   }
-  const tgl = tanggal(e.tanggalMulai, true)
-  const jam = rentangJam(e, isEn.value)
-  return jam ? `${tgl} · ${jam}` : tgl
-}
+  const tgl = tanggal(e.tanggalMulai, true);
+  const jam = rentangJam(e, isEn.value);
+  return jam ? `${tgl} · ${jam}` : tgl;
+};
 
 /**
  * Baris batas pendaftaran pada kartu.
@@ -196,25 +279,42 @@ const barisTanggal = (e: any) => {
  * "pendaftaran ditutup" mengulang apa yang sudah dikatakan badge di sampulnya.
  */
 const batasDaftar = (e: any) =>
-  e.fase === 'selesai' || e.fase === 'batal' ? '' : labelBatasDaftar(e, isEn.value)
+  e.fase === "selesai" || e.fase === "batal"
+    ? ""
+    : labelBatasDaftar(e, isEn.value);
 
-const t = computed(() => isEn.value
-  ? {
-      eyebrow: 'Programs & gatherings', judul: 'Compassionate Companion Events',
-      intro: 'A space for learning, reflection, and encounter for those who are sent.',
-      filterCari: 'Search events…', filterKategori: 'Category', filterUrutan: 'Sort events',
-      reset: 'Reset', hitung: (n: number) => `${n} event${n === 1 ? '' : 's'}`,
-      kosong: 'No event matches this filter.', semua: 'Showing all events',
-      detail: 'Event details', lokasi: 'Location',
-    }
-  : {
-      eyebrow: 'Program & Perjumpaan', judul: 'Event Compassionate Companion',
-      intro: 'Ruang belajar, refleksi, dan perjumpaan bagi para utusan.',
-      filterCari: 'Cari event…', filterKategori: 'Kategori', filterUrutan: 'Urutkan event',
-      reset: 'Reset', hitung: (n: number) => `${n} event`,
-      kosong: 'Tidak ada event yang cocok dengan filter ini.', semua: 'Menampilkan semua event',
-      detail: 'Detail event', lokasi: 'Lokasi',
-    })
+const t = computed(() =>
+  isEn.value
+    ? {
+        eyebrow: "Programs & gatherings",
+        judul: "Compassionate Companion Events",
+        intro:
+          "A space for learning, reflection, and encounter for those who are sent.",
+        filterCari: "Search events…",
+        filterKategori: "Category",
+        filterUrutan: "Sort events",
+        reset: "Reset",
+        hitung: (n: number) => `${n} event${n === 1 ? "" : "s"}`,
+        kosong: "No event matches this filter.",
+        semua: "Showing all events",
+        detail: "Event details",
+        lokasi: "Location",
+      }
+    : {
+        eyebrow: "Program & Perjumpaan",
+        judul: "Event Compassionate Companion",
+        intro: "Ruang belajar, refleksi, dan perjumpaan bagi para utusan.",
+        filterCari: "Cari event…",
+        filterKategori: "Kategori",
+        filterUrutan: "Urutkan event",
+        reset: "Reset",
+        hitung: (n: number) => `${n} event`,
+        kosong: "Tidak ada event yang cocok dengan filter ini.",
+        semua: "Menampilkan semua event",
+        detail: "Detail event",
+        lokasi: "Lokasi",
+      },
+);
 </script>
 
 <template>
@@ -302,7 +402,10 @@ const t = computed(() => isEn.value
           :style="{ animationDelay: `${Math.min(i, 8) * 60}ms` }"
         >
           <!-- Sampul + badge fase di pojok kanan atasnya -->
-          <div class="card-image" :style="{ backgroundImage: `url('${sampul(e)}')` }">
+          <div
+            class="card-image"
+            :style="{ backgroundImage: `url('${sampul(e)}')` }"
+          >
             <UBadge
               :color="badge(e.fase).color"
               :variant="badge(e.fase).variant"
@@ -319,22 +422,39 @@ const t = computed(() => isEn.value
 
             <h3>{{ isEn ? (e.judulEn ?? e.judul) : e.judul }}</h3>
 
-            <p class="muted">{{ isEn ? (e.deskripsiEn ?? e.deskripsi) : e.deskripsi }}</p>
+            <p class="muted">
+              {{ isEn ? (e.deskripsiEn ?? e.deskripsi) : e.deskripsi }}
+            </p>
 
             <!-- Biaya dan sisa kursi sengaja tidak ada di kartu. Keduanya angka yang
                  berubah dan menuntut keputusan, sementara kartu ini hanya perlu
                  membuat orang membuka halaman detail — di sanalah keputusan diambil. -->
             <div class="event-line">
-              <UIcon :name="e.daring ? 'i-lucide-video' : 'i-lucide-map-pin'" class="size-4 shrink-0 text-cc-brown-500" />
+              <UIcon
+                :name="e.daring ? 'i-lucide-video' : 'i-lucide-map-pin'"
+                class="size-4 shrink-0 text-cc-brown-500"
+              />
               <span class="event-lokasi">{{ e.lokasi }}</span>
             </div>
 
             <!-- Batas pendaftaran. Ditandai merah begitu terlewat: yang berubah
                  bukan cuma kalimatnya melainkan artinya — tombol "Detail event"
                  di bawahnya tidak lagi menuju formulir yang bisa diisi. -->
-            <div v-if="batasDaftar(e)" class="event-line" :class="e.tutupPendaftaran && batasLewat(e.tutupPendaftaran) ? 'event-line-tutup' : ''">
+            <div
+              v-if="batasDaftar(e)"
+              class="event-line"
+              :class="
+                e.tutupPendaftaran && batasLewat(e.tutupPendaftaran)
+                  ? 'event-line-tutup'
+                  : ''
+              "
+            >
               <UIcon
-                :name="e.tutupPendaftaran && batasLewat(e.tutupPendaftaran) ? 'i-lucide-lock' : 'i-lucide-hourglass'"
+                :name="
+                  e.tutupPendaftaran && batasLewat(e.tutupPendaftaran)
+                    ? 'i-lucide-lock'
+                    : 'i-lucide-hourglass'
+                "
                 class="size-4 shrink-0 text-cc-brown-500"
               />
               <span>{{ batasDaftar(e) }}</span>
@@ -369,6 +489,5 @@ const t = computed(() => isEn.value
         </UButton>
       </div>
     </div>
-
   </main>
 </template>

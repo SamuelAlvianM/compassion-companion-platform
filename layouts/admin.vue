@@ -81,8 +81,14 @@ const logout = async () => {
         </button>
 
         <div v-if="!dilipat && user" class="admin-side-user">
-          <p class="truncate font-semibold">{{ user.fullName }}</p>
-          <p class="truncate opacity-70">{{ user.role }} · level {{ user.level }}</p>
+          <p class="break-words font-semibold">{{ user.fullName }}</p>
+          <!-- Angka levelnya hanya untuk master. Bagi admin dan editor ia nomor
+               tanpa rujukan: tidak ada layar lain yang menyebutkannya, dan yang
+               benar-benar menentukan apa yang bisa dikerjakan adalah nama rolenya —
+               yang sudah tertulis di sebelahnya. -->
+          <p class="break-words opacity-70">
+            {{ user.role }}<template v-if="user.role === 'master'"> · level {{ user.level }}</template>
+          </p>
         </div>
       </div>
     </aside>

@@ -19,9 +19,20 @@ const props = defineProps<{
   open: boolean
   sesiId: string
   isEn?: boolean
+  /**
+   * Sesinya masih draf di halaman "Event baru". Fotonya tetap naik ke pustaka
+   * media — tanpa itu tidak ada `mediaId` — tapi barisnya di `cc_sesi_item` baru
+   * ditulis bersama seluruh event.
+   */
+  lokal?: boolean
 }>()
 
-const emit = defineEmits<{ 'update:open': [boolean], 'tersimpan': [] }>()
+const emit = defineEmits<{
+  'update:open': [boolean]
+  'tersimpan': []
+  /** Mode lokal: foto yang sudah naik, untuk disimpan induk nanti. */
+  'draf': [Record<string, any>[]]
+}>()
 
 interface Entri {
   key: string
@@ -149,6 +160,7 @@ const unggah = async () => {
   sibuk.value = true
   galatUmum.value = ''
   let berhasil = 0
+  const draf: Record<string, any>[] = []
 
   for (const entri of belumSelesai.value) {
     entri.keadaan = 'unggah'
@@ -165,17 +177,16 @@ const unggah = async () => {
       fd.append('altText', entri.judul)
       const naik = await $fetch<any>('/api/media/upload', { method: 'POST', body: fd })
 
-      await $fetch('/api/admin/sesi-item', {
-        method: 'POST',
-        body: {
-          sesiId: props.sesiId,
-          bagian: 'galeri',
-          jenis: 'gambar',
-          judul: entri.judul || siap.name,
-          judulEn: entri.judulEn || null,
-          mediaId: naik.data[0].id,
-        },
-      })
+      const isi = {
+        bagian: 'galeri',
+        jenis: 'gambar',
+        judul: entri.judul || siap.name,
+        judulEn: entri.judulEn || null,
+        mediaId: naik.data[0].id,
+      }
+
+      if (props.lokal) draf.push({ ...isi, mediaUrl: naik.data[0].publicUrl ?? '' })
+      else await $fetch('/api/admin/sesi-item', { method: 'POST', body: { ...isi, sesiId: props.sesiId } })
 
       entri.keadaan = 'selesai'
       berhasil++
@@ -190,7 +201,7 @@ const unggah = async () => {
 
   // Induk diberi tahu begitu ADA yang berhasil, meski sebagian gagal — foto yang
   // sudah masuk harus langsung terlihat di daftar sesi.
-  if (berhasil) emit('tersimpan')
+  if (berhasil) emit(props.lokal ? 'draf' : 'tersimpan', draf as any)
   if (!daftar.value.some(e => e.keadaan === 'gagal')) emit('update:open', false)
 }
 

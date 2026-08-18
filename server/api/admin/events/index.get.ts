@@ -29,12 +29,20 @@ export default defineEventHandler(async (event) => {
     .where(filters.length ? sql`${sql.join(filters, sql` and `)}` : undefined)
     .orderBy(desc(ccKegiatan.tanggalMulai))
 
+  // Dua angka dari satu query: berapa yang terdaftar, dan berapa di antaranya yang
+  // masih menunggu dikerjakan admin. Yang kedua dipakai penanda di daftar —
+  // `baru` dan `proses` sama-sama berarti ada orang yang belum selesai diurus,
+  // dan tanpa angkanya penanda itu cuma menyuruh membuka eventnya untuk tahu.
   const peserta = await db
-    .select({ kegiatanId: ccPeserta.kegiatanId, jumlah: sql<number>`count(*)` })
+    .select({
+      kegiatanId: ccPeserta.kegiatanId,
+      jumlah: sql<number>`count(*)`,
+      belum: sql<number>`sum(case when ${ccPeserta.status} in ('baru', 'proses') then 1 else 0 end)`,
+    })
     .from(ccPeserta)
     .where(ne(ccPeserta.status, 'batal'))
     .groupBy(ccPeserta.kegiatanId)
-  const pesertaPer = new Map(peserta.map(p => [p.kegiatanId, p.jumlah]))
+  const pesertaPer = new Map(peserta.map(p => [p.kegiatanId, p]))
 
   // Sesi & materi dihitung lewat satu join, bukan query per kegiatan — daftar ini
   // bisa panjang dan pola N+1 akan terasa begitu event bertambah.
@@ -68,7 +76,8 @@ export default defineEventHandler(async (event) => {
       kuota: row.kuota,
       status: row.status,
       fase: faseKegiatan(row, sekarang),
-      terdaftar: pesertaPer.get(row.id) ?? 0,
+      terdaftar: pesertaPer.get(row.id)?.jumlah ?? 0,
+      belumKonfirmasi: pesertaPer.get(row.id)?.belum ?? 0,
       jumlahSesi: hitungan?.sesi ?? 0,
       jumlahItem: hitungan?.item ?? 0,
     }

@@ -5,9 +5,9 @@
 // dan daftar lintas-kegiatan tanpa konteks eventnya tidak bisa dikerjakan admin —
 // keputusan "sudah bayar belum" selalu ditanyakan per kegiatan.
 
-import { and, desc, eq, like, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
 import { db } from '../../../../db'
-import { ccPeserta, PESERTA_STATUS, type PesertaStatus } from '../../../../db/schema'
+import { ccPeserta, ccUser, PESERTA_STATUS, type PesertaStatus } from '../../../../db/schema'
 import { wajibRole } from '../../../../utils/session'
 
 export default defineEventHandler(async (event) => {
@@ -69,12 +69,28 @@ export default defineEventHandler(async (event) => {
     semua += r.jumlah
   }
 
+  // Punya akun atau tidak — pertanyaan yang menentukan langkah apa yang harus
+  // dikerjakan admin (membuatkan akun atau tidak), jadi jawabannya harus benar
+  // untuk keadaan SEKARANG.
+  //
+  // `userId` saja tidak cukup: ia hanya terisi bila orangnya mendaftar sambil
+  // sudah masuk. Peserta yang dibuatkan akun oleh admin sesudah mendaftar tetap
+  // akan terbaca "belum punya akun" selamanya — persis kebalikan dari apa yang
+  // baru saja dikerjakan admin. Karena itu emailnya dicocokkan juga.
+  const email = rows.map(r => r.email).filter((e): e is string => Boolean(e))
+  const punyaAkun = new Set<string>()
+  if (email.length) {
+    const akun = await db
+      .select({ email: ccUser.email })
+      .from(ccUser)
+      .where(inArray(ccUser.email, email))
+    for (const a of akun) if (a.email) punyaAkun.add(a.email.toLowerCase())
+  }
+
   return {
     data: rows.map(r => ({
       ...r,
-      // Dibedakan di payload, bukan ditebak dari userId di klien: pendaftar berakun
-      // punya identitas yang sudah terverifikasi dan itu memengaruhi keputusan admin.
-      berakun: Boolean(r.userId),
+      berakun: Boolean(r.userId) || (r.email ? punyaAkun.has(r.email.toLowerCase()) : false),
     })),
     meta: { total: rows.length, perStatus: { semua, ...perStatus } },
   }

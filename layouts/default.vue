@@ -17,7 +17,7 @@ const menuAkun = computed(() => [
   [
     { label: isEn.value ? 'My profile' : 'Profil saya', icon: 'i-lucide-user-round', to: localized('/profil') },
     ...(bolehKeAdmin.value
-      ? [{ label: isEn.value ? 'Admin area' : 'Area admin', icon: 'i-lucide-layout-dashboard', to: '/admin' }]
+      ? [{ label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' }]
       : []),
   ],
   [

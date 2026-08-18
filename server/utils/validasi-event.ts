@@ -106,6 +106,7 @@ export interface BodyKegiatan {
   harga: number
   status: (typeof KEGIATAN_STATUS)[number]
   coverMediaId: string | null
+  thumbnailMediaId: string | null
 }
 
 export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
@@ -119,6 +120,15 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
   // Boleh SAMA — event sehari memang begitu; yang ditolak hanya yang mundur.
   if (tanggalSelesai && tanggalSelesai < tanggalMulai) {
     throw salah('Tanggal selesai tidak boleh mendahului tanggal mulai')
+  }
+
+  // Batas pendaftaran sesudah acaranya mulai bukan batas apa pun: ia menawarkan
+  // pendaftaran untuk acara yang sedang berlangsung. Dibandingkan sebagai HARI,
+  // bukan sebagai timestamp — batas "23.55 pada hari acara" itu sah dan lazim,
+  // sementara `tanggalMulai` sendiri jatuh pada 00.00 hari itu.
+  const tutupPendaftaran = keTanggal(body.tutupPendaftaran)
+  if (tutupPendaftaran && hariWib(tutupPendaftaran) > hariWib(tanggalMulai)) {
+    throw salah('Batas akhir pendaftaran tidak boleh melewati tanggal mulai')
   }
 
   const jamMulai = keJam(body.jamMulai)
@@ -189,11 +199,12 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
     tanggalSelesai,
     jamMulai,
     jamSelesai,
-    tutupPendaftaran: keTanggal(body.tutupPendaftaran),
+    tutupPendaftaran,
     kuota,
     harga: Math.round(harga),
     status: status as BodyKegiatan['status'],
     coverMediaId: teksAtauNull(body.coverMediaId),
+    thumbnailMediaId: teksAtauNull(body.thumbnailMediaId),
   }
 }
 

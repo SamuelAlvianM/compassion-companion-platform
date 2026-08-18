@@ -19,6 +19,17 @@ const props = defineProps<{
   /** Object URL gambar yang sedang disunting. */
   sumber: string
   isEn?: boolean
+  /**
+   * Rasio yang tidak bisa diubah, mis. 16/9 untuk sampul event.
+   *
+   * Dipakai saat gambarnya menempati bingkai yang ukurannya sudah ditentukan
+   * halaman tujuannya. Di situ "bebas" bukan kebebasan melainkan jebakan: apa pun
+   * yang dipilih tetap akan dipotong ulang oleh CSS, dan yang hilang justru bagian
+   * yang barusan dipilih dengan susah payah.
+   */
+  rasioTetap?: number | null
+  /** Tombol "Ganti gambar" disembunyikan bila penggantinya diurus induk. */
+  tanpaGanti?: boolean
 }>()
 
 const nilai = defineModel<PotonganGambar>({ required: true })
@@ -90,6 +101,9 @@ const muat = () => {
       // pernah dipotong lalu dibuka lagi harus kembali dengan kotaknya utuh.
       crop: nilai.value.crop.w ? nilai.value.crop : { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight },
     }
+    // Kotak awal langsung mengikuti rasio yang dikunci; tanpa ini gambar terbuka
+    // dengan potongan penuh yang bentuknya sudah pasti salah.
+    if (props.rasioTetap && !nilai.value.rasio) nextTick(() => pakaiRasio(props.rasioTetap!))
     nextTick(ukurPanggung)
   }
   img.src = props.sumber
@@ -116,6 +130,9 @@ const zoom = (delta: number) => {
 }
 
 const resetPotongan = () => {
+  // Rasio terkunci tidak ikut direset — kalau ikut, satu klik "kembalikan
+  // potongan" akan melepas kunci yang justru jadi alasan editor ini dibuka.
+  if (props.rasioTetap) { pakaiRasio(props.rasioTetap); return }
   nilai.value = { ...nilai.value, crop: potonganPenuh(), rasio: null }
 }
 
@@ -299,8 +316,11 @@ const SUDUT: { pegangan: Pegangan, kelas: string, kursor: string }[] = [
       <span class="mx-1 h-5 w-px bg-cc-stone-200" />
 
       <span class="text-xs text-cc-stone-500">{{ t.rasio }}</span>
+      <span v-if="rasioTetap" class="rounded-full bg-cc-green-800 px-2 py-1 text-xs font-semibold text-white">
+        {{ Math.round(rasioTetap * 100) / 100 }}:1
+      </span>
       <button
-        v-for="r in RASIO"
+        v-for="r in (rasioTetap ? [] : RASIO)"
         :key="String(r.nilai)"
         type="button"
         class="rounded-full px-2 py-1 text-xs font-semibold transition-colors"
@@ -316,7 +336,7 @@ const SUDUT: { pegangan: Pegangan, kelas: string, kursor: string }[] = [
         <UButton color="neutral" variant="ghost" size="xs" icon="i-lucide-refresh-ccw" @click="resetPotongan">
           {{ t.reset }}
         </UButton>
-        <UButton color="neutral" variant="ghost" size="xs" icon="i-lucide-image-plus" @click="emit('ganti')">
+        <UButton v-if="!tanpaGanti" color="neutral" variant="ghost" size="xs" icon="i-lucide-image-plus" @click="emit('ganti')">
           {{ t.ganti }}
         </UButton>
       </span>

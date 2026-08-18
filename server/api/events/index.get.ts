@@ -61,7 +61,13 @@ export default defineEventHandler(async (event) => {
 
   // Cover diambil terpisah, bukan lewat join, karena `coverMediaId` sengaja tidak
   // memakai .references() (lihat design.md §5.2) — join-nya tidak dijamin ada.
-  const coverIds = rows.map(r => r.coverMediaId).filter((id): id is string => Boolean(id))
+  //
+  // Thumbnail ikut diambil di query yang sama: kartu memakai gambar yang dipotong
+  // untuk bingkainya sendiri, dan jatuh kembali ke gambar utama hanya bila
+  // thumbnailnya belum pernah dipasang.
+  const coverIds = rows
+    .flatMap(r => [r.thumbnailMediaId, r.coverMediaId])
+    .filter((id): id is string => Boolean(id))
   const coverPer = new Map<string, string>()
   if (coverIds.length) {
     const media = await db
@@ -97,15 +103,16 @@ export default defineEventHandler(async (event) => {
         deskripsiEn: row.deskripsiEn,
         lokasi: row.lokasi,
         daring: Boolean(row.tautanDaring),
-        cover: row.coverMediaId ? coverPer.get(row.coverMediaId) ?? null : null,
+        cover: (row.thumbnailMediaId ? coverPer.get(row.thumbnailMediaId) : null)
+          ?? (row.coverMediaId ? coverPer.get(row.coverMediaId) : null)
+          ?? null,
         tanggalMulai: row.tanggalMulai,
         tanggalSelesai: row.tanggalSelesai,
-        // `jamMulai`/`jamSelesai` adalah bentuk barunya; `waktu` teks bebas
-        // ("09.00 – 16.30 WIB") tetap dikirim sebagai cadangan untuk event lama
-        // yang kedua kolom jamnya masih kosong.
+        // Kolom teks bebas lama `waktu` tidak lagi dikirim: ia tidak bisa disunting
+        // dari layar mana pun, sehingga event yang jamnya sengaja dikosongkan admin
+        // tetap menampilkan jam warisan seed.
         jamMulai: row.jamMulai,
         jamSelesai: row.jamSelesai,
-        waktu: row.waktu,
         tutupPendaftaran: row.tutupPendaftaran,
         // Untuk pilihan urutan "terbaru ditambahkan", yang berbeda dari tanggal
         // acaranya: event yang baru dimasukkan bisa saja acaranya paling lama.
