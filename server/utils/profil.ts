@@ -36,6 +36,9 @@ export const bangunProfil = async (pengakses: SessionUser, targetIdMentah: strin
       role: ccUser.role,
       phoneNumber: ccUser.phoneNumber,
       isActive: ccUser.isActive,
+      // Ikut dikirim supaya sakelar "Boleh menulis jurnal" di formulir member
+      // menampilkan keadaan yang sebenarnya, bukan selalu mati.
+      bolehTulisJurnal: ccUser.bolehTulisJurnal,
       avatarMediaId: ccUser.avatarMediaId,
       lastLogin: ccUser.lastLogin,
       createdAt: ccUser.createdAt,

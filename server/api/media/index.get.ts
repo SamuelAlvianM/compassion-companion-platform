@@ -52,10 +52,14 @@ export default defineEventHandler(async (event) => {
     .limit(limit)
     .offset((page - 1) * limit)
 
-  const [{ total }] = await db
+  // Tidak di-destructure langsung: `count(*)` selalu mengembalikan satu baris,
+  // tapi tipe hasil drizzle tetap larik biasa — dan baris[0] ikut bertipe
+  // undefined. `?? 0` di sini bukan jaga-jaga, cuma menuruti tipenya.
+  const hitung = await db
     .select({ total: sql<number>`count(*)` })
     .from(ccMedia)
     .where(where)
+  const total = hitung[0]?.total ?? 0
 
   return {
     data: rows,

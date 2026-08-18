@@ -59,6 +59,18 @@ export const ccUser = sqliteTable(
     phoneNumber: text('phone_number', { length: 20 }),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 
+    /**
+     * Izin menulis jurnal, diberikan admin per orang — bukan turunan role.
+     *
+     * Menulis jurnal bukan hal yang otomatis melekat pada semua member: yang boleh
+     * menulis adalah mereka yang memang diminta atau mengajukan diri, dan admin
+     * yang membukanya. Selama tertutup, tombol "Tulis jurnal" tidak digambar sama
+     * sekali di halaman member — bukan digambar lalu ditolak saat diklik.
+     *
+     * Tidak berlaku bagi editor ke atas: wewenang mereka sudah datang dari role.
+     */
+    bolehTulisJurnal: integer('boleh_tulis_jurnal', { mode: 'boolean' }).notNull().default(false),
+
     /** FK dideklarasikan longgar (tanpa .references) untuk menghindari import melingkar dengan media. */
     avatarMediaId: text('avatar_media_id'),
 

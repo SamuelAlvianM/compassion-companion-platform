@@ -57,6 +57,16 @@ const ukuran = (bytes: number) => bytes >= 1048576
   ? `${(bytes / 1048576).toFixed(1)} MB`
   : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
+/** Label status jurnal yang dibaca orang. Sama persis dengan yang dipakai daftar
+    /admin/jurnal dan kartu dashboard. */
+const LABEL_STATUS_JURNAL: Record<string, string> = {
+  draft: 'Draft',
+  review: 'Direview',
+  revisi: 'Perlu revisi',
+  approved: 'Disetujui',
+  published: 'Terbit',
+}
+
 const WARNA_STATUS: Record<string, string> = {
   baru: '#E1B032',
   proses: '#AC8158',
@@ -139,10 +149,12 @@ const bukaJurnal = () => {
   if (!j) return
   detail.value = {
     judul: 'Jurnal yang sudah dibuat',
-    keterangan: `${j.total} jurnal · ${j.terbit} terbit, ${j.draft} draft.`,
+    keterangan: `${j.total} jurnal · ${j.published} terbit, ${j.approved} disetujui, ${j.review} direview, ${j.revisi} perlu revisi, ${j.draft} draft.`,
     baris: j.daftar.map(x => ({
       label: x.judul,
-      nilai: x.status === 'Published' ? 'Terbit' : 'Draft',
+      // Empat status sejak jurnal punya alur terbit sungguhan. Sebelumnya cuma
+      // dua nilai teks ('Published'/'Draft') dari daftar statis yang sudah dicabut.
+      nilai: LABEL_STATUS_JURNAL[x.status] ?? x.status,
       ke: `/admin/jurnal/${x.id}`,
     })),
     aksi: { label: 'Buka daftar jurnal', ke: '/admin/jurnal' },
@@ -209,7 +221,7 @@ const kartu = computed(() => {
       kunci: 'jurnal',
       label: 'Jurnal dibuat',
       nilai: jurnal.value?.total ?? 0,
-      catatan: `${jurnal.value?.terbit ?? 0} terbit · ${jurnal.value?.draft ?? 0} draft`,
+      catatan: `${jurnal.value?.published ?? 0} terbit · ${jurnal.value?.draft ?? 0} draft`,
       ikon: 'i-lucide-notebook-pen',
       klik: bukaJurnal,
     },

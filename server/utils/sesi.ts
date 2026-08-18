@@ -26,8 +26,11 @@ export const idYoutube = (url: string): string | null => {
     const v = u.searchParams.get('v')
     if (v) return bersihkanId(v)
 
-    const m = u.pathname.match(/^\/(embed|shorts|live|v)\/([^/?#]+)/)
-    return m ? bersihkanId(m[2]) : null
+    // Grup kedua diambil ke variabel dulu: dengan `noUncheckedIndexedAccess`,
+    // `m[2]` bertipe `string | undefined` meski regex-nya menjamin grupnya ada,
+    // dan pemeriksaan pada `m` saja tidak menyempitkan tipe elemennya.
+    const dari = u.pathname.match(/^\/(embed|shorts|live|v)\/([^/?#]+)/)?.[2]
+    return dari ? bersihkanId(dari) : null
   }
   catch {
     return null
@@ -37,7 +40,7 @@ export const idYoutube = (url: string): string | null => {
 // ID YouTube selalu 11 karakter dari alfabet URL-safe. Memvalidasinya di sini
 // mencegah potongan path acak ikut disuntikkan ke src iframe.
 const bersihkanId = (raw: string) => {
-  const id = raw.split(/[?&#]/)[0]
+  const id = raw.split(/[?&#]/)[0] ?? ''
   return /^[\w-]{11}$/.test(id) ? id : null
 }
 

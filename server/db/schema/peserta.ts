@@ -30,7 +30,9 @@ export const PESERTA_ALUR = ['baru', 'proses', 'konfirmasi'] as const
 export const statusBerikutnya = (status: PesertaStatus): PesertaStatus | null => {
   const i = PESERTA_ALUR.indexOf(status as (typeof PESERTA_ALUR)[number])
   if (i === -1 || i === PESERTA_ALUR.length - 1) return null
-  return PESERTA_ALUR[i + 1]
+  // ?? null: dengan noUncheckedIndexedAccess indeks larik ikut bertipe undefined,
+  // padahal baris di atas sudah memastikan i bukan elemen terakhir.
+  return PESERTA_ALUR[i + 1] ?? null
 }
 
 export const ccPeserta = sqliteTable(

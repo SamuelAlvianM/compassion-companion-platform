@@ -1,0 +1,18 @@
+{
+  // Nuxt membangun empat tsconfig terpisah di .nuxt/ — satu untuk tiap
+  // lingkungan (app, server, shared, node), masing-masing dengan auto-import
+  // dan tipe globalnya sendiri. Berkas ini cuma menunjuk keempatnya.
+  //
+  // Tanpa berkas ini, editor tidak tahu .nuxt/ ada sama sekali: `computed`,
+  // `ref`, `useFetch`, dan seluruh auto-import Nuxt terbaca sebagai nama yang
+  // tidak dikenal (ts 2304), padahal kodenya jalan dengan benar.
+  //
+  // Dibangun ulang oleh `nuxt prepare` (jalan sendiri lewat postinstall).
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
+}

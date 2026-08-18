@@ -17,10 +17,27 @@ if (!sesi.value) {
 }
 
 const targetId = computed(() => (typeof route.query.id === 'string' ? route.query.id : 'me'))
+
+/** Awalan bahasa untuk tautan keluar halaman ini. */
+const base = computed(() => (isEn.value ? '/en' : '/id'))
+
+/** Profil sendiri, bukan profil orang lain yang sedang dilihat pengelola. */
+const milikSaya = computed(() => targetId.value === 'me' || targetId.value === sesi.value?.id)
+
+/** Izin menulis jurnal datang dari sesi (lihat /api/auth/me), bukan dari profil
+    yang sedang dibuka: yang menentukan tombol ini muncul adalah hak ORANG YANG
+    SEDANG LOGIN. */
+const bolehTulisJurnal = computed(() =>
+  Boolean(sesi.value?.bolehTulisJurnal) || (sesi.value?.level ?? 9) <= 3)
 // Tanpa `await`: await membuat komponen ini suspense, sehingga saat keluar akun
 // atau berpindah bahasa halaman lama sudah hilang sementara yang baru belum boleh
 // tergambar. Rangkanya sekarang muncul lebih dulu.
-const { data, status, refresh } = useFetch(() => `/api/users/${targetId.value}`)
+// Cast rute hanya untuk tipe; alamat yang benar-benar diminta tetap yang disusun
+// di kiri. Tanpa cast, `/api/users/${string}` cocok dengan tiga rute sekaligus
+// (`:id`, `me`, `password`) dan Nuxt menyerah ke `{}` — seluruh isi `data` jadi
+// tidak dikenal. `me.get.ts` dan `[id].get.ts` sama-sama mengembalikan
+// `bangunProfil()`, jadi satu rute sudah mewakili bentuk keduanya.
+const { data, status, refresh } = useFetch(() => `/api/users/${targetId.value}` as '/api/users/:id')
 
 const memuatAwal = computed(() => status.value === 'pending' && !data.value)
 
@@ -32,7 +49,7 @@ const refleksi = computed(() => data.value?.refleksi ?? [])
 
 const t = computed(() => isEn.value
   ? {
-      eyebrow: 'Profile', tab1: 'Reflections', tab2: 'Event history', tab3: 'Account settings',
+      eyebrow: 'Profile', tab1: 'Journal', tab2: 'Event history', tab3: 'Account settings',
       username: 'Username', nama: 'Full name', email: 'Email', hp: 'WhatsApp number',
       simpan: 'Save changes', tersimpan: 'Profile updated',
       gantiPass: 'Change password', passLama: 'Current password', passBaru: 'New password',
@@ -49,7 +66,7 @@ const t = computed(() => isEn.value
       kembali: 'Back to member list', bergabung: 'Joined',
     }
   : {
-      eyebrow: 'Profil', tab1: 'Refleksi', tab2: 'Riwayat event', tab3: 'Pengaturan akun',
+      eyebrow: 'Profil', tab1: 'Jurnal', tab2: 'Riwayat event', tab3: 'Pengaturan akun',
       username: 'Username', nama: 'Nama lengkap', email: 'Email', hp: 'Nomor WhatsApp',
       simpan: 'Simpan perubahan', tersimpan: 'Profil diperbarui',
       gantiPass: 'Ganti password', passLama: 'Password saat ini', passBaru: 'Password baru',
@@ -300,13 +317,38 @@ const inisial = computed(() =>
             </div>
           </dl>
 
-          <!-- Tiga angka ringkasan. `total` dan `hadir` kini menghitung pendaftaran
-               yang tidak dibatalkan saja — yang batal sudah disaring di server. -->
-          <dl v-if="ringkas" class="mt-6 flex flex-wrap gap-8 border-t border-white/20 pt-4 text-cc-stone-50">
-            <div><dt class="text-xs uppercase opacity-70">{{ t.ikut }}</dt><dd class="font-serif text-3xl">{{ ringkas.total }}</dd></div>
-            <div><dt class="text-xs uppercase opacity-70">{{ t.hadir }}</dt><dd class="font-serif text-3xl">{{ ringkas.hadir }}</dd></div>
-            <div><dt class="text-xs uppercase opacity-70">{{ t.tab1 }}</dt><dd class="font-serif text-3xl">{{ refleksi.length }}</dd></div>
-          </dl>
+          <!-- Angka ringkasan, dan di ujung kanan baris yang sama: jalan masuk ke
+               area tulis jurnal.
+               Tombolnya duduk di sini, bukan di bawah kepala profil, karena yang
+               dibacanya bersebelahan — "jurnal: 2" dan "buat jurnal baru" adalah
+               angka dan tindakan atas hal yang sama. Ditaruh di baris sendiri, ia
+               mengambil satu blok penuh untuk satu tombol dan mendorong tab-nya
+               turun. -->
+          <div
+            v-if="ringkas || (milikSaya && bolehTulisJurnal)"
+            class="mt-6 flex flex-wrap items-end justify-between gap-4 border-t border-white/20 pt-4"
+          >
+            <dl v-if="ringkas" class="flex flex-wrap gap-8 text-cc-stone-50">
+              <div><dt class="text-xs uppercase opacity-70">{{ t.ikut }}</dt><dd class="font-serif text-3xl">{{ ringkas.total }}</dd></div>
+              <!-- <div><dt class="text-xs uppercase opacity-70">{{ t.hadir }}</dt><dd class="font-serif text-3xl">{{ ringkas.hadir }}</dd>disini</div> -->
+              <div><dt class="text-xs uppercase opacity-70">{{ t.tab1 }}</dt><dd class="font-serif text-3xl">{{ refleksi.length }}</dd></div>
+            </dl>
+
+            <!-- Hanya bagi pemilik profil yang aksesnya memang dibuka admin — yang
+                 belum dibuka tidak melihat tombol yang akan menolaknya.
+                 `variant="solid"` di sini, bukan `soft`: latarnya hijau tua, dan
+                 tombol lembut di atasnya nyaris tidak terbaca sebagai tombol. -->
+            <UButton
+              v-if="milikSaya && bolehTulisJurnal"
+              :to="`${base}/jurnal-saya`"
+              color="secondary"
+              variant="solid"
+              icon="i-lucide-pen-line"
+              class="shrink-0"
+            >
+              {{ isEn ? 'New journal entry' : 'Buat jurnal baru' }}
+            </UButton>
+          </div>
         </div>
 
         <UTabs v-model="tab" :items="tabs" :content="false" color="secondary" variant="link" class="mb-6" />

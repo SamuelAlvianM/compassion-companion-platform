@@ -68,10 +68,13 @@ export default defineEventHandler(async (event) => {
     // di hari acara kalau tidak dijaga sekarang.
     const kegiatan = db.select().from(ccKegiatan).where(eq(ccKegiatan.id, peserta.kegiatanId)).get()
     if (kegiatan?.kuota !== null && kegiatan?.kuota !== undefined) {
-      const [{ jumlah }] = await db
+      // Baris[0] bertipe undefined menurut tipe hasil drizzle meski `count(*)`
+      // selalu mengembalikan tepat satu baris; `?? 0` menuruti tipenya.
+      const hitung = await db
         .select({ jumlah: sql<number>`count(*)` })
         .from(ccPeserta)
         .where(and(eq(ccPeserta.kegiatanId, peserta.kegiatanId), ne(ccPeserta.status, 'batal')))
+      const jumlah = hitung[0]?.jumlah ?? 0
 
       if (jumlah >= kegiatan.kuota) {
         throw createError({

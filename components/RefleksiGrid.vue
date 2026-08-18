@@ -1,6 +1,21 @@
 <script setup lang="ts">
-// Kisi refleksi bergaya Instagram: kartu persegi, rapat, tanpa judul —
-// yang menonjol isinya dan kegiatan asalnya.
+// Kisi refleksi, memakai KELAS KARTU YANG SAMA dengan halaman /id/jurnal
+// (`.journal-grid`, `.journal-card`, dan turunannya di assets/css/main.css).
+//
+// Bukan kelas baru yang meniru tampilannya: dua kumpulan aturan yang berusaha
+// terlihat sama akan menyimpang pada perubahan pertama yang cuma disentuh salah
+// satunya. Kalau kartu jurnal dirapikan nanti, kartu di halaman profil ikut
+// rapi tanpa ada yang perlu mengingatnya.
+//
+// Bentuk sebelumnya kisi persegi rapat bergaya Instagram. Diganti atas permintaan:
+// halaman profil dan halaman jurnal kini terbaca sebagai satu situs yang sama.
+//
+// Yang dipetakan ke slot kartu jurnal:
+//   .journal-type   -> label visibilitas (Pribadi / Khusus peserta / Publik)
+//   .journal-event  -> nama kegiatan asalnya
+//   h2              -> isi refleksinya; ia memang tidak punya judul, dan kalimat
+//                      pertamanya itulah yang orang baca lebih dulu
+//   .journal-meta   -> tanggalnya
 
 interface Refleksi {
   id: string
@@ -24,9 +39,11 @@ const terbuka = ref<Refleksi | null>(null)
 
 const t = computed(() => props.isEn
   ? { kosong: 'No reflections yet.', kosongIntro: 'Reflections written after an event will appear here.',
-      pribadi: 'Private', peserta: 'Participants only', hapus: 'Delete', tutup: 'Close', pada: 'on' }
+      pribadi: 'Private', peserta: 'Participants only', hapus: 'Delete', tutup: 'Close', pada: 'on',
+      baca: 'Read more' }
   : { kosong: 'Belum ada refleksi.', kosongIntro: 'Refleksi yang ditulis setelah kegiatan akan muncul di sini.',
-      pribadi: 'Pribadi', peserta: 'Khusus peserta', hapus: 'Hapus', tutup: 'Tutup', pada: 'pada' })
+      pribadi: 'Pribadi', peserta: 'Khusus peserta', hapus: 'Hapus', tutup: 'Tutup', pada: 'pada',
+      baca: 'Baca lebih lanjut' })
 
 const tanggal = (nilai: string) =>
   new Intl.DateTimeFormat(props.isEn ? 'en-GB' : 'id-ID', {
@@ -37,6 +54,17 @@ const lencana = (v: Refleksi['visibilitas']) =>
   v === 'pribadi' ? { label: t.value.pribadi, icon: 'i-lucide-lock' }
     : v === 'peserta' ? { label: t.value.peserta, icon: 'i-lucide-users' }
       : null
+
+/** Label tipe di kepala kartu. Refleksi publik tetap diberi label, bukan
+    dikosongkan — slot itu selalu terisi di kartu jurnal, dan satu kartu yang
+    kehilangan barisnya akan berbeda tinggi dari tetangganya. */
+const labelTipe = (v: Refleksi['visibilitas']) =>
+  lencana(v)?.label ?? (props.isEn ? 'Public' : 'Publik')
+
+/** Ikon bulat di pojok kanan atas, sepadan dengan ikon tipe di kartu jurnal.
+    Di sini ia sekaligus menggantikan gembok yang dulu melayang di atas gambar. */
+const ikonTipe = (v: Refleksi['visibilitas']) =>
+  lencana(v)?.icon ?? 'i-lucide-quote'
 </script>
 
 <template>
@@ -47,42 +75,40 @@ const lencana = (v: Refleksi['visibilitas']) =>
       <p class="mt-1 text-sm text-cc-stone-500">{{ t.kosongIntro }}</p>
     </div>
 
-    <div v-else class="grid grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-1.5">
-      <button
-        v-for="item in refleksi"
-        :key="item.id"
-        type="button"
-        class="group relative aspect-square overflow-hidden rounded-sm bg-cc-stone-100 text-left transition hover:opacity-95"
-        @click="terbuka = item"
-      >
+    <div v-else class="journal-grid">
+      <article v-for="item in refleksi" :key="item.id" class="journal-card">
+        <div class="journal-card-icon" :aria-label="labelTipe(item.visibilitas)">
+          <UIcon :name="ikonTipe(item.visibilitas)" class="size-4" />
+        </div>
+
+        <!-- Gambar, kalau ada. Ditarik keluar dari padding kartunya supaya rata
+             tepi seperti sampul artikel, bukan foto yang mengambang di dalam kotak. -->
         <img
           v-if="item.gambar"
           :src="item.gambar"
           alt=""
-          class="size-full object-cover transition duration-300 group-hover:scale-105"
+          class="refleksi-gambar"
         >
-        <!-- Tanpa gambar: kutipan itu sendiri yang jadi visualnya. -->
-        <div
-          v-else
-          class="flex size-full flex-col justify-between bg-gradient-to-br from-cc-green-800 to-cc-brown-600 p-4 text-cc-stone-50"
-        >
-          <UIcon name="i-lucide-quote" class="size-5 opacity-60" />
-          <p class="line-clamp-5 font-serif text-lg leading-snug">{{ item.isi }}</p>
+
+        <div class="journal-type">{{ labelTipe(item.visibilitas) }}</div>
+        <div v-if="item.kegiatanJudul" class="journal-event">{{ item.kegiatanJudul }}</div>
+
+        <h2 class="refleksi-kutipan">{{ item.isi }}</h2>
+
+        <div class="journal-meta">
+          <time :datetime="item.createdAt">{{ tanggal(item.createdAt) }}</time>
         </div>
 
-        <div
-          v-if="item.gambar"
-          class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3"
+        <UButton
+          color="secondary"
+          variant="solid"
+          trailing-icon="i-lucide-arrow-right"
+          class="mt-auto"
+          @click="terbuka = item"
         >
-          <p class="line-clamp-2 text-xs text-white">{{ item.isi }}</p>
-        </div>
-
-        <UIcon
-          v-if="lencana(item.visibilitas)"
-          :name="lencana(item.visibilitas)!.icon"
-          class="absolute right-2 top-2 size-4 text-white drop-shadow"
-        />
-      </button>
+          {{ t.baca }}
+        </UButton>
+      </article>
     </div>
 
     <!-- Detail satu refleksi -->
@@ -126,3 +152,27 @@ const lencana = (v: Refleksi['visibilitas']) =>
     </UModal>
   </div>
 </template>
+
+<style scoped>
+/* Dua aturan ini SATU-SATUNYA yang ditulis di sini; sisa tampilannya datang dari
+   `.journal-card` di main.css. Keduanya menangani hal yang tidak dipunyai kartu
+   jurnal: refleksi tidak punya judul dan ringkasan terpisah, jadi isinya sendiri
+   yang menempati slot judul — dan tanpa batas baris, satu refleksi panjang akan
+   membuat kartunya jauh lebih tinggi daripada tetangganya di baris yang sama. */
+.refleksi-kutipan {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Ditarik keluar dari padding kartu (24px 26px di main.css) supaya rata tepi. */
+.refleksi-gambar {
+  margin: -24px -26px 0;
+  width: calc(100% + 52px);
+  max-width: none;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 7px 7px 0 0;
+}
+</style>

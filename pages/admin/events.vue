@@ -49,11 +49,12 @@ const faseOptions = computed(() => [
   { value: "batal", label: "Dibatalkan" },
 ]);
 
-const ikonFase = computed(
-  () =>
-    faseOptions.value.find((o) => o.value === fase.value)?.icon ??
-    "i-lucide-layers",
-);
+/**
+ * Ikon tombol dropdown. Tetap, bukan mengikuti pilihan: `icon` per fase tidak
+ * ada lagi di `faseOptions`, jadi pencariannya selalu jatuh ke nilai cadangan
+ * ini — sebuah computed yang hasilnya tidak pernah berubah.
+ */
+const ikonFase = "i-lucide-layers";
 
 const tanggal = (nilai: string | null) =>
   nilai

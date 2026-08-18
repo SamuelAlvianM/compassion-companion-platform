@@ -33,6 +33,8 @@ export interface BodyUser {
   phoneNumber: string | null
   role: UserRole
   isActive: boolean
+  /** Izin menulis jurnal, dibuka admin per orang — lihat cc_user.bolehTulisJurnal. */
+  bolehTulisJurnal: boolean
 }
 
 /** Email diperiksa seadanya: ada @, ada titik sesudahnya, tanpa spasi. */
@@ -116,5 +118,6 @@ export const bacaUser = (body: Record<string, unknown>, opsi: OpsiBacaUser = {})
     phoneNumber: teksAtauNull(body.phoneNumber),
     role: role as UserRole,
     isActive: body.isActive === undefined ? true : Boolean(body.isActive),
+    bolehTulisJurnal: body.bolehTulisJurnal === undefined ? false : Boolean(body.bolehTulisJurnal),
   }
 }

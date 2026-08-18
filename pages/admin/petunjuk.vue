@@ -66,9 +66,6 @@ const alur = [
   { no: 3, judul: 'Konfirmasi & catat pembayaran', detail: 'Buka event lalu tab "Daftar peserta". Status dimajukan manual: baru → proses → konfirmasi. Pendaftar yang memakai akun langsung masuk sebagai proses, jadi tinggal dikonfirmasi. Yang batal bisa dikembalikan ke status terakhirnya kalau berubah pikiran.', peran: 'Admin' },
   { no: 4, judul: 'Unggah materi & terbitkan jurnal', detail: 'Setelah acara: unggah dokumentasi, bagikan materi ke peserta, dan terbitkan refleksi pilihan sebagai jurnal.', peran: 'Editor' },
 ]
-
-const warnaLevel = (level: number) =>
-  ({ 1: 'error', 2: 'primary', 3: 'secondary', 4: 'neutral' })[level] ?? 'neutral'
 </script>
 
 <template>

@@ -12,36 +12,59 @@ useSeoMeta({
 });
 
 // ── Filter ───────────────────────────────────────────────────────────────────
-// Fase dulunya tab; sekarang jadi filter agar bisa dipakai bersamaan dengan
-// rentang tanggal, dan agar seluruh event tetap terlihat saat filter kosong.
-// Satu dropdown kategori, bukan pilihan ganda: tiga fase itu saling meniadakan
-// dalam pemakaian nyata — orang mencari "yang mendatang", bukan "mendatang ATAU
-// yang sudah selesai".
-// Nilai "semua" dipakai sebagai sentinel, bukan string kosong: Reka UI (penyokong
-// USelect) memesan '' untuk keadaan "belum dipilih" dan melempar error kalau ada
-// item yang nilainya kosong.
+// Fase dulunya dropdown; sekarang chip berjajar, bentuk yang sama dengan penyaring
+// status di dashboard (tab peserta, daftar event). Alasannya sama seperti di sana:
+// tiga fase itu saling meniadakan dan jumlahnya sedikit, jadi menyembunyikannya di
+// balik dropdown menukar satu klik jadi dua tanpa menghemat apa pun — sementara
+// jumlah per fase yang menyatu di dalam chip hanya bisa terbaca kalau semuanya
+// tampak sekaligus.
+//
+// Nilai "semua" tetap dipakai sebagai sentinel, bukan string kosong.
 const fase = ref("semua");
 
-// Ikonnya sama persis dengan ikon badge fase di kartu, supaya pilihan di dropdown
-// dan penanda di kartu terbaca sebagai satu hal yang sama.
-// const faseOptions = computed(() => [
-//   { value: 'semua', label: isEn.value ? 'All events' : 'Semua event', icon: 'i-lucide-layers' },
-//   { value: 'mendatang', label: isEn.value ? 'Upcoming' : 'Mendatang', icon: 'i-lucide-calendar-clock' },
-//   { value: 'berlangsung', label: isEn.value ? 'Ongoing' : 'Berlangsung', icon: 'i-lucide-radio' },
-//   { value: 'selesai', label: isEn.value ? 'Completed' : 'Selesai', icon: 'i-lucide-check' },
-// ])
-const faseOptions = computed(() => [
-  { value: "semua", label: isEn.value ? "All events" : "Semua event" },
-  { value: "mendatang", label: isEn.value ? "Upcoming" : "Mendatang" },
-  { value: "berlangsung", label: isEn.value ? "Ongoing" : "Berlangsung" },
-  { value: "selesai", label: isEn.value ? "Completed" : "Selesai" },
+// Ikonnya sama persis dengan ikon badge fase di kartu, supaya pilihan filter dan
+// penanda di kartu terbaca sebagai satu hal yang sama. Disimpan tapi belum
+// digambar — barisnya di template masih dikomentari, tinggal dibuka kalau chip
+// polos ternyata kurang terbaca.
+const FASE_TAB = computed(() => [
+  {
+    key: "semua",
+    label: isEn.value ? "All" : "Semua",
+    warna: "neutral",
+    ikon: "i-lucide-layers",
+  },
+  {
+    key: "berlangsung",
+    label: isEn.value ? "Ongoing" : "Berlangsung",
+    warna: "secondary",
+    ikon: "i-lucide-radio",
+  },
+  {
+    key: "mendatang",
+    label: isEn.value ? "Upcoming" : "Mendatang",
+    warna: "primary",
+    ikon: "i-lucide-calendar-clock",
+  },
+  {
+    key: "selesai",
+    label: isEn.value ? "Completed" : "Selesai",
+    warna: "stone",
+    ikon: "i-lucide-check",
+  },
 ]);
-/** Ikon yang tampil di tombol dropdown, mengikuti pilihan yang sedang aktif. */
-const ikonFase = computed(
-  () =>
-    faseOptions.value.find((o) => o.value === fase.value)?.icon ??
-    "i-lucide-layers",
-);
+
+/**
+ * Warna chip yang sedang aktif, ditulis sebagai kelas utuh — bukan disusun dari
+ * potongan seperti `bg-cc-${warna}-500`. Tailwind memindai berkas sebagai teks;
+ * nama kelas yang baru terbentuk saat runtime tidak pernah ikut diterbitkan, dan
+ * chipnya jadi transparan tanpa satu pun galat.
+ */
+const warnaChip: Record<string, string> = {
+  neutral: "bg-cc-stone-700 text-white",
+  secondary: "bg-cc-brown-600 text-white",
+  primary: "bg-cc-green-800 text-white",
+  stone: "bg-cc-stone-500 text-white",
+};
 
 // Pencarian disaring di klien, bukan lewat query API: daftar event sebuah
 // komunitas berukuran puluhan, bukan ribuan, jadi satu perjalanan ke server per
@@ -101,25 +124,30 @@ const ikonUrutan = computed(
 // belasan event, sementara kalendernya menuntut satu keputusan lagi yang hampir
 // selalu menghasilkan daftar kosong. Parameter `dari` di GET /api/events masih
 // diterima server; yang hilang hanya pemakainya di sini.
-const query = computed(() => ({
-  fase: fase.value === "semua" ? [] : [fase.value],
-}));
 
+// Fase tidak lagi dikirim sebagai query. Sejak angkanya digambar di dalam chip,
+// daftar yang dipegang halaman harus memuat SEMUA fase — kalau server sudah
+// menyaringnya, tiga chip lain langsung jadi (0) begitu satu chip ditekan. Satu
+// pengambilan untuk seumur halaman, penyaringannya di klien seperti pencarian dan
+// urutan; alasannya pun sama: daftarnya puluhan, bukan ribuan.
+//
 // Sengaja TANPA `await`. Dengan await, <script setup> jadi async dan Vue menahan
 // seluruh komponen sampai fetch selesai; digabung pageTransition mode 'out-in',
 // halaman lama keluar dulu lalu yang baru ditahan — itu yang membuat layar kosong
 // beberapa saat saat berpindah bahasa atau keluar akun. Tanpa await, kerangka
 // halaman langsung tergambar dan hanya isinya yang dirangkai.
-const { data, status } = useFetch("/api/events", { query });
+const { data, status } = useFetch("/api/events");
 
 /** Muat pertama: belum ada data sama sekali. Muat ulang karena filter tidak
     dihitung di sini — kartu yang sudah ada lebih baik tetap terlihat. */
 const memuatAwal = computed(() => status.value === "pending" && !data.value);
 
 const semuaEvent = computed(() => data.value?.data ?? []);
-const perFase = computed(() => data.value?.meta.perFase ?? {});
 
-const tersaring = computed(() => {
+/** Hasil pencarian saja, fasenya belum disaring. Dipisah karena angka di chip
+    dihitung dari sini: mengetik "listening" harus ikut menurunkan angka tiap fase,
+    tapi menekan chip tidak boleh mengubah angka chip lain. */
+const hasilCari = computed(() => {
   const kata = cari.value.trim().toLowerCase();
   if (!kata) return semuaEvent.value;
   return semuaEvent.value.filter((e: any) =>
@@ -130,6 +158,30 @@ const tersaring = computed(() => {
     ),
   );
 });
+
+/** Angka di dalam chip. `meta.perFase` dari server tidak dipakai lagi: ia tidak
+    tahu apa yang sedang diketik di kotak cari. "Semua" sengaja dihitung dari
+    panjang daftar, bukan dari penjumlahan ketiga fase — event berstatus `batal`
+    ikut tampil di halaman ini tapi tidak punya chip sendiri, dan penjumlahan
+    ketiganya akan meleset sebanyak itu. */
+const hitungFase = computed<Record<string, number>>(() => {
+  const hasil: Record<string, number> = {
+    semua: hasilCari.value.length,
+    mendatang: 0,
+    berlangsung: 0,
+    selesai: 0,
+  };
+  for (const e of hasilCari.value as any[]) {
+    if (e.fase in hasil) hasil[e.fase] = (hasil[e.fase] ?? 0) + 1;
+  }
+  return hasil;
+});
+
+const tersaring = computed(() =>
+  fase.value === "semua"
+    ? hasilCari.value
+    : hasilCari.value.filter((e: any) => e.fase === fase.value),
+);
 
 const waktuDari = (nilai: string | null) =>
   nilai ? new Date(nilai).getTime() : 0;
@@ -294,7 +346,9 @@ const t = computed(() =>
         filterKategori: "Category",
         filterUrutan: "Sort events",
         reset: "Reset",
-        hitung: (n: number) => `${n} event${n === 1 ? "" : "s"}`,
+        // Jumlah hasil tidak lagi ditulis terpisah: angka di dalam chip yang
+        // sedang aktif sudah menyebutkannya, dan ikut menyusut saat mengetik di
+        // kotak cari.
         kosong: "No event matches this filter.",
         semua: "Showing all events",
         detail: "Event details",
@@ -308,7 +362,6 @@ const t = computed(() =>
         filterKategori: "Kategori",
         filterUrutan: "Urutkan event",
         reset: "Reset",
-        hitung: (n: number) => `${n} event`,
         kosong: "Tidak ada event yang cocok dengan filter ini.",
         semua: "Menampilkan semua event",
         detail: "Detail event",
@@ -326,55 +379,124 @@ const t = computed(() =>
         <p>{{ t.intro }}</p>
       </div>
 
-      <!-- Filter: satu kotak pencarian + satu dropdown kategori. -->
-      <div class="event-filter mb-7 flex flex-wrap items-center gap-3">
-        <UInput
-          v-model="cari"
-          icon="i-lucide-search"
-          :placeholder="t.filterCari"
-          class="w-full sm:w-72"
-          :ui="{ base: 'rounded-full' }"
-        />
+      <!-- Filter: chip kategori (+ tombol reset) di kiri, cari + urutan di kanan.
+           Bentuk chipnya mengikuti penyaring status di dashboard:
+             · hitungannya menyatu di dalam chip, bukan badge terpisah yang membuat
+               tiap tombol terbaca sebagai dua elemen;
+             · yang tidak aktif dibuat rata dan tenang, sehingga satu yang aktif
+               benar-benar menonjol;
+             · tiap fase berwarna sendiri, warna yang sama dengan badge di sampul
+               kartu — jadi warnanya ikut jadi penanda, bukan hiasan.
+           `justify-between` baru berlaku saat muat; pada layar sempit keduanya
+           menumpuk dan masing-masing memakai lebar penuh. -->
+      <div
+        class="event-filter mb-7 flex flex-wrap items-center justify-between gap-3"
+      >
+        <div class="flex min-w-0 items-center gap-1">
+          <!-- `role=group` + labelnya: empat tombol berjajar tanpa itu terbaca satu
+               per satu oleh pembaca layar, tanpa keterangan bahwa keempatnya satu
+               pilihan yang sama. -->
+          <div
+            role="group"
+            :aria-label="t.filterKategori"
+            class="flex flex-wrap items-center gap-1.5 rounded-full bg-cc-stone-100 p-1"
+          >
+            <button
+              v-for="f in FASE_TAB"
+              :key="f.key"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
+              :class="
+                fase === f.key
+                  ? warnaChip[f.warna]
+                  : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'
+              "
+              :aria-pressed="fase === f.key"
+              @click="fase = f.key"
+            >
+              <!-- Ikon ditahan dulu atas permintaan; datanya sudah ada di
+                   FASE_TAB, jadi menyalakannya cukup membuka baris ini. -->
+              <!-- <UIcon :name="f.ikon" class="size-3.5" /> -->
+              {{ f.label }}
+              <span
+                class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
+                :class="
+                  fase === f.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'
+                "
+              >
+                {{ hitungFase[f.key] ?? 0 }}
+              </span>
+            </button>
+          </div>
 
-        <USelect
-          v-model="fase"
-          :items="faseOptions"
-          value-key="value"
-          :icon="ikonFase"
-          :aria-label="t.filterKategori"
-          class="w-52"
-          :ui="{ base: 'rounded-full' }"
-        />
+          <!-- Reset duduk di samping kategori, bukan di ujung kanan bersama cari
+               dan urutan. Ia menghapus ketiganya sekaligus — termasuk kata yang
+               sedang diketik dan urutan yang dipilih — jadi menempelkannya pada
+               salah satu kotak di kanan membuatnya terbaca seperti milik kotak itu
+               saja. Di sebelah chip ia berdiri sebagai "kembalikan penyaringnya",
+               dan tempatnya tidak berpindah dari mana pun asal filternya menyala.
 
-        <!-- Urutan duduk sebaris dengan penyaring, bukan di atas daftar: keduanya
+               Selalu digambar, disembunyikan dengan `invisible` saat tidak ada yang
+               bisa direset — bukan `v-if`. Dengan v-if tombolnya lahir dan mati
+               mengikuti filter, dan tempat yang ia rebut/lepaskan itulah yang
+               melipat seluruh baris begitu satu kategori dipilih. Tempatnya kini
+               tetap; yang berubah hanya terlihat atau tidak.
+
+               Tulisannya dipertahankan, bukan ikon telanjang: ikon panah melingkar
+               sendirian bisa terbaca sebagai "muat ulang". Ruangnya diambil dari
+               kotak cari yang dibatasi `lg:max-w-96` — di layar selebar itu kotak
+               cari yang memanjang sampai 470px cuma ruang kosong. -->
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-rotate-ccw"
+            :class="adaFilter ? '' : 'invisible pointer-events-none'"
+            :ui="{ base: 'event-reset shrink-0 rounded-full px-2' }"
+            @click="resetFilter"
+          >
+            {{ t.reset }}
+          </UButton>
+        </div>
+
+        <!-- Urutan duduk sebaris dengan pencarian, bukan di atas daftar: keduanya
              mengubah apa yang terlihat, dan memisahkannya membuat orang mencari
-             sortir di tempat yang salah. -->
-        <USelect
-          v-model="urutan"
-          :items="urutanOptions"
-          value-key="value"
-          :icon="ikonUrutan"
-          :aria-label="t.filterUrutan"
-          class="w-56"
-          :ui="{ base: 'rounded-full' }"
-        />
+             sortir di tempat yang salah.
 
-        <UButton
-          v-if="adaFilter"
-          color="neutral"
-          variant="link"
-          icon="i-lucide-rotate-ccw"
-          :ui="{ base: 'event-reset px-2' }"
-          @click="resetFilter"
+             Tiga hal yang membuat baris ini berhenti terlipat setengah:
+             · `flex-nowrap` di dalam — keduanya satu kesatuan, jadi yang pindah
+               baris seluruh kelompok, bukan kotak urutan sendirian di bawah kotak
+               cari;
+             · `flex-1 basis-80` — di layar lebar ia mengisi sisa ruang dan isinya
+               dirapatkan ke kanan; begitu sisa ruangnya kurang dari 320px ia turun
+               satu baris penuh, yang terbaca sebagai susunan dua baris yang
+               disengaja, bukan barisan yang kepotong;
+             · kotak carinya `flex-1 min-w-0`, bukan lebar mati — ia menyusut lebih
+               dulu sebelum apa pun terdorong turun, dan saat turun ke baris
+               keduanya ia memanjang sampai tepi supaya tidak ada ruang kosong yang
+               menganga. Batasnya (`lg:max-w-96`) hanya berlaku di layar lebar,
+               tempat ia justru kelewat panjang; di bawah itu ia tetap bebas
+               memanjang. -->
+        <div
+          class="flex min-w-0 flex-1 basis-80 flex-nowrap items-center justify-end gap-2"
         >
-          {{ t.reset }}
-        </UButton>
+          <UInput
+            v-model="cari"
+            icon="i-lucide-search"
+            :placeholder="t.filterCari"
+            class="min-w-0 flex-1 lg:max-w-96"
+            :ui="{ base: 'rounded-full' }"
+          />
 
-        <!-- Hitungan hanya muncul saat filter aktif; tanpa filter, "menampilkan
-             semua event" cuma mengulang apa yang sudah terlihat. -->
-        <span v-if="adaFilter" class="ml-auto text-sm text-cc-stone-600">
-          {{ t.hitung(events.length) }}
-        </span>
+          <USelect
+            v-model="urutan"
+            :items="urutanOptions"
+            value-key="value"
+            :icon="ikonUrutan"
+            :aria-label="t.filterUrutan"
+            class="w-40 shrink-0"
+            :ui="{ base: 'rounded-full' }"
+          />
+        </div>
       </div>
 
       <!-- Daftar event. Rangka hanya dipasang saat belum ada data sama sekali;

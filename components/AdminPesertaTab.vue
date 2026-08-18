@@ -15,7 +15,17 @@
 // banyak orang — siapa yang belum punya akun, siapa yang belum dikonfirmasi — dan
 // itu hanya terbaca kalau kolomnya sejajar.
 
-const props = defineProps<{ kegiatanId: string }>()
+const props = defineProps<{
+  kegiatanId: string
+  /**
+   * Chip status yang sudah terpilih saat tab ini dibuka, dari `?status=` di alamat.
+   *
+   * Dipakai dashboard: yang mengklik "12 perlu dikonfirmasi" pada sebuah event
+   * mendarat langsung di daftar dua belas orang itu, bukan di daftar semua
+   * pendaftar yang lalu harus disaring ulang dengan tangan.
+   */
+  statusAwal?: string
+}>()
 
 /**
  * Terbukanya modal "Tambah peserta" dikendalikan induk.
@@ -32,8 +42,8 @@ const tambahModal = defineModel<boolean>('bukaTambah', { default: false })
 const STATUS = [
   { key: 'semua', label: 'Semua', warna: 'neutral' as const, ikon: 'i-lucide-users' },
   { key: 'baru', label: 'Baru', warna: 'warning' as const, ikon: 'i-lucide-inbox' },
-  { key: 'proses', label: 'Proses', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
-  { key: 'konfirmasi', label: 'Konfirmasi', warna: 'primary' as const, ikon: 'i-lucide-check' },
+  { key: 'proses', label: 'Diproses', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
+  { key: 'konfirmasi', label: 'Terkonfirmasi', warna: 'primary' as const, ikon: 'i-lucide-check' },
   { key: 'batal', label: 'Batal', warna: 'neutral' as const, ikon: 'i-lucide-x' },
 ]
 
@@ -53,7 +63,10 @@ const warnaChip: Record<string, string> = {
 const warnaStatus = (s: string) => STATUS.find(x => x.key === s)?.warna ?? 'neutral'
 const labelStatus = (s: string) => STATUS.find(x => x.key === s)?.label ?? s
 
-const tab = ref('semua')
+// Nilai asing diabaikan, jatuh ke "semua": alamat yang salah ketik jangan sampai
+// membuka daftar tanpa satu chip pun menyala, karena yang terlihat lalu sama
+// persis dengan daftar kosong.
+const tab = ref(STATUS.some(s => s.key === props.statusAwal) ? props.statusAwal! : 'semua')
 const cari = ref('')
 const galat = ref('')
 const sibukId = ref('')
@@ -69,7 +82,10 @@ const { data, refresh, status: muatStatus } = useFetch(
 )
 
 const peserta = computed(() => data.value?.data ?? [])
-const hitung = computed(() => data.value?.meta.perStatus ?? ({} as Record<string, number>))
+// Tipe kembalian ditulis di computed-nya, bukan di-cast pada cabang `??`. Kalau
+// hanya cabang kanan yang dicast, hasilnya union dengan bentuk persis milik
+// server — dan union itu tidak boleh diindeks dengan `string` sembarang.
+const hitung = computed<Record<string, number>>(() => data.value?.meta.perStatus ?? {})
 
 /** Rangka hanya saat belum ada data sama sekali. Berganti tab atau mengetik di
     kotak cari membiarkan baris yang sudah tergambar tetap terlihat — kalau tidak,

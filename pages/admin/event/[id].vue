@@ -45,7 +45,9 @@ const kosong = () => ({
   tanggalMulai: '', tanggalSelesai: '',
   jamMulai: '', jamSelesai: '',
   tutupTanggal: '', tutupJam: '23:55',
-  kuota: '' as string | number,
+  // Selalu string, meski isinya angka: `<UInput>` hanya menerima string, dan
+  // validasi-event.ts sudah menerima kuota dalam bentuk teks maupun angka.
+  kuota: '',
   coverMediaId: '',
   thumbnailMediaId: '',
 })
@@ -137,7 +139,7 @@ const muat = async () => {
     jamMulai: d.jamMulai ?? '', jamSelesai: d.jamSelesai ?? '',
     tutupTanggal: keYmd(d.tutupPendaftaran),
     tutupJam: keJamWib(d.tutupPendaftaran) || '23:55',
-    kuota: d.kuota ?? '',
+    kuota: d.kuota == null ? '' : String(d.kuota),
     coverMediaId: d.coverMediaId ?? '',
     thumbnailMediaId: d.thumbnailMediaId ?? '',
   }
@@ -691,7 +693,20 @@ const tabs = [
   { value: 'materi', label: 'Materi', icon: 'i-lucide-folder-open' },
 ]
 
-const tabAktif = ref('info')
+/**
+ * Tab pembuka boleh ditentukan pemanggil lewat `?tab=`.
+ *
+ * Dipakai dashboard: kartu "perlu diproses" dan angka di tabel event menuju
+ * langsung ke pekerjaan yang dimaksud, bukan ke halaman event yang lalu harus
+ * dicari sendiri tabnya. Nilai yang tidak dikenal diabaikan — alamat yang salah
+ * ketik jangan sampai membuka halaman tanpa satu tab pun aktif.
+ *
+ * `?status=` diteruskan ke tab peserta sebagai chip yang terpilih; dibaca sekali
+ * saat halaman dibuka, sesudah itu chipnya milik orang yang membukanya.
+ */
+const tabAwal = String(route.query.tab ?? '')
+const tabAktif = ref(tabs.some(t => t.value === tabAwal) ? tabAwal : 'info')
+const statusAwal = computed(() => String(route.query.status ?? ''))
 
 /**
  * Berpindah tab TIDAK menyimpan apa pun, dan tidak membuat event.
@@ -911,7 +926,12 @@ const BAGIAN = [
            batalkan, anulir); pada event baru yang ada cuma menambah dan membuang.
            Formnya sendiri sama persis — PesertaFormModal dipakai keduanya. -->
       <PesertaDraf v-if="baru" v-model="pesertaDraf" v-model:buka-tambah="pesertaModal" />
-      <AdminPesertaTab v-else :kegiatan-id="id" v-model:buka-tambah="pesertaModal" />
+      <AdminPesertaTab
+        v-else
+        :kegiatan-id="id"
+        :status-awal="statusAwal"
+        v-model:buka-tambah="pesertaModal"
+      />
     </UCard>
 
     <!-- Sesi & materi -->

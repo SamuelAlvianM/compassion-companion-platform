@@ -1,10 +1,1416 @@
 # Journal — Compassionate Companion Website
 
-Catatan kerja untuk project di `C:\sam\COSMOS\ccwebsite`.
+Catatan kerja untuk project di `C:\sam\WORK\COSMOS\ccwebsite`.
 Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-18 — Sesi 24: Editor berhenti menyunting, log event jadi terbaca, log bisa dicari
+
+### Editor hanya membaca dan memutuskan
+
+Sebelumnya editor boleh menyunting jurnal yang ditugaskan kepadanya. Dicabut atas
+permintaan, dan alasannya bukan soal kepercayaan melainkan soal apa yang
+dihasilkan alur ini: kalau editor bisa memperbaiki sendiri kalimat yang
+mengganggunya, ia akan memperbaikinya — itu jalan yang paling cepat — dan
+penulisnya tidak pernah tahu tulisannya berubah, tidak pernah belajar apa yang
+kurang, dan lama-lama yang terbit bukan lagi suaranya.
+
+`bolehSunting()` untuk level 3 sekarang `false`, titik.
+
+Menutupnya menyingkap celah kedua yang lebih halus. Perpindahan status
+`draft → review` dan `revisi → review` dijaga `bolehPenulis = level <= 3`, jadi
+**editor masih bisa mendorong tulisan orang lain kembali ke antrean lewat API**
+meski tombolnya sudah tidak digambar. Akibatnya nyata: giliran penulis terenggut,
+naskahnya membeku lagi dengan isi yang sama persis, tanpa ada yang memperbaikinya.
+
+Batasnya diturunkan jadi `level <= 2`, sama persis dengan `bolehMengirim` di
+halaman sunting. Keduanya harus tetap sama — layar yang menyembunyikan tombol
+sementara server masih menerimanya bukan aturan, cuma tampilan.
+
+Hasil uji per tindakan sebagai editor:
+
+| Tindakan | Hasil |
+|---|---|
+| Menyunting isi | **403** — "Editor membaca dan memutuskan, tidak menyunting" |
+| Mengirim ke review | **403** — "Mengirim tulisan untuk diperiksa adalah pekerjaan penulisnya" |
+| Minta revisi | 200 ✓ |
+| Setujui | 200 ✓ |
+
+Member dan admin tidak ikut kehilangan apa pun: keduanya tetap bisa mengirim.
+
+### Log segmen event: dari daftar nama kolom jadi kalimat
+
+Sebelumnya catatannya berbunyi `Kolom disunting: lokasi, kuota, harga` — master
+tahu ada yang berubah, tanpa tahu jadi apa.
+
+`server/utils/log-perubahan.ts` sekarang menyusunnya sebagai kalimat:
+
+```
+Deskripsi: 147 karakter
+Lokasi: Aula Kolese, Yogyakarta → Gedung Serbaguna Kolese De Britto
+Kuota: 50 orang → 45 orang
+Harga: gratis → Rp150.000
+```
+
+Aturan utamanya satu: **log bukan salinan data**. Kolom panjang (deskripsi,
+ajakan, testimoni) tidak pernah disalin isinya — cukup ukurannya, karena catatan
+yang menyimpan sebelum-sesudahnya utuh akan membuat tabel pengamat lebih besar
+daripada tabel yang diamatinya. Kolom rujukan media cuma berbunyi "diganti" atau
+"dilepas". Nilai pendek dipotong di batas kata pada 60 karakter, dan tanggal, jam,
+harga, serta kuota dibaca sesuai tipenya (`gratis`, `Rp150.000`, `45 orang`).
+
+Daftar kolom yang dilaporkan ditulis sebagai `LABEL` — dan itu sekaligus
+penyaringnya. Kolom yang tidak terdaftar tidak pernah dilaporkan, jadi `updatedAt`
+dan `slug` tidak perlu didaftar-hitamkan satu per satu.
+
+Dua perbaikan yang menyertainya:
+
+- Dibandingkan `lama` dengan **`data`** (hasil validator), bukan dengan `hasil`
+  (baris dari database). `hasil` membawa `updatedAt` yang selalu berubah, jadi
+  tiap penyimpanan akan selalu terlihat mengubah sesuatu.
+- **Tidak ada perubahan → tidak ada baris log.** Membuka formulir, membaca, lalu
+  menekan simpan adalah hal yang sering terjadi; sebelumnya tiap kalinya
+  meninggalkan baris kosong. Diuji: tiga simpanan tanpa perubahan berturut-turut
+  menghasilkan **nol** baris baru.
+- `null` dan `""` diperlakukan sama. Formulir yang mengirim `""` untuk kolom yang
+  tadinya `null` melaporkan perubahan yang tidak dirasakan siapa pun.
+
+### Log bisa dicari dan disaring
+
+Empat penyaring di `/admin/log`: kotak cari (judul, nama pelaku, catatan, nama
+tindakan), pilihan tindakan, pilihan orang, dan rentang waktu (24 jam / 3 / 7
+hari — dibatasi umur simpan, karena meminta 30 hari pada tabel yang dibuang tiap
+7 hari cuma menjanjikan sesuatu yang tidak ada).
+
+Keputusan yang paling menentukan bentuknya: **penyaringnya bekerja pada tingkat
+OBJEK, bukan tingkat baris.** Sebuah jurnal yang salah satu langkahnya cocok akan
+tampil dengan SELURUH riwayatnya.
+
+Alasannya halamannya dikelompokkan per objek. Kartu yang isinya cuma langkah yang
+kebetulan cocok dengan kata pencarian bukan lagi riwayat — ia potongan riwayat
+yang menyesatkan, karena "17 langkah" berubah jadi "2 langkah" tanpa ada yang
+memberi tahu bahwa lima belas sisanya disembunyikan.
+
+Diuji: mencari "Menemani" pada 4 objek / 32 baris mengembalikan **1 objek dengan
+17 baris utuh**. Menyaring tindakan "Diminta revisi" mengembalikan 2 objek dengan
+23 baris — yaitu semua langkah dari dua jurnal yang PERNAH diminta revisi.
+
+Karena itu penyaringannya dikerjakan di JS, bukan di WHERE: aturan tingkat-objek
+tidak bisa ditulis sebagai satu WHERE tanpa subquery yang harus menangani
+`objek_id` yang null (pendaftar tamu). Aman karena jumlahnya terbatas dengan
+sendirinya — umur simpan 7 hari, dan yang dicatat cuma perpindahan yang berarti.
+
+Hal-hal kecil yang ikut diurus:
+
+- Hitungan menyebut **dua** angka ("3 dari 12 ditemukan"). Satu angka tidak
+  memberi tahu dari berapa, dan tanpa itu tidak ada cara tahu apakah saringannya
+  terlalu sempit atau memang segitu isinya.
+- Pesan kosong dibedakan: "belum ada catatan" menyuruh orang menunggu, "tidak ada
+  yang cocok" menyuruh orang mengubah pencariannya. Satu kalimat untuk keduanya
+  membuat separuhnya salah.
+- Pilihan tindakan & orang disusun dari isi segmen **sebelum** disaring, supaya
+  dropdown tidak mengosongkan dirinya sendiri sesudah dipilih.
+- Berganti segmen mereset penyaring — pilihan yang terbawa dari tab sebelumnya
+  bisa jadi nilai yang tidak ada di daftar segmen baru.
+
+### Satu bug yang dibuat dan diperbaiki sendiri
+
+Menulis `.join('\n')` lewat heredoc membuat escape-nya terurai jadi baris baru
+sungguhan di dalam string, dan seluruh dev server tumbang dengan
+`Unterminated string literal`. Berkas berikutnya ditulis langsung, bukan lewat
+heredoc.
+
+Typecheck juga sempat gagal: `ringkasPerubahan` menerima `Record<string, unknown>`
+sementara pemanggilnya mengirim interface (`BodyKegiatan`), dan interface di
+TypeScript tidak punya index signature implisit. Tanda tangannya diperlonggar jadi
+`object` dengan satu cast di dalam, supaya tiap pemanggil tidak perlu menaburkan
+cast sendiri-sendiri. `npm run typecheck` sekarang bersih.
+
+### Diputuskan tidak dikerjakan
+
+- Log sesi & materi — **tidak jadi**, atas permintaan.
+
+---
+
+## 2026-08-18 — Sesi 23: Pembagian peran ditetapkan, dan tombol kirim yang salah alamat
+
+### Modelnya, sebagaimana ditetapkan pemilik produk
+
+> **admin** dasarnya mirip member, hanya ditambah bisa publish.
+
+Kalimat itu yang menyelesaikan perdebatan tombol. Admin **bukan** peninjau; ia
+penulis yang kebetulan juga memegang gerbang terbit — kadang menulis sebagai
+dirinya sendiri, kadang mewakili member yang tidak sanggup menyelesaikan
+permintaan editor.
+
+| Peran | Yang boleh dilakukannya |
+|---|---|
+| **admin** | buat, pilih editor, kerjakan & kirim revisi, publish |
+| **editor** | terima tugas, minta revisi, setujui |
+| **member** | buat, kerjakan & kirim revisi |
+
+Perhatikan kata "revisi" berarti dua hal yang berbeda di dua baris: bagi editor
+ia **meminta**, bagi admin dan member ia **mengerjakan dan mengirim**. Itu bukan
+kerancuan istilah melainkan memang dua sisi dari satu bola yang berpindah.
+
+Konsekuensi yang sempat salah saya usulkan: saya menawarkan mengembalikan tombol
+"Revisi" untuk admin di status `approved`, dengan alasan admin butuh rem sebelum
+terbit. Usulan itu ditolak, dan penolakannya benar — admin yang bisa menyuruh
+revisi adalah admin yang menilai, dan menilai bukan pekerjaannya. Kalau sebuah
+tulisan belum layak terbit, yang tersedia baginya adalah tidak menekan Terbitkan.
+
+`Editor` juga TIDAK membuat jurnal — daftar di atas tidak memuatnya. Tombol
+"Tulis jurnal" tetap tidak digambar untuk editor, sesuai keadaan yang sudah ada.
+
+### Bug: editor melihat "Kirim hasil revisi"
+
+Ditemukan saat memverifikasi matriks di atas, bukan dilaporkan.
+
+Tombol kirim bersyarat `bolehSunting && (draft || revisi)`. Untuk editor yang
+ditugaskan, `bolehSunting` bernilai benar — sehingga pada tulisan yang **sedang
+dikembalikan kepada penulisnya**, editor ikut melihat "Kirim hasil revisi".
+
+Kalau ditekan, statusnya melompat `revisi → review` dengan naskah yang belum
+diperbaiki siapa pun. Giliran member terenggut tanpa ia mengerjakan apa pun, dan
+tulisannya langsung membeku lagi.
+
+Akarnya: mengirim disamakan dengan boleh menyunting. Padahal mengirim adalah
+pekerjaan **penulis**, sementara akses sunting dimiliki juga oleh yang memeriksa.
+Diperbaiki dengan `bolehMengirim` = admin ke atas, atau pemilik barisnya
+(`dibuatOleh === user.id`). Editor-sebagai-pemeriksa tidak pernah melihatnya;
+editor yang kebetulan pemilik tulisannya tetap bisa mengirim.
+
+### Label diseragamkan
+
+Admin membaca "Kirim ulang", member membaca "Kirim hasil revisi" — dua kalimat
+untuk satu tindakan yang sama, padahal admin justru sering melakukannya *mewakili*
+member. Admin sekarang memakai kalimat yang sama persis: **"Kirim hasil revisi"**
+dan **"Kirim untuk diperiksa"**.
+
+### Satu asimetri yang harus tetap ada
+
+Model "admin = member + publish" menyarankan admin ikut dibekukan saat status
+`review`, sebagaimana member. **Itu tidak dilakukan, dan tidak boleh dilakukan.**
+
+Kiriman member tiba di `review` **tanpa kategori dan tanpa editor** — itu memang
+rancangannya (member tidak diminta memilih istilah redaksional). Yang mengisi
+keduanya admin, dan ia mengisinya justru selagi tulisan itu berstatus `review`.
+Membekukan admin di sana berarti tulisan titipan member tidak akan pernah bisa
+ditugaskan kepada siapa pun.
+
+Jadi admin bukan sekadar penulis + penerbit: ia juga yang **mengarahkan**
+pekerjaan, dan pengarahan itu terjadi saat tulisannya sedang diperiksa. Dicatat di
+sini supaya tidak terbaca sebagai kelonggaran yang tertinggal.
+
+### Hasil verifikasi
+
+Diuji per peran pada status `revisi`:
+
+| Peran | Tombol yang tergambar |
+|---|---|
+| editor | (tidak ada) |
+| admin | Kirim hasil revisi · Terbitkan *(mati)* · Hapus |
+| member | Kirim hasil revisi |
+
+Data uji "Menemani Ayah di Malam Terakhir" dikembalikan ke `published` seperti
+keadaan semula.
+
+### Belum diputuskan
+
+- [ ] Server masih mengizinkan editor membuat jurnal (`POST /api/admin/jurnal`
+      bergerbang `wajibRole('editor')`) dan `/admin/jurnal/new` terbuka bila
+      alamatnya diketik langsung. Tidak ada tombol yang mengarah ke sana, jadi
+      praktis tertutup — tapi belum ditutup di servernya.
+
+---
+
+## 2026-08-18 — Sesi 22: Event kembali ke formulir, dan tombol yang memisahkan peran
+
+### Kolom "Event terkait" dikembalikan
+
+Dicabut di sesi sebelumnya karena hampir selalu kosong. Dikembalikan karena
+akibatnya baru terasa saat dipakai: sebuah jurnal **Event Reflection** baru tidak
+punya jalan sama sekali untuk menyebut event apa yang direfleksikannya — dan nama
+event itu tergambar di kartu daftar publik (`.journal-event`), tepat di bawah
+kategorinya. Yang hilang bukan satu kolom di dashboard, melainkan satu baris yang
+dibaca pengunjung.
+
+Dipasang untuk semua kategori, bukan hanya Event Reflection — atas permintaan.
+
+### Daftarnya disaring, dan batasnya satu angka
+
+Endpoint baru `server/api/admin/kegiatan-pilihan.get.ts`. Dibuat sendiri, tidak
+menumpang `/api/admin/events`: daftar admin membawa hitungan peserta, sesi, dan
+materi (tiga query tambahan) supaya tabelnya bisa menampilkan penanda, sementara
+sebuah dropdown cuma perlu id dan judul. Pola dan alasan yang sama dengan
+`editors.get.ts` yang sudah ada.
+
+Yang ikut tampil:
+
+| Fase | Tampil? | Alasan |
+|---|---|---|
+| mendatang | tidak | belum terjadi, tidak bisa direfleksikan |
+| berlangsung | ya | ditandai `· berlangsung` di labelnya |
+| selesai ≤ 30 hari | ya | masih hangat, masih jadi bahan tulisan |
+| selesai > 30 hari | tidak | praktis tidak akan jadi tulisan baru |
+| batal | tidak | tidak pernah terjadi |
+
+`HARI_MASIH_RELEVAN = 30` ada di satu tempat di endpointnya. Kalau ada program
+yang refleksinya baru terkumpul dua bulan sesudahnya, ganti angka itu saja.
+
+Diuji dengan data nyata (hari ini 18 Agu 2026): dari enam event, yang lolos cuma
+**Compassion in Practice** (4–25 Agu, berlangsung) dan **Leadership with
+Compassion** (12 Agu, selesai 6 hari lalu). Test Event (besok), Leading Through
+Change (Sep), dan Retret Adven (Des) tersaring sebagai mendatang; Listening as
+Leadership (Mei, 3 bulan lalu) tersaring karena umur.
+
+### Bug yang muncul dan penyebabnya
+
+Percobaan pertama menggambar **`cck-Fqpt6wiU`** di kotaknya, bukan nama eventnya.
+
+Penyebabnya penyaring itu sendiri: jurnal lama menunjuk event Mei yang sudah di
+luar jendela, jadi nilainya tidak punya baris yang cocok di daftar, dan
+`USelectMenu` jatuh menggambar id mentahnya.
+
+Percobaan perbaikan pertama — mengirim `?sertakan={id}` supaya server ikut
+menyertakannya — **tidak berhasil, dan tidak akan pernah berhasil**: permintaan
+itu berangkat saat `<script setup>` dijalankan, sementara `form.kegiatanId` baru
+terisi sesudah `muat()` selesai. Id yang mau disertakan belum diketahui pada saat
+ia dibutuhkan.
+
+Yang dipakai akhirnya sudah ada di berkas yang sama: pola `penulisTanpaAkun`,
+yang memecahkan persoalan identik untuk penulis tanpa akun. Judul eventnya
+disimpan saat jurnalnya dimuat (`kegiatanTerpasang`) — endpoint detailnya memang
+sudah mengirim `kegiatan.judul`, jadi tidak perlu permintaan kedua — lalu
+disisipkan sendiri ke daftar bila belum ada, ditandai **`· sudah lewat`**.
+Penandanya penting: baris itu ada karena tulisannya memang sudah tertaut ke situ,
+bukan karena eventnya masih layak dipilih.
+
+Diverifikasi: jurnal "Ketika Saya Belajar Mendengarkan" kini menggambar
+**"Listening as Leadership · sudah lewat"**.
+
+### Tombol keputusan: editor menilai, admin menerbitkan
+
+Sebelumnya admin melihat **Setujui**, **Revisi**, dan **Terbitkan** sekaligus.
+Artinya tidak ada apa pun di layar yang mencegah admin menyetujui tulisannya
+sendiri lalu menerbitkannya semenit kemudian — alur reviewnya jadi tiga klik.
+
+Sekarang:
+
+| Peran | Tombol |
+|---|---|
+| editor (ditugaskan) | Setujui, Revisi |
+| admin / master | Terbitkan, Hapus |
+
+**Terbitkan digambar sejak awal dan dimatikan** selama status belum `approved`,
+bukan disembunyikan. Tombol yang tidak ada tidak memberi tahu apa pun; tombol yang
+ada tapi mati sekaligus mengatakan "ini langkah berikutnya" dan "belum sekarang",
+dengan alasannya di tooltip: *"Bisa diterbitkan setelah editor menyetujui"*.
+
+`adalahEditor` sengaja `level === 3`, bukan `level <= 3` — hampir semua
+pemeriksaan peran di kode ini berbentuk "peran ini ke atas", jadi barisnya diberi
+komentar supaya tidak ada yang merapikannya jadi `<=` di kemudian hari dan
+mengembalikan tombolnya ke admin tanpa sadar.
+
+**Servernya tidak diubah.** `KEPUTUSAN_EDITOR` di `validasi-jurnal.ts` masih
+mengizinkan admin memutuskan. Itu dibiarkan dengan sengaja: kalau editor
+berhalangan dan pekerjaannya harus jalan, jalannya masih ada — hanya tidak lagi
+ditawarkan sebagai tombol yang tinggal dipencet.
+
+Diverifikasi di layar: sebagai admin pada status Direview → `Terbitkan
+(disabled: true)` dan `Hapus`, tanpa Setujui/Revisi. Sebagai editor → `Setujui`
+dan `Revisi`, tanpa Terbitkan. Sesudah editor menyetujui, tombol admin hidup
+sendiri (`disabled: false`).
+
+### Perubahan teks
+
+- Peringatan kategori → **"Tentukan kategori dan Editor yang akan ditugaskan
+  untuk memeriksa jurnal"**
+
+### Catatan
+
+Selama pengujian, status "Ketika Saya Belajar Mendengarkan" sempat dipindah ke
+`approved` untuk memastikan tombol Terbitkan hidup, lalu **dikembalikan ke
+`published`** seperti keadaan semula.
+
+---
+
+## 2026-08-18 — Sesi 21: Admin turun tangan menulis, dan apa yang tidak tercatat
+
+Menguji satu skenario yang lebih rumit daripada alur lurus Sesi 20: **member tidak
+sanggup memenuhi permintaan editor, dan admin mengambil alih penyuntingannya.**
+
+### Skenario yang dijalankan
+
+Sebelas langkah, dan seluruhnya berhasil:
+
+| # | Pelaku | Tindakan | Status sesudahnya |
+|---|---|---|---|
+| 1 | member | Menulis "Menemani Ayah di Malam Terakhir" | draft |
+| 2 | member | Kirim untuk diperiksa | review |
+| 3 | admin | Menugaskan editor | review |
+| 4 | editor | Revisi — "tambahkan apa yang Anda rasakan" | revisi |
+| 5 | member | Perbaiki, kirim ulang | review |
+| 6 | editor | Revisi lagi — masih belum konkret | revisi |
+| 7 | **admin** | **Menyunting sendiri isi tulisan member** | revisi |
+| 8 | admin | Isi kategori, kirim ulang | review |
+| 9 | editor | Revisi ketiga — "tutup dengan kalimat Anda sendiri" | revisi |
+| 10 | member | Menambahkan penutupnya, kirim | review |
+| 11 | editor → admin | Setujui → Terbitkan | published |
+
+Serah terima di langkah 7→10 mulus: begitu editor mengembalikannya, member membuka
+halamannya dan yang tergambar sudah **versi hasil suntingan admin**, bukan naskah
+lamanya. Ia melanjutkan dari situ. Terbit atas nama **User Percobaan** — bukan
+admin yang menyuntingnya. Itu yang benar; `kontributor` memang tidak ikut berpindah.
+
+### Temuan: "admin cuma bisa pantau saja" TIDAK berlaku
+
+Asumsi yang dibawa ke pengujian ini adalah bahwa saat status `revisi` giliran ada
+pada member, dan admin cuma bisa memantau. **Itu tidak benar.**
+
+`bolehSunting()` di `server/utils/validasi-jurnal.ts` berbunyi
+`if (level <= 2) return true` — admin dan master boleh menyunting **kapan saja,
+pada status apa saja, termasuk saat tulisan itu ada di tangan member.**
+Diverifikasi di layar: pada status `revisi` milik member, kotak isi admin
+`contenteditable=true` dan judulnya tidak readonly.
+
+Dan itu justru yang membuat langkah 7 mungkin. Kedua hal ini satu wewenang yang
+sama:
+
+- langkah 6 mengandaikan admin **tidak bisa** menyentuh tulisan member
+- langkah 7 mengandaikan admin **bisa** menyentuh tulisan member
+
+Tidak ada cara memilikinya sekaligus tanpa menambahkan tindakan eksplisit
+(mis. tombol "Ambil alih penyuntingan"). Untuk sekarang dibiarkan seperti adanya —
+wewenangnya sudah benar untuk pekerjaannya, yang belum ada tinggal jejaknya.
+
+### Yang perlu diperhatikan: suntingan admin tidak meninggalkan jejak
+
+Log mencatat sebelas langkah dengan rapi:
+
+```
+ 1. Dibuat                    — User Percobaan (user)
+ 2. Diajukan untuk diperiksa  — User Percobaan (user)
+ 3. Editor ditugaskan         — Admin (admin)
+ 4. Diminta revisi            — Editor (editor)
+ 5. Diajukan untuk diperiksa  — User Percobaan (user)
+ 6. Diminta revisi            — Editor (editor)
+ 7. Diajukan untuk diperiksa  — Admin (admin)     <-- satu-satunya petunjuk
+ 8. Diminta revisi            — Editor (editor)
+ 9. Diajukan untuk diperiksa  — User Percobaan (user)
+10. Disetujui editor          — Editor (editor)
+11. Diterbitkan               — Admin (admin)
+```
+
+Tapi **tindakan menyuntingnya sendiri tidak ada di sana.** Yang tercatat cuma
+baris 7 — "diajukan oleh admin" — dan itu pun perlu ditafsirkan: pembacanya harus
+menyimpulkan sendiri bahwa admin tidak akan mengajukan tulisan orang lain tanpa
+menyentuhnya. Penyebabnya keputusan Sesi 20 yang masih benar untuk alasannya
+sendiri: autosave tidak dicatat, kalau tidak lognya penuh baris "disunting".
+
+Konsekuensinya jujur dicatat di sini: **member tidak pernah diberi tahu bahwa
+tulisannya disunting orang lain**, dan tidak ada di layar mana pun yang
+mengatakannya. Di skenario ini aman karena adminnya menghubungi member lewat WA
+lebih dulu — tapi yang menjaganya kesepakatan di luar aplikasi, bukan aplikasinya.
+
+Kalau nanti perlu ditutup, yang paling murah: catat SATU baris "disunting
+pengelola" saat yang menyimpan bukan pemiliknya, dan hanya kalau baris serupa
+belum ada dalam sesi status yang sama. Bukan tiap autosave.
+
+### Perubahan teks atas permintaan
+
+- Pemberitahuan di halaman member saat tulisannya diperiksa →
+  **"Jurnal Anda sedang diperiksa oleh tim Editor. Mohon menunggu update
+  selanjutnya."** (versi Inggrisnya ikut disesuaikan)
+- Peringatan kategori di halaman sunting admin →
+  **"Tentukan kategori jurnal dan Editor yang akan ditugaskan untuk memeriksa
+  jurnal"** — sekarang menyebut kedua hal yang memang harus diisi admin, bukan
+  kategorinya saja
+- Tombol **"Minta revisi" → "Revisi"** (dua tempat: saat direview dan saat sudah
+  disetujui). Judul dialognya tetap "Minta revisi" — di situ ruangnya cukup untuk
+  kalimat utuh, dan yang dibaca orang di sana bukan label tombol sempit.
+
+### Belum dikerjakan
+
+- [ ] Jejak suntingan pengelola atas tulisan member — lihat di atas.
+- [ ] Member tidak punya cara melihat apa yang berubah dari naskahnya. Riwayat
+      versi belum ada sama sekali, dan itu pekerjaan yang jauh lebih besar
+      daripada satu baris log.
+
+---
+
+## 2026-08-18 — Sesi 20: Log kerja untuk master, dan alur redaksi yang diuji utuh
+
+Satu fitur baru yang cukup besar (log kerja), satu penghentian sementara
+(thumbnail jurnal), dan verifikasi ujung-ke-ujung alur persetujuan jurnal yang
+sampai sekarang cuma pernah dites sepotong-sepotong.
+
+### Thumbnail jurnal: dihentikan, bukan dibuang
+
+Kartu di `/id/jurnal` tidak pernah menggambar sampul, padahal `/api/jurnal` sudah
+mengirim `coverUrl` dan halaman sunting punya kolom unggahnya. Ketimpangan itu
+diselesaikan dengan **mengomentari kolom unggahnya**, bukan dengan memasang
+gambarnya — atas keputusan pemilik produk untuk sekarang.
+
+Yang dikomentari cuma blok `<GambarField>` di `pages/admin/jurnal/[id].vue`.
+Kolom `cover_media_id`, endpoint, dan komponennya dibiarkan utuh, dengan komentar
+yang menyebutkan syarat pengembaliannya: kembalikan begitu kartunya siap.
+
+Dipastikan juga tidak ada yang MEWAJIBKAN sampul di jalur mana pun — `kurang`,
+`kurangUntukReview`, `bacaBodyJurnal()`, dan syarat terbit (`periksaPindahStatus`)
+tidak satu pun menyebutnya. Satu-satunya syarat terbit tetap kategori.
+
+### Alur admin → editor → admin, diuji berurutan di browser
+
+Dijalankan sebagai skenario nyata, bukan unit test:
+
+| Langkah | Pelaku | Hasil |
+|---|---|---|
+| Buat draf + tunjuk editor | admin | draft, editor tercatat |
+| Kirim untuk direview | admin | review |
+| Minta revisi + catatan | editor | revisi, catatan tampil ke penulis |
+| **Coba terbitkan saat `revisi`** | admin | **tombol tidak ada, dan server menolak 400** |
+| Kirim ulang | admin | review |
+| Setujui | editor | approved (editor TIDAK punya tombol terbit) |
+| Terbitkan | admin | published, muncul di `/id/jurnal` |
+
+Yang paling perlu dicatat baris keempatnya: penolakannya bukan cuma UI. Dicoba
+langsung ke `PATCH /api/admin/jurnal/{id}` dengan `status: 'published'` dan
+dijawab `400 — Status tidak bisa langsung berpindah dari "revisi" ke "published"`.
+
+Jalur member juga dijalankan penuh: izin `bolehTulisJurnal` dibuka admin →
+tombol "Tulis jurnal" muncul di `/jurnal-saya` → member menulis dan mengirim →
+tulisannya membeku ("Hanya bisa dibaca") → masuk antrean review **tanpa kategori
+dan tanpa editor**, persis seperti rancangannya → admin melengkapi keduanya →
+editor menyetujui → admin menerbitkan.
+
+### Log kerja: `cc_log`, dan hanya master yang melihatnya
+
+Tabel baru (migrasi `0011_log.sql`) dengan tiga segmen: **jurnal, event, member**.
+
+Yang dicatat cuma perpindahan yang berarti — dibuat, editor ditugaskan, diajukan,
+diminta revisi, disetujui, diterbitkan, ditarik, dihapus; untuk member: role
+berubah, izin jurnal dibuka/ditutup, akun diaktifkan/dinonaktifkan, password
+direset, mendaftar event. **Autosave tidak dicatat.** Endpoint PATCH jurnal juga
+melayani autosave tiap beberapa detik; kalau semuanya masuk, enam baris yang
+ingin dibaca master akan tenggelam di antara ratusan baris "disunting".
+
+Barisnya **menyalin** nama pelaku dan judul objeknya, bukan hanya menyimpan
+id-nya. Log yang bergantung pada join akan kehilangan artinya tepat pada baris
+yang paling perlu dibaca: "siapa yang menghapus ini?".
+
+`catatLog()` tidak pernah melempar. Kalau menulis catatan gagal, yang salah bukan
+tindakan penggunanya — dan fitur pengamat yang menjatuhkan fitur yang diamatinya
+adalah kerusakan yang lebih besar daripada satu baris log yang hilang.
+
+**Master saja.** Ditegakkan di tiga tempat: menu sidebar tidak digambar untuk
+level > 1, `middleware/admin.global.ts` memulangkan yang bukan master ke
+`/admin?akses=ditolak`, dan ketiga endpoint `/api/admin/log*` memakai
+`wajibRole(event, 'master')`. Diverifikasi: admin dapat 403 di baca, kosongkan,
+dan hapus-satu. Alasannya bukan kerahasiaan melainkan pembagian peran — catatan
+ini merekam pekerjaan admin dan editor, dan yang direkam bukan pemegang
+rekamannya.
+
+### Bentuk halamannya: dikelompokkan per objek
+
+Awalnya satu garis waktu panjang. Diubah atas permintaan, dan permintaannya
+benar: pertanyaan yang membawa master ke halaman ini hampir selalu tentang SATU
+tulisan ("yang kemarin sudah sampai mana?"), bukan tentang jam berapa saja ada
+yang bekerja. Satu daftar berurut waktu menyelipkan enam langkah sebuah jurnal di
+antara langkah tiga jurnal lain.
+
+Sekarang: kartu besar per objek (judulnya, keadaan terakhirnya, jumlah langkah),
+dan garis waktunya baru terbuka saat kartunya diklik. Beberapa kartu boleh
+terbuka bersamaan — membandingkan dua jurnal berarti membuka keduanya.
+
+### Tautan dari log, dan kedipan 2× dalam 1 detik
+
+Tiap baris menautkan ke halamannya. Tujuannya ditentukan dari **aksinya**, bukan
+dari status objeknya sekarang: baris "diterbitkan" mengarah ke halaman publik
+karena di situlah hasil tindakan itu terlihat, meskipun tulisannya sesudah itu
+ditarik lagi. Kalau tautannya mengikuti status terkini, dua baris yang berbeda
+kejadian akan menuju tempat yang sama dan lognya berhenti bercerita.
+
+Baris "dihapus" tidak diberi tautan sama sekali — 404 lebih buruk daripada baris
+yang memang tidak bisa diklik.
+
+Untuk yang terbit, tujuannya `/id/jurnal?sorot={slug}`: kartunya digulir ke
+tengah layar lalu berkedip. Diverifikasi terukur — `animation-duration: .5s`,
+`iteration-count: 2`, dan `animationend` tercatat pada **1000 ms** persis. Yang
+dianimasikan `box-shadow` + `border`, bukan `background`, supaya isi kartunya
+tidak ikut berkedip. Ada juga jalur `prefers-reduced-motion`: kartunya tetap
+ditandai, hanya tidak bergerak.
+
+### Umur simpan 7 hari, dan penghapusan manual
+
+Otomatis: baris lebih tua dari `LOG_SIMPAN_HARI` (7) dibuang. Pembersihannya
+**menumpang pada penulisan**, dibatasi sekali per jam, plus sekali paksa tiap
+halaman lognya dibuka. Sengaja tanpa penjadwal: aplikasi ini satu proses Nitro
+dengan SQLite di berkas yang sama, dan cron adalah satu hal lagi yang bisa mati
+diam-diam tanpa ada yang tahu. Pembersihan saat halamannya dibuka itu yang
+menutup celah "tidak ada yang menulis log seminggu, jadi tidak ada yang dibuang".
+
+Manual, master saja: hapus satu langkah (ikon × per baris, muncul saat disentuh),
+hapus seluruh riwayat satu objek (`DELETE /api/admin/log?objekId=`), dan
+kosongkan satu segmen. Riwayat per objek dibuang lewat SATU permintaan, bukan
+belasan DELETE — belasan permintaan untuk satu klik adalah cara penghapusan bisa
+berhasil setengah.
+
+### Tiga hal yang ketahuan sepanjang jalan
+
+**Halaman admin baru wajib didaftarkan di `i18n.pages` `nuxt.config.ts`.**
+`/admin/log` awalnya menampilkan halaman POC lama. Penyebabnya i18n memasang
+awalan locale (`/id/admin/log`, `/en/admin/log`), sehingga `/admin/log` yang
+sebenarnya jatuh ke penangkap `/admin/[section]`. Tidak ada galat apa pun —
+halaman lain yang tampil, dan itu saja gejalanya. Diperbaiki dengan
+`'admin-log': false`, beserta komentar peringatan untuk halaman admin berikutnya.
+
+**`mode: 'timestamp'` menyimpan DETIK, dan itu tidak cukup untuk log.**
+"Setujui" lalu "terbitkan" beruntun jatuh di detik yang sama, dan `ORDER BY`
+kehilangan dasar untuk mengurutkannya — yang terbaca jadi terbalik: disetujui
+sesudah diterbitkan. `cc_log.created_at` dipindah ke `timestamp_ms`. Tidak butuh
+migrasi (tipe kolomnya tetap `integer`), tapi baris lama harus dibuang karena
+angkanya akan dibaca sebagai milidetik; 13 baris uji dihapus manual.
+
+**Waktu relatif ("2 menit lalu") menyebabkan hydration mismatch.** Nilainya
+diturunkan dari `Date.now()`, dan HTML dari server selalu lebih tua daripada
+hitungan ulang klien. Ditahan sampai `onMounted`; tanggal penuh di sebelahnya
+tidak bergantung waktu sekarang, jadi tidak ada yang benar-benar hilang.
+
+### Toast status jurnal
+
+Atas permintaan: `Status jadi "Direview"` diganti jadi dua baris —
+judul **"Jurnal telah diperbarui"**, keterangan **"Status saat ini: …"**. Toast
+"buat draf" dan "tugaskan editor" ikut diseragamkan ke bentuk yang sama.
+
+### Belum dikerjakan
+
+- [ ] Segmen event masih kasar: yang dicatat "Event disunting" beserta daftar
+      nama kolomnya, tanpa nilai sebelum/sesudah. Disengaja (satu deskripsi event
+      bisa ribuan karakter), tapi kalau nanti perlu, yang benar adalah mencatat
+      kolom terpilih saja, bukan semuanya.
+- [ ] Log tidak punya penyaring rentang tanggal atau pencarian. Belum perlu
+      selama umur simpannya cuma 7 hari.
+- [ ] Sesi & materi (`cc_sesi`, `cc_sesi_item`) belum dicatat sama sekali.
+- [ ] Thumbnail jurnal — lihat bagian pertama.
+
+---
+
+## 2026-08-18 — Sesi 19: Kontributor jadi penulis, dan penulis jadi pilihan
+
+Tiga permintaan yang saling berkaitan, dan yang ketiga mencabut sebagian
+keputusan Sesi 17.
+
+### "Kontributor" berhenti dipakai
+
+Satu istilah untuk satu hal. Semua yang dibaca orang sekarang berbunyi
+**Penulis** — kolom di `/admin/jurnal`, kotak isian di halaman sunting, pesan
+galat validator, dan kepala kartu di halaman artikel publik (`Penulis` / `Author`).
+
+Yang **tidak** ikut berubah, dan ini disengaja: nama kolom database
+(`kontributor`, `kontributor_peran`), field API, dan variabel di kode. Diputuskan
+begitu supaya perubahan ini tidak menyeret migrasi. Konsekuensinya jujur dicatat:
+kode dan layar sekarang memakai dua kata untuk satu hal, dan siapa pun yang
+membaca `form.kontributor` harus tahu bahwa yang tergambar di layar berbunyi
+"Penulis". Kalau suatu saat ada alasan lain untuk menyentuh tabel ini, rename
+kolomnya sekalian.
+
+`pages/admin/contributors.vue` sengaja tidak disentuh — halaman itu mockup statis
+yang sudah dilepas dari navigasi sejak lama dan bukan bagian dari alur jurnal.
+
+### Penulis dipilih dari daftar akun, bukan diketik
+
+Ini yang mencabut keputusan Sesi 17. Waktu itu kolom penulis diturunkan jadi teks
+tetap dengan alasan: mengizinkan admin mengetik ulang nama orang lain berarti
+sebuah tulisan bisa berpindah penulis tanpa jejak.
+
+Alasannya tetap benar, tapi kesimpulannya terlalu jauh. Yang sebenarnya
+dibutuhkan: admin **memang** memasukkan tulisan orang lain — itu pekerjaan
+sehari-harinya, bukan kasus tepi. Yang tidak boleh adalah nama yang diketik bebas.
+
+Jadi kolomnya kembali bisa diubah, tapi sebagai **daftar akun**, bukan `UInput`:
+
+- Isian awalnya nama yang sedang login (hint "awalnya Anda") — kasus paling sering.
+- Memilih akun lain mengubah dua kolom sekaligus: `userId` yang menautkan tulisan
+  ke profil orangnya, dan `kontributor` yang tersimpan sebagai teks. Namanya tetap
+  disimpan apa adanya supaya tulisan tidak kehilangan penulis kalau akunnya
+  dihapus.
+- `dibuatOleh` **tidak** ikut berpindah. Itu yang menjaga jejaknya: siapa yang
+  mengetiknya tetap tercatat, dan hak sunting pun tetap mengikuti kolom itu — jadi
+  mencantumkan orang lain sebagai penulis tidak diam-diam memberi orang itu akses.
+
+Penulis lama yang **tidak punya akun** — pembicara tamu, tulisan seed seperti
+"Imanuel Ananta" dan "Maria" — tetap muncul di daftar apa adanya. Namanya disimpan
+di `penulisTanpaAkun`, diisi sekali saat memuat dan bukan dihitung ulang dari
+formulir: kalau ia ikut menghilang begitu admin memilih akun lain, nama aslinya
+tidak bisa dikembalikan tanpa menutup halaman. **Membuka sebuah jurnal tidak boleh
+menjadi cara kehilangan nama penulisnya.**
+
+Daftarnya datang dari endpoint kecil sendiri, `GET /api/admin/penulis` — seluruh
+akun aktif, mengikuti alasan yang sama dengan `editors.get.ts`: pemilih di halaman
+jurnal cuma butuh id + nama, sementara `/api/users` membawa email, nomor WhatsApp,
+dan hitungan kegiatan tiap orang. Akun **master disaring** dari daftar bagi yang
+bukan master, aturan yang sama dengan `/api/users` — daftar nama pun sebuah
+pengakuan bahwa akun itu ada.
+
+### Editor bisa dipilih sejak layar "tulis baru"
+
+Sebelumnya kotak editor baru muncul sesudah drafnya jadi. Admin yang sudah tahu
+siapa yang akan memeriksa tetap harus kembali ke formulir yang sama untuk satu
+isian, lalu menekan "Kirim untuk direview" di kunjungan kedua.
+
+Sekarang kotaknya tergambar juga di layar tulis-baru dan ikut berangkat bersama
+`POST /api/admin/jurnal`. Alurnya tetap **dua langkah** — "Buat draft" tetap
+membuat draft, bukan langsung mengirim ke review — tapi sesudah drafnya jadi,
+tombol kirim langsung bisa ditekan tanpa mengisi apa pun lagi.
+
+Boleh dikosongkan di layar itu (hint "bisa menyusul"): draft memang boleh
+mengendap tanpa editor. Yang menolak kekosongan tetap ambang `review`, dan itu di
+server (`periksaPindahStatus`), bukan di layar.
+
+Label kotaknya berubah dari "Editor yang menangani" jadi **"Pilih editor"** —
+kalimat perintah untuk kotak yang memang meminta tindakan.
+
+Karena pemeriksaan editor sekarang berjalan di **dua** endpoint (POST dan PATCH),
+aturannya dipindah ke satu fungsi di validator, `periksaEditorId()`. Dua tempat
+yang menegakkan aturan sendiri-sendiri adalah cara aturan itu menyimpang. Ia
+mengembalikan id yang sudah bersih, bukan boolean, supaya tidak ada jalan memakai
+nilai mentah yang belum diperiksa.
+
+Satu kelonggaran yang disengaja di POST: nilai kosong dilewatkan tanpa lewat
+`periksaEditorId`, yang akan menolaknya dengan 403. Endpoint itu juga terbuka bagi
+editor, dan "tidak menugaskan siapa pun" bukan tindakan yang perlu wewenang admin.
+
+### Galat yang ketahuan sambil jalan: `USelectMenu` menolak nilai ""
+
+Konsol peramban penuh baris ini begitu halaman suntingnya dibuka:
+
+    A <ComboboxItem /> must have a value prop that is not an empty string
+
+Sumbernya `editorOptions`, yang sejak Sesi 16 memakai `{ value: "", label:
+"Belum ditugaskan" }` sebagai pilihan pertama. Akibatnya bukan cuma baris merah:
+**dropdown editornya gagal terbuka** — sesuatu yang selama ini terbaca sebagai
+"kadang perlu diklik dua kali", bukan sebagai galat.
+
+Ketahuan karena pemilih penulis yang baru mengulangi pola yang sama untuk penulis
+tanpa akun, dan barisnya jadi berlipat sampai tidak bisa diabaikan lagi.
+
+Perbaikannya: kosong tidak lagi diwakili string kosong melainkan penanda
+(`__lepas`, `__tanpa-akun`), yang diterjemahkan kembali di setter/handler — jadi
+yang tersimpan tetap `""`/`null`. Kotak editor karena itu berpindah dari
+`v-model="editorId"` + `@update:model-value` ke satu computed berpasangan
+(`editorPilihan`), supaya tidak ada dua sumber kebenaran untuk satu kotak.
+
+### Verifikasi
+
+Semua lewat layar dan endpoint sungguhan, masuk sebagai admin:
+
+| Yang diuji | Hasil |
+|---|---|
+| Buat draft dengan penulis "User Percobaan" | `kontributor` = User Percobaan, `user_id` tertaut, `dibuat_oleh` tetap admin |
+| `POST /api/admin/jurnal` dengan `editorId` | 200, `editorId` tersimpan sejak barisnya lahir |
+| Kirim ke review **tanpa** editor | 400 — "Tentukan dulu editor yang akan memeriksa…" |
+| Kirim ke review **dengan** editor | 200, status jadi `review` |
+| Buka jurnal seed berpenulis tanpa akun | "Imanuel Ananta" / "Maria" tergambar utuh di pemilih |
+| Daftar `/admin/jurnal` | kolom "Penulis", pencarian "Cari judul atau penulis…" |
+| Artikel publik `/id/...` dan `/en/...` | "Penulis" dan "Author" |
+| Akun master di pemilih penulis | tidak muncul bagi admin |
+| Dropdown editor dibuka & dipilih dari layar | terbuka, tersimpan, toast "Editor ditugaskan", kepala halaman jadi "ditangani …" |
+| Konsol peramban pada muat bersih | tanpa galat |
+| `vue-tsc --noEmit` | exit 0 |
+
+Seluruh baris uji dihapus lagi dan kolom yang sempat diubah dikembalikan, jadi
+isi basis data sama seperti sebelum sesi ini — **kecuali** satu draft berjudul
+"test" milik akun admin yang muncul di tengah sesi dan asalnya tidak bisa
+dipastikan. Sengaja tidak dihapus.
+
+### Berkas yang berubah
+
+- `server/api/admin/penulis.get.ts` — **baru**, daftar calon penulis
+- `server/utils/validasi-jurnal.ts` — `periksaEditorId()`, pesan galat "penulis"
+- `server/api/admin/jurnal/index.post.ts` — menerima `editorId`
+- `server/api/admin/jurnal/[id].patch.ts` — memakai `periksaEditorId()`
+- `pages/admin/jurnal/[id].vue` — pemilih penulis, editor di layar tulis-baru
+- `pages/admin/jurnal/index.vue`, `pages/jurnal/[slug].vue` — label
+
+### Yang masih terbuka
+
+Tidak berubah dari Sesi 18, dan satu di antaranya jadi lebih menonjol sekarang:
+**admin masih bisa menekan "Setujui" pada tulisannya sendiri** sesudah menunjuk
+editor. Sejak sesi ini admin juga bisa mencantumkan orang lain sebagai penulis,
+jadi "tulisannya sendiri" perlu didefinisikan dulu sebelum aturannya ditulis —
+yang dilihat `dibuatOleh`, atau yang tercantum di `userId`? Keduanya menjawab
+pertanyaan yang berbeda.
+
+**Satu ketidakseragaman yang sengaja dibiarkan.** `/api/admin/penulis` menyaring
+akun master bagi yang bukan master; `/api/admin/editors` — yang sudah ada sejak
+Sesi 16 — tidak. Jadi di layar yang sama, master muncul di pemilih editor tapi
+tidak di pemilih penulis. Aturan `/api/users` diikuti untuk daftar akun penuh
+(itu kasus yang memang dijaganya), sementara mengubah endpoint editor berarti
+mengubah perilaku yang sudah berjalan di luar permintaan sesi ini. Perlu
+diseragamkan, ke arah mana pun.
+
+Sisanya: warning `[Icon] failed to load icon lucide:*` di log SSR, dan backlog
+Sesi 1 (`--port/`, `.output/` stale, `pnpm-workspace.yaml`, dua lockfile, 6
+vulnerability npm, `landing-page-full.png` di root).
+
+---
+## 2026-08-18 — Sesi 18: 500 `plugin$` selesai — dua salinan modul, bukan dua ekstensi
+
+Satu galat, dan sesi ini habis untuk membuktikan letaknya sebelum menyentuh apa
+pun. Ternyata bukan di berkas yang selama tiga sesi terakhir dicurigai.
+
+### Yang pertama harus dibuktikan: ini galat klien, bukan galat server
+
+Layarnya berbunyi "500 Internal Server Error", dan itu yang menyesatkan sejak
+Sesi 16. Tiga pengukuran yang menutup pertanyaannya:
+
+- `fetch('/admin/jurnal/<id>')` dari dalam peramban — enam kali berturut-turut —
+  dijawab **200**, dan HTML-nya tidak memuat kalimat galat itu sama sekali.
+- `performance.getEntriesByType('navigation')[0].responseStatus` untuk halaman
+  yang di layar menampilkan 500 juga **200**. Dokumennya sehat; yang menggambar
+  layar 500 adalah Vue di peramban, sesudah dokumen itu sampai.
+- HTML dari SSR berisi `<div class="jurnal-editor"><!--v-if--></div>` — `UEditor`
+  memang **tidak pernah dirender di server**. Jadi tidak ada editor di sisi server
+  yang bisa terkena galat ini, dan seluruh dugaan seputar SSR sejak awal salah
+  alamat.
+
+Pelajarannya menyambung catatan Sesi 17: halaman galat Nuxt memakai kata
+"Internal Server Error" untuk galat klien juga. Kata di layar bukan keterangan
+tentang di mana galatnya.
+
+### Nama `plugin$` itu sendiri yang menunjuk sebabnya
+
+Pertanyaannya — dan ini yang membuka semuanya — **kenapa namanya `plugin$`?**
+
+Di `prosemirror-state`, plugin tanpa kunci dinamai oleh penghitung di lingkup
+modul:
+
+    const keys = Object.create(null)
+    function createKey(name) {
+      if (name in keys) return name + "$" + ++keys[name]
+      keys[name] = 0
+      return name + "$"
+    }
+
+`plugin$` tanpa angka berarti **yang pertama**. Dalam satu modul tidak mungkin ada
+dua yang pertama. Jadi dua plugin yang sama-sama mengaku `plugin$` hanya bisa
+lahir dari **dua salinan modul `prosemirror-state`** — dua penghitung, dua-duanya
+mulai dari nol. Galatnya bukan tentang ekstensi yang dipakai dua kali; ia tentang
+satu berkas yang dimuat dua kali.
+
+Itu juga yang membatalkan tebakan penutup Sesi 17. `GambarJurnal.configure()`
+per komponen sudah dipasang di `components/JurnalEditor.vue`, dan galatnya **tetap
+ada**. Perubahan itu tetap dipertahankan — dua editor yang berbagi satu instance
+Node memang tidak benar — tapi komentarnya sudah diperbaiki supaya tidak lagi
+mengaku sebagai obat galat ini.
+
+### Salinan keduanya datang dari daftar pra-paket yang setengah
+
+`vite.optimizeDeps.include` sejak Sesi 16 hanya berisi dua nama:
+`@tiptap/core` dan `@tiptap/vue-3`. Keduanya dipaketkan esbuild, dan
+`prosemirror-state` ikut terjahit ke dalam bundel itu.
+
+Sementara `UEditor` milik Nuxt UI memakai **enam belas** paket tiptap lain —
+starter-kit, sederet `extension-*`, dan yang paling menentukan `@tiptap/pm/state`.
+Yang tidak disebut di `include` tidak ikut dipaketkan: Vite menyajikannya apa
+adanya dari `node_modules`, dan `prosemirror-state` yang dimuat lewat jalur itu
+adalah **modul lain** dari yang sudah terjahit tadi.
+
+Satu berkas di disk, dua modul di graf — persis yang dicatat Sesi 17 sebagai
+"belum terbukti salah", tapi di sisi yang keliru: klien, bukan server.
+
+Efek sampingnya juga terjelaskan sekarang. Karena belasan paket itu baru ketahuan
+saat halamannya dibuka, Vite memuat ulang halaman diam-diam di tengah pemasangan
+editor ("new dependencies optimized"). Itu sebabnya penanda galat yang dipasang di
+`window` lenyap sendiri di tengah pengujian, dan sebabnya gejalanya terasa
+berubah-ubah antar percobaan.
+
+### Perbaikannya
+
+`vite.optimizeDeps.include` diisi seluruh keluarganya — 26 nama, termasuk semua
+subpath `@tiptap/pm/*`. Karena semuanya didaftarkan, esbuild memaketkannya dalam
+satu jalan dan `prosemirror-state` jatuh ke chunk bersama: satu modul, satu
+penghitung.
+
+Daftarnya bukan tebakan. Dev server mencetaknya sendiri lewat "Vite discovered new
+dependencies at runtime" beserta blok `include` siap salin; sesudah daftar ini
+terpasang, pesan itu tidak muncul lagi. Cara memutakhirkannya kalau `UEditor`
+suatu saat menambah ekstensi:
+
+    grep -rho "@tiptap/[a-z0-9/-]*" node_modules/@nuxt/ui/dist/runtime | sort -u
+
+Dua nama non-tiptap ikut masuk — `@vue/devtools-core` dan `@vue/devtools-kit` —
+bukan karena berhubungan dengan galatnya, melainkan karena keduanya juga baru
+ketahuan saat berjalan dan ikut memicu muat-ulang diam-diam itu.
+
+### `build.transpile` dicabut
+
+    build: { transpile: [/^@tiptap\//, /^prosemirror-/] }
+
+Ditambahkan Sesi 17 untuk memaksa Vite ikut memaketkan tiptap di sisi server.
+Dicabut sesudah diuji: `UEditor` tidak dirender di server sama sekali, jadi opsi
+itu tidak pernah menyentuh apa pun. Halaman sunting tetap sehat tanpanya —
+diverifikasi dari cache kosong. Alasan pencabutannya ditulis di `nuxt.config.ts`
+supaya tidak dipasang ulang percuma.
+
+`vite.resolve.dedupe` dipertahankan sebagai pagar kedua, untuk paket yang suatu
+saat lolos dari daftar pra-paket.
+
+### Verifikasi
+
+Tiga kali mulai dari **cache kosong** (`rm -rf .nuxt node_modules/.cache/vite`),
+masuk sebagai admin:
+
+| Layar | Hasil |
+|---|---|
+| `/admin/jurnal/ccj-DnIPAVCh` (published, ada isinya) | 2 editor ter-mount, 28 tombol toolbar, isi tergambar, tanpa galat |
+| `/admin/jurnal/ccj-HErtpWLi` (draft) | judul termuat, 2 editor ter-mount |
+| `/admin/jurnal/new` | 2 editor ter-mount, mengetik masuk ke dokumen |
+| `/id/jurnal-saya/<id>` (member) | 1 editor ter-mount, draft baru terbuat lewat "Tulis jurnal" |
+
+Draft uji itu dihapus lagi dan `boleh_tulis_jurnal` akun `user` dikembalikan ke 0,
+jadi isi basis data sama seperti sebelum sesi ini.
+
+Bukti yang dipakai kali ini sengaja bukan bukti tidak langsung — bukan "log bersih"
+atau "ikon sempat diminta", melainkan `document.querySelectorAll('.ProseMirror').length`
+dan isi yang benar-benar tergambar di layar yang sama dengan yang dilihat orang.
+
+### Berkas yang berubah
+
+- `nuxt.config.ts` — `optimizeDeps.include` lengkap, `build.transpile` dicabut
+- `components/JurnalEditor.vue` — komentar `.configure()` diperbaiki; kodenya tetap
+
+### Yang masih terbuka
+
+**Keputusan yang menunggu, dari Sesi 17.** Admin masih bisa menekan "Setujui" pada
+tulisannya sendiri sesudah menunjuk editor. Editornya ada, tapi tidak ada yang
+mencegah admin mendahuluinya. Ini keputusan kebijakan, bukan galat — perlu dipilih
+lebih dulu apakah admin dilarang menyetujui tulisan yang penulisnya dirinya
+sendiri, atau dibiarkan dengan jejak di riwayat.
+
+**Warning ikon di SSR.** Log dev server penuh `[Icon] failed to load icon
+lucide:*` — belasan baris tiap render halaman admin. Ikonnya tetap tergambar di
+peramban, jadi ini bukan galat tampilan, tapi ia menenggelamkan pesan lain di log
+dan itu yang membuat penelusuran sesi ini lebih lama dari seharusnya.
+
+**Sisa backlog Sesi 1 yang belum tersentuh:** folder sampah `--port/`,
+`.output/` stale, `pnpm-workspace.yaml` yang isinya placeholder rusak, dua lockfile
+(`package-lock.json` + `pnpm-lock.yaml`) berdampingan, 6 vulnerability npm,
+`landing-page-full.png` di root.
+
+---
+## 2026-08-18 — Sesi 17: Penanda akses pindah ke dalam, kontributor berhenti ditanyakan
+
+Revisi tinjauan atas layar jurnal yang baru jadi, dan satu galat yang **belum
+selesai** — dicatat apa adanya di bagian terakhir.
+
+### Penanda "tidak punya akses" turun dari kepala halaman ke barangnya
+
+Percobaan pertama keliru dua kali berturut-turut, dan keduanya karena saya menaruh
+keterangan pada tempat yang bukan tempat orang mencarinya.
+
+Mula-mula keterangan itu berupa satu kalimat di kepala daftar `/admin/jurnal`:
+"jurnal yang bukan tugas Anda tetap bisa dibuka, tapi hanya untuk dibaca."
+Kalimatnya benar dan tidak berguna — ia mengumumkan keadaan tanpa memberi tahu
+**yang mana**, jadi orangnya tetap harus menebak baris per baris.
+
+Perbaikan kedua memindahkannya jadi lencana bergembok di tiap baris tabel. Ditolak,
+dan alasannya masuk akal begitu dilihat: tujuh baris dengan gembok yang sama
+berjejer ke bawah berhenti terbaca sebagai peringatan dan mulai terbaca sebagai
+hiasan kolom judul. Daftar itu tempat memilih tulisan, bukan tempat menyunting —
+di sana tidak ada apa pun yang sedang ditolak.
+
+Yang benar: **di halaman suntingnya, satu di pojok kanan atas tiap kotak putih.**
+Sebelumnya penandanya cuma satu, nyempil di deretan tombol paling atas — dan begitu
+orang menggulir sampai kotak "Isi tulisan", satu-satunya keterangan kenapa isian di
+depannya tidak bisa disentuh sudah tidak kelihatan lagi. Alasan sebuah kotak
+terkunci harus berada di kotak itu.
+
+Kalimat dan bentuknya sengaja sama persis di kedua kotak: dua tempat yang
+mengatakan hal yang sama dengan kata yang berbeda terbaca sebagai dua keadaan yang
+berbeda.
+
+### "Ditangani" jadi "Editor in Charge"
+
+Judul kolom di `/admin/jurnal`. Istilah yang dipakai pengelola sehari-hari, dan
+lebih menunjuk orang daripada keadaan.
+
+### Kontributor berhenti jadi isian
+
+Pertanyaan yang memicunya: *kalau kontributornya admin sendiri, bagaimana?*
+
+Keputusannya: **jurnal yang dibuat dari dashboard selalu atas nama admin yang
+membuatnya, dan tidak ada yang perlu dipilih.** Kolom "Nama kontributor" karena itu
+berhenti jadi `<UInput>` dan jadi teks tetap berlabel "Kontributor" — pada layar
+"tulis baru" ia berisi nama yang sedang login (hint-nya berbunyi "Anda"), pada
+tulisan titipan member ia berisi nama penulisnya apa adanya.
+
+Ini mencabut keputusan Sesi 16 yang membolehkan admin mengetik nama orang lain di
+sana (alasannya waktu itu: pembicara tamu yang tidak punya akun). Yang ditukar
+dengan itu: tanpa isian tersebut, sebuah tulisan tidak bisa berpindah penulis tanpa
+meninggalkan jejak — dan itu lebih penting daripada memudahkan satu-dua kasus tamu,
+yang toh masih bisa diselesaikan lewat `kontributor` di basis data.
+
+### Editor wajib ditunjuk sebelum tulisan dikirim
+
+Bagian kedua dari keputusan yang sama: admin tetap harus memilih **siapa yang akan
+memeriksa** tulisannya sendiri.
+
+Di layar syarat itu sudah ada sejak Sesi 16 (`kurangUntukReview`). Yang ditambahkan
+sekarang: penegakannya **di server**, di `periksaPindahStatus` —
+
+    tujuan === 'review' && level <= 2 && !baris.editorId  →  ditolak
+
+Tanpa itu, sebuah tulisan bisa berjalan dari draft sampai terbit tanpa pernah ada
+orang kedua yang membacanya, dan seluruh alur reviewnya cuma jadi formalitas tiga
+klik oleh orang yang sama.
+
+Sengaja dibatasi `level <= 2`. Tulisan titipan member memang tiba tanpa editor —
+yang menugaskan editor sesudah itu adalah admin — dan jalurnya pun endpoint lain
+(`/api/jurnal-saya`), jadi baris ini tidak pernah dilewatinya.
+
+Yang **belum** ditutup dan perlu diputuskan: admin masih bisa menekan "Setujui" pada
+tulisannya sendiri sesudah menunjuk editor. Editornya ada, tapi tidak ada yang
+mencegah admin mendahuluinya.
+
+### Belum selesai: 500 `Adding different instances of a keyed plugin (plugin$)`
+
+Halaman `/admin/jurnal/[id]` menjawab 500 dengan pesan itu, dan **masih begitu**
+sampai sesi ini ditutup. Dicatat lengkap supaya sesi berikutnya tidak mengulangi
+jalan yang sudah buntu.
+
+Yang sudah ada di `nuxt.config.ts` sejak Sesi 16 dan ternyata tidak cukup:
+`vite.resolve.dedupe` untuk tiptap + prosemirror, dan `optimizeDeps.include`.
+Keduanya bekerja di sisi klien.
+
+Yang ditambahkan sesi ini, juga tidak cukup:
+
+    build: { transpile: [/^@tiptap\//, /^prosemirror-/] }
+
+Alasannya waktu itu: saat render di server, Vite mengeluarkan paket `node_modules`
+dan membiarkan Node memuatnya sendiri, sementara tiptap yang datang lewat
+`@nuxt/ui` ikut dipaketkan Vite — satu berkas di disk, dua graf modul. Dugaan itu
+belum terbukti salah, tapi juga tidak menyembuhkan.
+
+Yang sudah dipastikan, dan mempersempit sisa kemungkinannya:
+
+- **Hanya ada satu salinan di disk.** `find node_modules -path "*@tiptap/core/package.json"`
+  dan yang sama untuk `prosemirror-state` masing-masing mengembalikan satu baris.
+  Jadi ini bukan dua versi terpasang, melainkan satu berkas yang dimuat dua kali.
+- **`rm -rf .nuxt node_modules/.vite` + restart tidak menyembuhkan.** Jadi bukan
+  cache Vite yang basi, yang selama ini jadi tersangka pertama.
+- **SSR-nya sendiri sehat.** Halaman uji sementara tanpa login yang memuat
+  `JurnalEditor` — bahkan dua sekaligus, menirukan tab Indonesia + English yang
+  dua-duanya ter-mount — dijawab dev server dengan **200**, dan kedua editornya
+  tergambar di HTML. Halaman ujinya sudah dihapus lagi.
+- **Log dev server tidak mencetak stack apa pun** saat halaman itu dibuka; yang ada
+  cuma `WARN [Icon] failed to load icon …`, termasuk `lucide:lock` — yang justru
+  berarti kotak-kotak halaman suntingnya sempat dirender.
+
+Gabungan dua butir terakhir menggeser dugaan: galatnya kemungkinan besar **bukan di
+SSR** melainkan di klien saat mount/hidrasi, dan Nuxt menggambar halaman galat 500
+yang sama untuk keduanya — jadi selama ini saya membaca gejalanya sebagai galat
+server padahal bukan.
+
+Yang paling patut dicurigai berikutnya, dan belum dicoba: `components/JurnalEditor.vue`
+menyusun ekstensinya sebagai **satu instance di lingkup modul** —
+
+    const ekstensi = [GambarJurnal]
+
+Halaman sunting memuat dua `UEditor` sekaligus (tab `id` dan `en`, keduanya
+`v-show` sehingga dua-duanya benar-benar ter-mount), dan keduanya menerima
+**instance Node yang sama**. Satu instance ekstensi yang dipasang pada dua editor
+adalah cara yang sangat masuk akal untuk melahirkan dua plugin ber-kunci sama pada
+satu state. Percobaan berikutnya: bikin instance per komponen — `GambarJurnal.configure()`
+di dalam `setup`, bukan tetapan modul — lalu lihat apakah 500-nya hilang. Kalau ya,
+ketiga opsi bundler di atas boleh ditinjau ulang: mungkin tidak satu pun dibutuhkan.
+
+Pelajaran yang lebih pahit dari galatnya sendiri: saya tiga kali menyatakan ini
+"sudah jalan" berdasarkan bukti tidak langsung — log tanpa 500, ikon yang sempat
+diminta, halaman uji yang 200 — sementara yang membuka halamannya masih melihat
+layar 500. Bukti tidak langsung yang bertentangan dengan layar orang yang sedang
+melihatnya bukan bukti.
+
+---
+## 2026-08-18 — Sesi 16: Jurnal berhenti jadi array dan mulai jadi tulisan
+
+Bagian terbesar hari ini, dan yang paling banyak menyentuh basis data. Sampai
+kemarin "jurnal" adalah tiga hal yang berdiri sendiri: sebuah array tetap di
+`shared/jurnal.ts`, tiga halaman `.vue` yang badan tulisannya diketik langsung di
+template, dan sebuah daftar admin yang membaca array itu tanpa pernah bisa
+mengubahnya. Sekarang satu tabel, satu alur persetujuan, dan dua layar tulis.
+
+### Kenapa tabel sendiri, bukan "refleksi yang ditandai terbit"
+
+Godaan pertamanya menumpang `cc_refleksi` — bentuk datanya mirip, dan satu tabel
+selalu terdengar lebih rapi. Ditolak karena yang berbeda bukan bentuknya melainkan
+alurnya: refleksi ditulis peserta untuk dirinya sendiri dan visibilitasnya miliknya;
+jurnal melewati review dan menjadi suara komunitas di halaman publik. Satu refleksi
+boleh **menjadi** jurnal — isinya disalin — tapi keduanya tidak pernah jadi baris
+yang sama. Kalau digabung, menyunting jurnal berarti menyunting tulisan pribadi
+orang lain, dan tidak ada kolom status yang bisa memperbaiki itu.
+
+### Lima status, dan siapa pemilik tiap perpindahannya
+
+| Dari | Ke | Yang berhak |
+|---|---|---|
+| draft | review | penulisnya (mengirimkan) |
+| review | approved / revisi | editor **yang ditugaskan**, atau admin |
+| review | draft | penulisnya (menarik kembali) |
+| revisi | review | penulisnya (kirim ulang) |
+| approved | published | **admin saja** |
+| approved | revisi | editor / admin, selagi belum terbit |
+| published | draft | **admin saja** (menarik dari publik) |
+
+Yang mereview editor, yang menerbitkan admin. Pembagian itu disengaja: editor
+menjaga isinya, admin menjaga kapan komunitas ini bersuara.
+
+Tidak ada status "ditolak". `revisi` bukan penolakan permanen melainkan giliran
+yang berpindah kembali ke penulis, dan tulisan yang tidak jadi terbit tinggal
+ditahan di draft. Status akhir yang tidak bisa dilanjutkan cuma memaksa orang
+menghapus barisnya — dan yang terhapus tidak bisa dipertimbangkan ulang tahun depan.
+
+Aturannya ditulis satu kali di `server/utils/validasi-jurnal.ts` dan dipakai
+endpoint admin maupun endpoint member. `TRANSISI` menjawab "boleh pindah ke mana",
+`KEPUTUSAN_EDITOR`/`KEPUTUSAN_ADMIN` menjawab "siapa yang boleh menekannya".
+
+**Kategori diperiksa di ambang terbit, bukan di kolomnya.** `tipe` boleh null:
+tulisan yang datang dari member lahir tanpa kategori — ia hanya menulis judul dan
+isi; yang tahu tulisan itu duduk sebagai refleksi event, sharing journey, insight,
+atau praktik adalah admin. Memaksanya sejak kolomnya diisi berarti menyuruh penulis
+memilih istilah redaksional yang bukan urusannya. Yang tetap ditegakkan: tidak ada
+tulisan tampil di `/jurnal` tanpa kategori.
+
+Wewenang menyunting menyusul aturan yang sama:
+
+- admin/master — selalu
+- editor — hanya jurnal yang **ditugaskan** kepadanya; sisanya bisa dibuka, tapi
+  terkunci. Editor bukan pemilik antrean orang lain, dan menyembunyikan tulisan
+  yang bukan tugasnya membuat tidak ada yang tahu apa yang sedang dikerjakan bersama.
+- member — hanya tulisannya sendiri, dan hanya saat giliran ada padanya (`draft`
+  atau `revisi`). Selama diperiksa, tulisannya **dibekukan**: yang sedang dibaca
+  orang lain tidak boleh berubah di bawah tangannya, karena catatan revisinya akan
+  menunjuk kalimat yang sudah tidak ada.
+
+### Izin menulis: per orang, bukan per role
+
+`cc_user.boleh_tulis_jurnal`, sakelar di halaman member. Menulis jurnal bukan
+sesuatu yang otomatis melekat pada semua member — yang menulis adalah mereka yang
+memang diminta atau mengajukan diri. Selama tertutup, tombol "Tulisan jurnal saya"
+**tidak digambar sama sekali** di halaman profil; bukan digambar lalu menolak saat
+ditekan. Yang menentukan tetap server: `POST /api/jurnal-saya` memeriksanya sendiri.
+
+Izinnya dibaca dari tabel di `/api/auth/me`, bukan dari cookie sesi. Admin bisa
+membukanya di tengah sesi orangnya, dan nilai yang dibekukan di cookie baru berubah
+setelah orang itu keluar-masuk lagi — jeda yang terbaca sebagai "sakelarnya tidak
+berfungsi". Editor ke atas tidak butuh sakelar ini; wewenangnya sudah dari role.
+
+### Tiga keluarga endpoint, karena tiga penonton
+
+`/api/jurnal` (publik) hanya mengenal `published`, penyaringnya di WHERE bukan di
+klien. Yang belum terbit dijawab **404, bukan 403** — bagi pengunjung yang tidak
+berkepentingan, tulisan yang belum terbit memang tidak ada.
+
+`/api/admin/jurnal` melihat semua status. PATCH-nya satu pintu untuk tiga hal
+(autosave, pindah status, penugasan editor) karena perpindahan status hampir selalu
+terjadi bersamaan dengan simpanan terakhir — "perbaiki lalu ajukan" yang dipecah
+jadi dua permintaan bisa gagal setengah jalan.
+
+`/api/jurnal-saya` sengaja lebih sempit dari sekadar versi berhak-akses-terbatas:
+yang berbeda bukan cuma haknya melainkan **isinya**. Penulis tidak pernah menerima
+`editorId` maupun nama editornya. Ia melihat "sedang diperiksa" atau "perlu
+direvisi" beserta catatannya, bukan siapa yang menuliskan catatan itu — dan itu
+yang menjaga percakapan revisi tetap tentang tulisannya.
+
+Label statusnya pun dua set. `JURNAL_STATUS_LABEL` untuk pengelola; bagi penulis,
+"Direview" dan "Disetujui" sama saja artinya — sedang di tangan orang lain — jadi
+`JURNAL_STATUS_LABEL_PENULIS` memetakan keduanya jadi "Sedang diperiksa". Yang
+perlu ia bedakan cuma giliran saya, sedang di orang lain, dan sudah terbit.
+
+### Isi tulisan adalah HTML, jadi ada pembersihnya
+
+`server/utils/html.ts`. Isinya digambar dengan `v-html` di halaman publik, jadi
+tanpa penyaringan siapa pun yang bisa menulis jurnal bisa menitipkan `<script>`
+yang jalan di peramban **setiap** pengunjung, termasuk yang membawa cookie sesi
+admin yang sedang membaca. Editor Tiptap memang tidak menghasilkan tag semacam itu —
+tapi yang menentukan bukan editornya melainkan apa yang sampai ke endpoint, dan
+permintaan bisa dikirim langsung tanpa lewat halaman.
+
+Daftar putih, bukan daftar hitam: daftar hitam selalu ketinggalan satu tag. Isinya
+persis yang bisa dihasilkan toolbar — h2–h4 (h1 milik judul halaman), paragraf,
+penekanan, daftar, kutipan, tautan, gambar, `figure`/`figcaption`, garis, kode.
+Skema tautan dibatasi http/https/mailto; satu-satunya `style` yang lolos adalah
+lebar figure dalam persen. Semua tautan keluar dapat `rel="noopener noreferrer"`.
+
+Disaring saat **menyimpan**, bukan saat menggambar: yang tersimpan jadi selalu aman
+dipakai ulang (RSS, ekspor, ringkasan), dan pekerjaannya sekali per tulisan, bukan
+sekali per pembaca.
+
+### Editornya, dan gambar yang punya keterangan
+
+`JurnalEditor.vue` dipakai dua layar yang berbeda penontonnya — halaman sunting
+admin dan halaman tulis member — supaya keduanya tidak pernah punya perkakas yang
+berbeda. Bedanya cuma prop `terkunci`. Toolbarnya tanpa tulisan (tiga belas tombol
+berlabel memenuhi dua baris dan terbaca sebagai kalimat, bukan perkakas; namanya
+pindah ke tooltip), punya badan sendiri, dan area tulisnya dibingkai seperti halaman
+kertas dengan tinggi minimal 320px supaya batas tempat mengetik terlihat bahkan saat
+isinya masih kosong.
+
+`utils/tiptap-gambar.ts` — node `gambarJurnal` buatan sendiri, bukan
+`@tiptap/extension-image`. Yang bawaan hanya menyimpan `<img>` telanjang; tiga hal
+yang dibutuhkan tulisan jurnal tidak ada di sana — keterangan, perataan, lebar —
+dan ketiganya harus ikut tersimpan di HTML supaya halaman publik menggambarnya
+persis seperti yang disusun penulisnya. Perataannya sengaja cuma tiga dan lebarnya
+persentase: gambar yang bisa ditaruh di mana saja dengan ukuran bebas membuat dua
+tulisan tidak pernah terlihat berasal dari satu situs.
+
+Satu galat yang paling banyak makan waktu, dan bunyinya tidak menyebut tiptap sama
+sekali:
+
+    Adding different instances of a keyed plugin (plugin$)
+
+Sebabnya dua salinan Tiptap dimuat sekaligus — satu lewat `UEditor` milik Nuxt UI,
+satu lewat ekstensi gambar yang mengimpor `@tiptap/core` langsung — dan
+masing-masing punya daftar kunci plugin sendiri. Muncul tepat sesudah dependensinya
+baru dipasang, saat Vite memaketkan ulang di tengah jalan. `vite.resolve.dedupe`
+memaksa satu salinan; `optimizeDeps.include` membuat keduanya sudah dipaketkan
+sejak dev server menyala, bukan di tengah jalan saat halamannya dibuka.
+
+### Tiga halaman .vue dicabut, alamatnya tidak
+
+`reflection-journey`, `sharing-mendengar-dengan-hadir`, dan
+`sharing-menata-kegelisahan` dihapus; isinya pindah ke database lewat
+`server/db/seed-jurnal.ts` (aman diulang — slug yang sudah ada dilewati, bukan
+ditimpa; tidak ada satu kalimat pun yang dikarang di sana). Alamat lamanya
+**dialihkan 301**, bukan dibiarkan mati: ketiganya sudah tampil berbulan-bulan dan
+bisa saja sudah dibagikan atau diindeks, dan 301 yang membuat mesin pencari
+memindahkan peringkat halaman lama ke alamat barunya. `routeRules` disusun untuk
+kedua bahasa sekaligus lewat `flatMap`.
+
+`pages/insights.vue` ikut diarahkan ke slug-slug baru; bentuk kartunya tidak berubah.
+
+### CSS yang harus ikut ditulis
+
+`.article-body` mendapat aturan daftar, tautan, gambar, figure, dan `hr`. Yang
+penting dicatat: **Tailwind preflight mencabut bullet dan penomoran dari ul/ol**,
+jadi tanpa aturan ini daftar yang ditulis di editor tampil sebagai paragraf
+berjejer di halaman publik. Bertingkatnya 1. → a. → i., dan aturan yang sama
+dipasang di dalam editornya supaya yang dilihat penulis sama dengan yang dibaca
+pengunjung.
+
+### Migrasi 0010, dan satu baris UPDATE yang menyelamatkan enam tulisan
+
+0009 membuat tabelnya; 0010 menyusun ulang tabelnya (SQLite tidak bisa menambahkan
+foreign key pada tabel yang sudah ada) untuk memasukkan `editor_id`, membuat `tipe`
+boleh null, dan menambah `boleh_tulis_jurnal` di `cc_user`. Di ujungnya:
+
+    UPDATE cc_jurnal SET status = 'published' WHERE status = 'terbit';
+
+Nama status lama `terbit` diganti `published` bersama masuknya `approved`. Tanpa
+baris itu, tulisan yang sudah tampil akan berstatus tak dikenal — halaman publik
+menyaring `status = 'published'`, jadi semuanya hilang **diam-diam, tanpa satu pun
+galat**. Kelas kesalahan yang paling mahal justru yang tidak melempar apa-apa.
+
+### Sisanya
+
+- Tab "Refleksi" di halaman profil jadi **"Jurnal"**; tombol "Tulisan jurnal saya"
+  muncul hanya pada profil sendiri dan hanya bila aksesnya dibuka.
+- Sidebar admin: **editor kini hanya melihat menu Jurnal.** Member, event, dan
+  dashboard bukan pekerjaannya, dan menu ke sana cuma menawarkan halaman yang akan
+  menolaknya.
+- Kolom "event terkait" dicabut dari formulir jurnal admin atas permintaan — hampir
+  selalu kosong dan menambah satu keputusan di layar yang seharusnya cepat.
+  `kegiatanId` tetap ada di database dan tetap dikirim apa adanya saat menyimpan,
+  jadi tautan pada jurnal lama tidak ikut terhapus hanya karena barisnya disunting.
+- `/api/admin/editors` berdiri sendiri, tidak menumpang `/api/users`: yang
+  dibutuhkan pemilih editor cuma id + nama, sementara daftar member membawa email
+  dan nomor WhatsApp tiap orang.
+- Jurnal yang sedang terbit **tidak bisa langsung dihapus** (409). Tarik dulu ke
+  draft — dua langkah, dan langkah pertamanya bisa dibatalkan.
+- `useSeoMeta` di halaman `jurnal-saya` dipasang **sebelum** `await` pertama.
+  Komposabel berkonteks komponen kehilangan konteksnya begitu setup pernah tertahan
+  sekali, dan halamannya jatuh dengan "useHead() was called without provide context".
+- Halaman baca `/jurnal/[slug]` sengaja **tanpa `await`** pada `useFetch`, sama
+  seperti halaman detail event: digabung `pageTransition` mode `out-in`, setup yang
+  ditahan Suspense membuat halaman lama sudah keluar sementara yang baru belum boleh
+  masuk — alamat dan judul tab berganti, isinya tidak pernah muncul.
+
+**Yang masih menggantung:** komentar di kepala `pages/jurnal/[slug].vue` menyebut
+`middleware/jurnal-lama.global.ts`. Berkas itu tidak ada — pengalihannya akhirnya
+ditulis sebagai `routeRules` di `nuxt.config.ts`. Komentarnya perlu dibetulkan.
+
+---
+
+## 2026-08-18 — Sesi 15: Dashboard berhenti jadi laporan
+
+Pertanyaan yang ditanyakan orang saat membuka `/admin` cuma satu: *apa yang perlu
+saya kerjakan sekarang?* Yang tergambar sebelumnya menjawab pertanyaan lain —
+empat angka ringkasan, tabel role, dan enam grafik telusuran. Semuanya benar,
+semuanya tidak bisa ditindaklanjuti, dan yang dibaca tiap pagi harus digulir
+melewati yang dibaca sebulan sekali.
+
+### Grafik pindah, bukan dibuang
+
+`AdminAgregasi` dipindah **utuh** ke `/admin/statistik`, termasuk seluruh
+telusurannya; tabel rekap role ikut, dan tetap master-only. Isinya tidak berubah
+sedikit pun — yang berubah tempatnya. Menu "Statistik" sendiri kemudian dicabut
+dari sidebar atas permintaan: halamannya hidup dan bisa dibuka lewat alamat
+langsung, yang hilang cuma jalannya dari sidebar.
+
+### Satu permintaan, bukan dua
+
+Dashboard sekarang membaca `/api/admin/agregasi` saja, bukan `stats` untuk kartu +
+`agregasi` untuk grafik. Agregasi sudah memuat semua yang dibutuhkan kartu, dan
+lebih: hitungan per status **per event** — yang justru jadi isi panel samping.
+
+### Kartu yang tahu ke mana ia mengantar
+
+Delapan kartu, dan tiap angka punya jalan ke tempat pekerjaannya dikerjakan:
+
+| Kartu | Yang terjadi saat diklik |
+|---|---|
+| Event aktif | `/admin/events` |
+| Pendaftar baru, perlu diproses | panel samping (sebarannya per event) |
+| Peserta perlu dikonfirmasi | panel samping |
+| Member aktif | `/admin/members` |
+| Jurnal draft / direview / perlu revisi / terbit | `/admin/jurnal?status=…` |
+
+"Event aktif" butuh **dua** saringan yang artinya berbeda: `status` menentukan
+event itu sudah dilihat publik atau belum, `fase` menentukan waktunya sudah lewat
+atau belum. Draft yang tanggalnya mendatang bukan event aktif; event terbit yang
+sudah selesai juga bukan. Urutannya dari yang acaranya paling dekat, bukan dari
+yang terakhir dibuat — yang menuntut pekerjaan lebih dulu adalah yang paling cepat
+tiba.
+
+Dua kartu antrean **tidak** melompat ke satu event: angkanya kumpulan dari beberapa
+event, dan melompat berarti memilihkan event mana yang dikerjakan duluan. Panelnya
+memperlihatkan sebarannya dulu — hanya event yang benar-benar punya antrean, karena
+yang bernilai nol cuma memanjangkan daftar tanpa menambah satu pun pekerjaan — lalu
+orangnya yang memilih. **Slideover, bukan modal**: kartu di belakangnya tetap
+terlihat, jadi angka di panel bisa dicocokkan dengan angka yang barusan diklik.
+
+### Tautan yang mendarat tepat, bukan mendekati
+
+`/admin/event/{id}?tab=peserta&status=baru`. Yang mengklik "12 perlu dikonfirmasi"
+mendarat di daftar dua belas orang itu, bukan di halaman event yang lalu harus
+dicari sendiri tabnya lalu disaring ulang dengan tangan. Dibaca sekali saat halaman
+dibuka; sesudah itu tab dan chipnya milik yang membukanya. Nilai yang tidak dikenal
+diabaikan — alamat salah ketik jangan sampai membuka halaman tanpa satu tab pun
+aktif, karena yang terlihat lalu sama persis dengan halaman rusak.
+
+Chip di tab peserta ikut diganti namanya: "Proses" → **"Diproses"**, "Konfirmasi" →
+**"Terkonfirmasi"**. Keduanya dulu terbaca sebagai perintah ("proses orang ini"),
+padahal yang dimaksud keadaan.
+
+### `AdminKartu` — elemennya benar-benar berganti
+
+Satu bentuk, tiga kelakuan: `ke` → `NuxtLink`; tanpa itu dan `mati` → `<div>`;
+selain itu `<button>`. Bukan sekadar berganti kelas — tautan yang digambar sebagai
+`<div>` tidak bisa dibuka di tab baru dan tidak terbaca sebagai tautan oleh pembaca
+layar, sementara tombol yang digambar sebagai `<a>` menjanjikan perpindahan halaman
+yang tidak pernah terjadi.
+
+### Halaman event publik: dropdown fase jadi chip
+
+Bentuk yang sama dengan penyaring status di dashboard, dengan alasan yang sama:
+tiga fase saling meniadakan dan jumlahnya sedikit, jadi menyembunyikannya di balik
+dropdown menukar satu klik jadi dua tanpa menghemat apa pun.
+
+Yang berubah karena angkanya kini digambar **di dalam** chip: fase tidak lagi
+dikirim sebagai query. Kalau server sudah menyaringnya, tiga chip lain langsung
+jadi (0) begitu satu chip ditekan. Satu pengambilan untuk seumur halaman,
+penyaringannya di klien seperti pencarian dan urutan — daftarnya puluhan, bukan
+ribuan. Angkanya dihitung dari **hasil pencarian**, bukan dari seluruh daftar:
+mengetik "listening" harus ikut menurunkan angka tiap fase, tapi menekan chip tidak
+boleh mengubah angka chip lain. "Semua" dihitung dari panjang daftar, bukan dari
+penjumlahan ketiga fase — event berstatus `batal` ikut tampil di halaman ini tapi
+tidak punya chip sendiri.
+
+Warna chip aktif ditulis sebagai **kelas utuh**, bukan disusun dari potongan
+(`bg-cc-${warna}-500`). Tailwind memindai berkas sebagai teks; nama kelas yang baru
+terbentuk saat runtime tidak pernah ikut diterbitkan, dan chipnya jadi transparan
+tanpa satu pun galat. Pelajaran yang sama muncul lagi di node gambar jurnal.
+
+### Sisanya
+
+- `awalBulanJakarta()` di agregasi, untuk "+n member bulan ini". Perbandingannya
+  lewat ORM (`gte` dengan sebuah `Date`), bukan `sql` mentah: drizzle yang tahu
+  kolom itu disimpan dalam detik atau milidetik, dan menebaknya sendiri adalah
+  salah hitung yang tidak melempar galat — cuma meleset sejuta kali lipat.
+  `Date.UTC(…, -7)` bukan salah ketik: WIB = UTC+7, jadi 00.00 tanggal 1 di Jakarta
+  sama dengan 17.00 UTC di hari terakhir bulan sebelumnya.
+- Judul slideover diatur di `app.config.ts`, terpisah dari judul modal dan lebih
+  besar: modal duduk di atas halaman yang digelapkan dan judulnya cukup membedakan
+  diri dari satu kalimat di bawahnya; slideover adalah panel setinggi layar dengan
+  isinya sendiri, dan judul 16px di puncaknya terbaca sebagai label, bukan kepala
+  panel.
+- `warnaLevel()` pindah ke `utils/akun.ts`. Tiga layar memakainya (dashboard, daftar
+  member, petunjuk) dan salinan yang berbeda warna berarti role yang sama tampil
+  beda di dua halaman. Tipe kembaliannya diambil dari `BadgeProps['color']` supaya
+  salah ketik nama warna ketahuan sebelum jalan.
+
+---
+
+## 2026-08-18 — Sesi 14: Editor yang buta terhadap `.nuxt/`, dan panen galat yang menyusul
+
+Sebelum satu baris fitur ditulis hari ini, hampir seluruh berkas `.vue` dan `.ts` di
+project ini merah di editor: `computed`, `ref`, `useFetch`, dan seluruh auto-import
+Nuxt terbaca sebagai nama yang tidak dikenal (ts 2304) — padahal kodenya jalan
+dengan benar. Sebabnya sederhana dan tidak ada hubungannya dengan kode: **tidak ada
+`tsconfig.json` di akar**, jadi editor tidak tahu `.nuxt/` ada sama sekali.
+
+Nuxt membangun empat tsconfig terpisah di `.nuxt/` — app, server, shared, node —
+masing-masing dengan auto-import dan tipe globalnya sendiri. Berkas di akar cuma
+perlu menunjuk keempatnya lewat `references`, dengan `files: []` karena ia tidak
+memiliki berkas apa pun sendiri. Dibangun ulang oleh `nuxt prepare`, yang sudah
+jalan sendiri lewat `postinstall`.
+
+Begitu editornya melihat, yang muncul bukan nol galat melainkan sederet galat
+sungguhan — sebagian besar dari `noUncheckedIndexedAccess`, yang membuat **setiap
+pengaksesan indeks larik** ikut bertipe `undefined`. Semuanya benar sebagai
+peringatan, dan tak satu pun pernah menimbulkan galat saat jalan:
+
+| Tempat | Yang diperbaiki |
+|---|---|
+| `server/utils/sesi.ts` | grup regex `m[2]` diambil ke variabel dulu — memeriksa `m` saja tidak menyempitkan tipe elemennya |
+| `server/db/schema/peserta.ts` | `PESERTA_ALUR[i + 1] ?? null` |
+| empat endpoint `count(*)` | `const [{ total }] = …` diganti membaca `hitung[0]?.total ?? 0` |
+| `pages/events/[slug].vue` | `split('·')[0] ?? ''` |
+
+`?? 0` di keempat endpoint itu bukan jaga-jaga: `count(*)` memang selalu
+mengembalikan tepat satu baris, tapi tipe hasil drizzle tetap larik biasa. Yang
+ditulis di sana menuruti tipenya, dan komentarnya mengatakan begitu supaya tidak ada
+yang mengira ada kasus nyata di mana barisnya tidak ada.
+
+Sisanya galat tipe yang menunjuk hal berbeda-beda, dan beberapa di antaranya
+menunjuk kode yang memang keliru:
+
+- **`pages/admin/events.vue`** — `ikonFase` ternyata `computed` yang hasilnya tidak
+  pernah berubah: `icon` per fase sudah tidak ada lagi di `faseOptions`, jadi
+  pencariannya selalu jatuh ke nilai cadangan. Diganti tetapan biasa.
+- **`pages/admin/event/[id].vue`** — `kuota` disimpan sebagai `string | number`
+  padahal `<UInput>` hanya menerima string. Dijadikan string di kedua arah;
+  `validasi-event.ts` sudah menerima keduanya.
+- **`GaleriUnggahModal`** — `emit(props.lokal ? 'draf' : 'tersimpan', …)` dipecah
+  jadi dua cabang. Nama emit yang dihitung saat jalan tidak bisa dicocokkan dengan
+  muatannya, dan `as any` yang menutupinya ikut menutupi kalau muatannya salah.
+- **`pages/profil.vue`** — `useFetch(() => '/api/users/' + id)` cocok dengan tiga
+  rute sekaligus (`:id`, `me`, `password`), dan Nuxt menyerah ke `{}`: seluruh isi
+  `data` jadi tidak dikenal. Di-cast ke satu rute; `me.get.ts` dan `[id].get.ts`
+  sama-sama mengembalikan `bangunProfil()`, jadi satu rute mewakili bentuk keduanya.
+- **`AdminPesertaTab`** — tipe kembalian ditulis di `computed`-nya, bukan di-cast
+  pada cabang `??`. Kalau hanya cabang kanan yang dicast, hasilnya union dengan
+  bentuk persis milik server — dan union itu tidak boleh diindeks dengan `string`
+  sembarang.
+- **`register.post.ts`** — bentuk body diberi nama (`type BodyDaftar`) supaya
+  anotasinya menampung dua-duanya. Tanpa itu, `.catch(() => ({}))` membuat tipenya
+  union dengan `{}` — dan pada `{}` tidak ada satu pun kolom yang boleh dibaca.
+
+Tidak ada satu pun `@ts-ignore` yang ditambahkan hari ini.
+
+---
 ## 2026-08-14 — Sesi 13: Formulir tambah event berhenti jadi setengah formulir
 
 Revisi tinjauan 14 Agu. Yang menyatukannya: **halaman "Event baru" berhenti jadi

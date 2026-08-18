@@ -22,9 +22,10 @@
 // sebatas satu SELECT tanpa GROUP BY, dan yang ditukar dengan itu adalah dua kelas
 // kesalahan yang tidak menimbulkan error, hanya angka yang salah diam-diam.
 
-import { desc, eq, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, ne, sql } from 'drizzle-orm'
 import { db } from '../../db'
 import {
+  ccJurnal,
   ccKegiatan,
   ccKunjungan,
   ccMedia,
@@ -37,9 +38,10 @@ import {
   ROLE_LABELS,
   ROLE_LEVELS,
   USER_ROLES,
+  JURNAL_STATUS,
   type PesertaStatus,
 } from '../../db/schema'
-import { JURNAL } from '#shared/jurnal'
+
 import { faseKegiatan, type Fase } from '../../utils/kegiatan'
 import { wajibRole } from '../../utils/session'
 
@@ -50,6 +52,22 @@ const bulanJakarta = (tanggal: Date) =>
   new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit' })
     .format(tanggal)
     .slice(0, 7)
+
+/**
+ * Tengah malam 1 bulan berjalan menurut WIB, sebagai `Date`.
+ *
+ * Dipakai membandingkan kolom timestamp lewat ORM (`gte`), bukan lewat `sql`
+ * mentah: drizzle yang tahu kolom itu disimpan dalam detik atau milidetik, dan
+ * menebaknya sendiri di sini adalah sumber salah hitung yang tidak menghasilkan
+ * galat — cuma angka yang meleset sejuta kali lipat.
+ *
+ * `Date.UTC(..., -7)` bukan salah ketik: WIB = UTC+7, jadi pukul 00.00 tanggal 1
+ * di Jakarta sama dengan pukul 17.00 UTC di hari terakhir bulan sebelumnya.
+ */
+const awalBulanJakarta = (sekarang: Date) => {
+  const [tahun, bulan] = bulanJakarta(sekarang).split('-').map(Number)
+  return new Date(Date.UTC(tahun!, bulan! - 1, 1, -7))
+}
 
 const LABEL_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
 
@@ -313,15 +331,40 @@ export default defineEventHandler(async (event) => {
   }
 
   // ── Jurnal ─────────────────────────────────────────────────────────────────
-  // Masih daftar tetap di `shared/jurnal.ts`, bukan tabel; dibaca dari sana supaya
-  // angkanya tidak pernah berbeda dari daftar di /admin/jurnal.
+  // Dari tabel `cc_jurnal` sejak jurnal punya CRUD sungguhan. Sebelumnya daftar
+  // tetap di `shared/jurnal.ts`, yang sudah menyimpang dari daftar publik tanpa
+  // menghasilkan galat apa pun — berkas itu sudah dicabut.
+  const jurnalRows = await db
+    .select({
+      id: ccJurnal.id,
+      judul: ccJurnal.judul,
+      status: ccJurnal.status,
+      tipe: ccJurnal.tipe,
+      diterbitkanPada: ccJurnal.diterbitkanPada,
+      createdAt: ccJurnal.createdAt,
+    })
+    .from(ccJurnal)
+
+  const perStatusJurnal = Object.fromEntries(JURNAL_STATUS.map(s => [s, 0])) as Record<string, number>
+  for (const j of jurnalRows) perStatusJurnal[j.status] = (perStatusJurnal[j.status] ?? 0) + 1
+
   const jurnal = {
-    total: JURNAL.length,
-    terbit: JURNAL.filter(j => j.status === 'Published').length,
-    draft: JURNAL.filter(j => j.status === 'Draft').length,
-    perBulan: kelompokkan(JURNAL, j => j.date.slice(0, 7), labelBulan)
-      .map(g => ({ ...g, isi: g.isi.map(j => ({ id: j.id, judul: j.title, status: j.status })) })),
-    daftar: JURNAL.map(j => ({ id: j.id, judul: j.title, status: j.status, tipe: j.type })),
+    total: jurnalRows.length,
+    // Lima status alur persetujuan, dipakai kartu dashboard.
+    draft: perStatusJurnal.draft ?? 0,
+    review: perStatusJurnal.review ?? 0,
+    revisi: perStatusJurnal.revisi ?? 0,
+    approved: perStatusJurnal.approved ?? 0,
+    published: perStatusJurnal.published ?? 0,
+    // Dikelompokkan menurut bulan TERBIT, bukan bulan dibuat: yang menarik dilihat
+    // dari waktu ke waktu adalah kapan tulisan sampai ke pembaca. Yang belum terbit
+    // memakai tanggal dibuatnya sebagai gantinya.
+    perBulan: kelompokkan(
+      jurnalRows,
+      j => bulanJakarta(j.diterbitkanPada ?? j.createdAt),
+      labelBulan,
+    ).map(g => ({ ...g, isi: g.isi.map(j => ({ id: j.id, judul: j.judul, status: j.status })) })),
+    daftar: jurnalRows.map(j => ({ id: j.id, judul: j.judul, status: j.status, tipe: j.tipe })),
   }
 
   // ── Berkas ─────────────────────────────────────────────────────────────────
@@ -345,9 +388,21 @@ export default defineEventHandler(async (event) => {
     .from(ccUser)
     .where(sql`${ne(ccUser.role, 'master')} and ${ccUser.isActive} = 1`)
 
+  // Akun yang lahir bulan ini — angka "+n bulan ini" di kartu Member dashboard.
+  //
+  // Batas bulannya dihitung di JS lalu dikirim sebagai timestamp, bukan lewat
+  // `strftime` SQLite: strftime bekerja di UTC, dan akun yang dibuat pukul 06.00
+  // WIB tanggal 1 akan jatuh ke bulan sebelumnya. Alasan yang sama dengan ember
+  // bulan di kepala berkas ini.
+  const [{ jumlah: memberBaru } = { jumlah: 0 }] = await db
+    .select({ jumlah })
+    .from(ccUser)
+    .where(and(ne(ccUser.role, 'master'), gte(ccUser.createdAt, awalBulanJakarta(sekarang))))
+
   const member = {
     total: userRows.filter(r => r.role !== 'master').reduce((n, r) => n + r.jumlah, 0),
     aktif: memberAktif,
+    baruBulanIni: memberBaru,
   }
 
   return {

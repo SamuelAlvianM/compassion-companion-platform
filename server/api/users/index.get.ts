@@ -71,7 +71,10 @@ export default defineEventHandler(async (event) => {
     .groupBy(ccPeserta.email)
   const ikutPer = new Map(ikut.map(i => [i.email, i.jumlah]))
 
-  const [{ total }] = await db.select({ total: sql<number>`count(*)` }).from(ccUser).where(where)
+  // Baris[0] bertipe undefined menurut tipe hasil drizzle meski `count(*)`
+  // selalu mengembalikan tepat satu baris; `?? 0` menuruti tipenya.
+  const hitung = await db.select({ total: sql<number>`count(*)` }).from(ccUser).where(where)
+  const total = hitung[0]?.total ?? 0
 
   return {
     data: rows.map(row => ({

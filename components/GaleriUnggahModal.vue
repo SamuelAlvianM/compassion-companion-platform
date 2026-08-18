@@ -201,7 +201,13 @@ const unggah = async () => {
 
   // Induk diberi tahu begitu ADA yang berhasil, meski sebagian gagal — foto yang
   // sudah masuk harus langsung terlihat di daftar sesi.
-  if (berhasil) emit(props.lokal ? 'draf' : 'tersimpan', draf as any)
+  // Dua cabang, bukan satu `emit(props.lokal ? 'draf' : 'tersimpan', …)`: nama
+  // emit yang dihitung saat jalan tidak bisa dicocokkan dengan muatannya, dan TS
+  // menolaknya sebagai overload yang tidak ada.
+  if (berhasil) {
+    if (props.lokal) emit('draf', draf)
+    else emit('tersimpan')
+  }
   if (!daftar.value.some(e => e.keadaan === 'gagal')) emit('update:open', false)
 }
 

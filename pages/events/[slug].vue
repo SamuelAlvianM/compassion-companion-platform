@@ -126,7 +126,9 @@ const eyebrow = computed(() => {
   const tgl = new Intl.DateTimeFormat(isEn.value ? 'en-GB' : 'id-ID', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
   }).format(new Date(e.value.tanggalMulai))
-  const tempat = (e.value.lokasi ?? '').split('·')[0].trim()
+  // `?? ''` di ujung: hasil split selalu punya elemen pertama, tapi tipenya ikut
+  // memuat undefined karena indeks larik tidak diperiksa TS.
+  const tempat = ((e.value.lokasi ?? '').split('·')[0] ?? '').trim()
   return tempat ? `${tgl} · ${tempat}` : tgl
 })
 

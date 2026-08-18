@@ -27,6 +27,7 @@ const form = reactive({
   phoneNumber: '',
   role: 'user',
   isActive: true,
+  bolehTulisJurnal: false,
   password: '',
 })
 
@@ -93,6 +94,7 @@ const muat = async () => {
     phoneNumber: u.phoneNumber ?? '',
     role: u.role ?? 'user',
     isActive: u.isActive ?? true,
+    bolehTulisJurnal: u.bolehTulisJurnal ?? false,
     password: '',
   })
 }
@@ -322,6 +324,18 @@ const acakPassword = () => {
             v-model="form.isActive"
             label="Akun aktif"
             description="Akun non aktif akan kehilangan akses untuk login."
+          />
+        </UFormField>
+
+        <!-- Izin menulis jurnal. Dibuka per orang, bukan mengikuti role: yang
+             menulis adalah mereka yang memang diminta atau mengajukan diri. Selama
+             tertutup, tombol "Tulis jurnal" tidak digambar sama sekali di halaman
+             member — bukan digambar lalu menolak saat ditekan. -->
+        <UFormField v-if="!baru" name="bolehTulisJurnal">
+          <USwitch
+            v-model="form.bolehTulisJurnal"
+            label="Boleh menulis jurnal"
+            description="Membuka tombol “Tulis jurnal” di halaman member. Tulisannya tetap melewati review editor dan diterbitkan admin."
           />
         </UFormField>
 

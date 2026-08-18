@@ -14,6 +14,9 @@ export interface AuthUser {
   email: string | null
   role: UserRole
   level: 1 | 2 | 3 | 4
+  /** Izin menulis jurnal, dibuka admin per orang. Menentukan muncul-tidaknya
+      tombol "Tulis jurnal" di halaman profil. */
+  bolehTulisJurnal?: boolean
 }
 
 export const useAuth = () => {

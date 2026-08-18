@@ -835,6 +835,80 @@ a[href^="https://wa.me/"]::before {
     font: 25px/1.25 'Cormorant Garamond', serif
 }
 
+.article-body h3 {
+    font-size: 26px;
+    margin: 28px 0 10px
+}
+
+/* Daftar dari editor jurnal.
+   Tailwind preflight mencabut bullet & penomoran dari ul/ol, jadi tanpa aturan ini
+   daftar yang ditulis di editor tampil sebagai paragraf berjejer di halaman publik.
+
+   Bertingkat: 1. lalu a. b. c. lalu i. ii. iii. — anak yang kembali bernomor angka
+   terbaca sebagai daftar baru yang tidak berhubungan dengan induknya. Aturan yang
+   sama dipasang di dalam editornya (lihat pages/admin/jurnal/[id].vue) supaya yang
+   dilihat penulis sama dengan yang dibaca pengunjung. */
+.article-body ul,
+.article-body ol {
+    max-width: 680px;
+    margin: 14px 0;
+    padding-left: 26px
+}
+
+.article-body ol { list-style: decimal }
+.article-body ol ol { list-style: lower-alpha }
+.article-body ol ol ol { list-style: lower-roman }
+.article-body ul { list-style: disc }
+.article-body ul ul { list-style: circle }
+
+.article-body li { margin: 6px 0 }
+.article-body li > p { margin: 0 }
+
+.article-body a {
+    color: var(--color-secondary);
+    text-decoration: underline;
+    text-underline-offset: 3px
+}
+
+.article-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 22px 0
+}
+
+/* Gambar bertulisan keterangan — bentuk yang dihasilkan node `gambarJurnal` di
+   editor. Lebarnya datang dari `style="width:n%"` pada figure-nya, perataannya
+   dari `data-align`; keduanya disusun penulis dan sudah lolos pembersih HTML.
+   Yang diatur di sini cuma bagaimana ketiganya digambar. */
+.article-body figure[data-gambar] {
+    margin: 26px 0;
+    max-width: 100%
+}
+
+.article-body figure[data-gambar] img {
+    width: 100%;
+    margin: 0
+}
+
+.article-body figure[data-gambar] figcaption {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-style: italic;
+    color: var(--color-muted)
+}
+
+.article-body figure[data-align="tengah"] { margin-left: auto; margin-right: auto }
+.article-body figure[data-align="kiri"] { margin-left: 0; margin-right: auto }
+.article-body figure[data-align="kanan"] { margin-left: auto; margin-right: 0 }
+
+.article-body hr {
+    margin: 34px 0;
+    border: 0;
+    border-top: 1px solid var(--color-line)
+}
+
 .contributor {
     display: flex;
     align-items: center;
@@ -1787,4 +1861,33 @@ a[href^="https://wa.me/"]::before {
         width: 100%;
         opacity: .45
     }
+}
+
+/* ── Sorotan kartu jurnal dari log kerja (?sorot={slug}) ──────────────────────
+   Dua kedipan dalam satu detik: durasi 0.5s dikali 2 iterasi. Angkanya ditulis
+   begitu, bukan satu keyframe 1 detik berisi dua puncak, supaya "berapa kali
+   berkedip" bisa diubah dengan mengganti satu angka.
+
+   Yang dianimasikan box-shadow dan border, bukan background: latar kartu adalah
+   yang membuat teksnya terbaca, dan menyalakan-memadamkannya dua kali membuat
+   seluruh isi kartu ikut berkedip. Yang dibutuhkan cuma penanda "ini yang tadi
+   Anda klik".
+
+   Dihormati juga oleh yang mematikan animasi di sistemnya: bagi mereka kartunya
+   tetap ditandai, hanya tidak bergerak. */
+@keyframes cc-sorot-kedip {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); border-color: var(--color-line); }
+  50%      { box-shadow: 0 0 0 4px rgba(191, 149, 63, .55); border-color: var(--color-accent); }
+}
+
+.journal-card.is-sorot {
+  animation: cc-sorot-kedip .5s ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-card.is-sorot {
+    animation: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(191, 149, 63, .45);
+  }
 }

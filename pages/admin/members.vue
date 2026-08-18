@@ -88,9 +88,6 @@ const columns = [
   { accessorKey: 'jumlahKegiatan', header: 'Event diikuti' },
   { accessorKey: 'aksi', header: '' },
 ]
-
-const warnaLevel = (level: number) =>
-  ({ 1: 'error', 2: 'primary', 3: 'secondary', 4: 'neutral' })[level] ?? 'neutral'
 </script>
 
 <template>
