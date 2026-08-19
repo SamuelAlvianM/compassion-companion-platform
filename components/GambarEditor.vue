@@ -58,6 +58,30 @@ const RASIO = [
   { nilai: 16 / 9, label: () => '16:9' },
 ]
 
+/**
+ * Rasio terkunci ditulis sebagai pecahan — "16:9", bukan "1.78:1".
+ *
+ * Bentuk desimal itu benar secara angka tapi tidak terbaca sebagai apa pun yang
+ * dikenal orang: yang diminta "sampul 16:9", dan yang tertulis di layar "1.78:1".
+ * Dua sebutan untuk satu hal yang sama membuat pembacanya mengira ada yang salah.
+ *
+ * Nilai yang sudah punya nama dipakai namanya; sisanya dikecilkan lewat FPB,
+ * sehingga rasio apa pun yang kelak dipasang tetap keluar sebagai pecahan bulat
+ * dan tidak ada yang perlu menambah daftar di sini.
+ */
+const fpb = (a: number, b: number): number => (b ? fpb(b, a % b) : a)
+
+const labelRasio = (r: number) => {
+  const dikenal = RASIO.find(x => x.nilai !== null && Math.abs(x.nilai - r) < 0.001)
+  if (dikenal) return dikenal.label()
+
+  // Dikalikan dulu ke bilangan bulat: FPB tidak berlaku untuk pecahan desimal.
+  const skala = 1000
+  const a = Math.round(r * skala)
+  const p = fpb(a, skala)
+  return `${a / p}:${skala / p}`
+}
+
 // ── Muat gambar ──────────────────────────────────────────────────────────────
 const panggung = useTemplateRef<HTMLElement>('panggung')
 const ukuranPanggung = ref({ w: 0, h: 0 })
@@ -317,7 +341,7 @@ const SUDUT: { pegangan: Pegangan, kelas: string, kursor: string }[] = [
 
       <span class="text-xs text-cc-stone-500">{{ t.rasio }}</span>
       <span v-if="rasioTetap" class="rounded-full bg-cc-green-800 px-2 py-1 text-xs font-semibold text-white">
-        {{ Math.round(rasioTetap * 100) / 100 }}:1
+        {{ labelRasio(rasioTetap) }}
       </span>
       <button
         v-for="r in (rasioTetap ? [] : RASIO)"

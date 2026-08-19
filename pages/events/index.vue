@@ -274,11 +274,11 @@ const badge = (f: string) =>
 
 /** Sampul: dari DB bila ada, kalau tidak jatuh ke gambar statis milik event itu. */
 const SAMPUL: Record<string, string> = {
-  "listening-as-leadership": "/images/listening-as-leadership.png",
-  "leadership-with-compassion": "/images/leadership-with-compassion.png",
+  "listening-as-leadership": "/images/listening-as-leadership.webp",
+  "leadership-with-compassion": "/images/leadership-with-compassion.webp",
 };
 const sampul = (e: { slug: string; cover?: string | null }) =>
-  e.cover || SAMPUL[e.slug] || "/images/event-gallery-placeholder.png";
+  e.cover || SAMPUL[e.slug] || TEMPLATE_EVENT;
 
 // Tanggal disimpan sebagai timestamp UTC; tampilkan dalam WIB supaya tidak
 // bergeser sehari bagi pembaca di Indonesia.

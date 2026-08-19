@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="dasar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDFBF7"/>
+      <stop offset="0.55" stop-color="#F8F4ED"/>
+      <stop offset="1" stop-color="#F2ECE1"/>
+    </linearGradient>
+
+    <linearGradient id="sage1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#8FA68C"/>
+      <stop offset="1" stop-color="#B9C9B2"/>
+    </linearGradient>
+    <linearGradient id="sage2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#A8BDA6"/>
+      <stop offset="1" stop-color="#CFDCC8"/>
+    </linearGradient>
+    <linearGradient id="pasir" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#D8BC98"/>
+      <stop offset="1" stop-color="#EBD9C0"/>
+    </linearGradient>
+    <linearGradient id="pasirMuda" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#E7D3B6"/>
+      <stop offset="1" stop-color="#F5EADA"/>
+    </linearGradient>
+
+    <radialGradient id="cahaya" cx="0.42" cy="0.34" r="0.72">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="lembut" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <filter id="lembutTipis" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#dasar)"/>
+
+  <!-- Lingkaran pucat kanan atas -->
+  <circle cx="1355" cy="205" r="255" fill="#DCE5D6" opacity="0.5" filter="url(#lembut)"/>
+  <circle cx="1408" cy="168" r="150" fill="#EEE4D3" opacity="0.55" filter="url(#lembut)"/>
+
+  <!-- Pita organik kiri bawah, berlapis dari paling gelap ke paling muda -->
+  <path d="M-40 900 C 150 690, 430 742, 640 640 C 830 548, 900 372, 1080 300 L 1080 900 Z"
+        fill="url(#pasirMuda)" opacity="0.5" filter="url(#lembutTipis)"/>
+  <path d="M-40 900 C 120 726, 380 780, 560 686 C 742 590, 828 430, 1010 356 L 1010 900 Z"
+        fill="url(#sage2)" opacity="0.45" filter="url(#lembutTipis)"/>
+  <path d="M-40 900 C 96 764, 322 818, 486 730 C 656 640, 742 500, 900 430 L 900 900 Z"
+        fill="url(#pasir)" opacity="0.42" filter="url(#lembutTipis)"/>
+  <path d="M-40 900 C 70 806, 260 852, 402 776 C 560 692, 640 566, 780 508 L 780 900 Z"
+        fill="url(#sage1)" opacity="0.44" filter="url(#lembutTipis)"/>
+  <path d="M-40 900 C 40 846, 190 884, 310 822 C 452 748, 520 640, 640 586 L 640 900 Z"
+        fill="#7E9679" opacity="0.30" filter="url(#lembutTipis)"/>
+
+  <!-- Sapuan pasir tipis di kanan bawah, supaya sisi kanan tidak kosong -->
+  <path d="M1600 900 C 1450 838, 1332 762, 1268 640 C 1214 538, 1236 452, 1310 392 L 1600 392 Z"
+        fill="url(#pasir)" opacity="0.26" filter="url(#lembutTipis)"/>
+
+  <!-- Cahaya tengah, meredam pertemuan warna -->
+  <rect width="1600" height="900" fill="url(#cahaya)"/>
+
+  <!-- Ranting zaitun kanan atas -->
+  <g stroke="#6E8768" stroke-width="3.4" fill="#7D9877" opacity="0.72" stroke-linecap="round">
+    <path d="M1560 62 C 1452 118, 1356 196, 1288 300" fill="none"/>
+    <g fill="#7D9877" stroke="none">
+      <ellipse cx="1518" cy="72" rx="34" ry="15" transform="rotate(-28 1518 72)"/>
+      <ellipse cx="1487" cy="118" rx="36" ry="15.5" transform="rotate(-16 1487 118)"/>
+      <ellipse cx="1447" cy="106" rx="32" ry="14" transform="rotate(-52 1447 106)"/>
+      <ellipse cx="1432" cy="164" rx="37" ry="16" transform="rotate(-12 1432 164)"/>
+      <ellipse cx="1388" cy="150" rx="31" ry="13.5" transform="rotate(-58 1388 150)"/>
+      <ellipse cx="1378" cy="212" rx="36" ry="15.5" transform="rotate(-8 1378 212)"/>
+      <ellipse cx="1336" cy="200" rx="30" ry="13" transform="rotate(-62 1336 200)"/>
+      <ellipse cx="1330" cy="262" rx="33" ry="14.5" transform="rotate(-4 1330 262)"/>
+      <ellipse cx="1292" cy="252" rx="28" ry="12.5" transform="rotate(-66 1292 252)"/>
+    </g>
+  </g>
+
+  <!-- Bayangan daun samar di kiri atas: memberi kedalaman tanpa menambah objek tegas -->
+  <g fill="#8FA68C" opacity="0.13" filter="url(#lembutTipis)">
+    <ellipse cx="150" cy="120" rx="86" ry="34" transform="rotate(-34 150 120)"/>
+    <ellipse cx="272" cy="196" rx="76" ry="30" transform="rotate(-22 272 196)"/>
+    <ellipse cx="96" cy="248" rx="66" ry="27" transform="rotate(-52 96 248)"/>
+  </g>
+
+  <!-- Lambang bulat kiri atas: satu ranting bertiga daun -->
+  <g transform="translate(120 118)" opacity="0.9">
+    <circle r="44" fill="none" stroke="#7E9679" stroke-width="2.4"/>
+    <g stroke="#6E8768" stroke-width="2.6" stroke-linecap="round" fill="none">
+      <path d="M0 20 C 0 6, 0 -6, 0 -20"/>
+    </g>
+    <g fill="#7E9679">
+      <ellipse cx="-13" cy="-2" rx="14" ry="6.5" transform="rotate(-32 -13 -2)"/>
+      <ellipse cx="13" cy="-8" rx="14" ry="6.5" transform="rotate(32 13 -8)"/>
+      <ellipse cx="-11" cy="12" rx="12" ry="5.6" transform="rotate(-28 -11 12)"/>
+    </g>
+  </g>
+</svg>

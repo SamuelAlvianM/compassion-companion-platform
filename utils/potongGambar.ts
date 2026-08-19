@@ -59,40 +59,75 @@ const muatGambar = (sumber: string) => new Promise<HTMLImageElement>((selesai, g
 })
 
 /**
- * Jenis keluaran mengikuti jenis masukan untuk PNG dan WebP, dan jatuh ke JPEG
- * untuk sisanya (termasuk HEIC yang sudah didekode browser).
+ * SEMUA gambar keluar sebagai WebP.
  *
- * PNG dipertahankan bukan karena mutunya: ia satu-satunya di antara ketiganya yang
- * menyimpan transparansi. Memaksanya jadi JPEG akan mengubah latar tembus pandang
- * menjadi hitam pekat — dan itu baru terlihat setelah fotonya terbit.
+ * Sebelumnya jenis masukan dipertahankan untuk PNG, dengan alasan transparansi:
+ * JPEG tidak punya alpha, jadi latar tembus pandang akan menjadi hitam pekat.
+ * Alasannya benar, penggantinya yang salah — WebP menyimpan alpha JUGA, sekaligus
+ * memampatkan foto sebaik JPEG.
+ *
+ * Aturan lama itu mahal. Satu foto yang kebetulan disimpan sebagai PNG tetap PNG
+ * sampai ke pengunjung: 2,7 MB untuk gambar yang sebagai WebP cukup 150 KB. Di
+ * produksi itu terjadi pada hampir setiap sampul event, dan itulah yang membuat
+ * halaman terasa lambat padahal servernya menjawab dalam 20 milidetik.
  */
-const jenisKeluaran = (mimeAsal: string) =>
-  mimeAsal === 'image/png' || mimeAsal === 'image/webp' ? mimeAsal : 'image/jpeg'
-
-const gantiEkstensi = (nama: string, mime: string) => {
-  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg'
-  return `${nama.replace(/\.[^./\\]+$/, '')}.${ext}`
-}
+const MIME_KELUARAN = 'image/webp'
 
 /**
- * Terapkan putaran & potongan, kembalikan `File` baru yang siap diunggah.
+ * Sisi terpanjang yang diizinkan.
  *
- * Berkas aslinya dikembalikan apa adanya kalau tidak ada yang berubah — melewatkan
- * canvas berarti melewatkan pula pengodean ulang, yang untuk JPEG selalu menurunkan
- * mutu meski gambarnya sama persis.
+ * 1920 px cukup untuk sampul selebar layar bahkan pada layar kerapatan ganda,
+ * sementara foto ponsel 4000 px yang diunggah apa adanya menghabiskan empat kali
+ * lebih banyak byte untuk piksel yang tidak pernah tergambar.
+ */
+export const SISI_MAKS = 1920
+
+/** Mutu WebP: 0,82 adalah titik di mana selisihnya sudah tidak terlihat mata pada
+    foto, tapi berkasnya masih jauh lebih kecil daripada di 0,95. */
+const MUTU = 0.82
+
+const gantiEkstensi = (nama: string) => `${nama.replace(/\.[^./\\]+$/, '')}.webp`
+
+/** Faktor pengecilan supaya sisi terpanjang tidak melewati SISI_MAKS. */
+const faktorSusut = (lebar: number, tinggi: number) =>
+  Math.min(1, SISI_MAKS / Math.max(lebar, tinggi))
+
+/**
+ * Terapkan putaran & potongan, lalu kecilkan dan kodekan ulang ke WebP.
+ *
+ * Berkas aslinya TIDAK lagi dikembalikan apa adanya saat tidak ada potongan.
+ * Dulu begitu, dengan alasan pengodean ulang JPEG selalu menurunkan mutu sedikit —
+ * benar, tapi harganya adalah foto ponsel 8 MB yang naik utuh ke pustaka media lalu
+ * diunduh utuh oleh setiap pengunjung. Yang dilewati sekarang hanya berkas yang
+ * memang sudah kecil dan sudah WebP; sisanya selalu lewat canvas.
  */
 export const potongGambar = async (
   berkas: File,
   sumber: string,
   p: PotonganGambar,
 ): Promise<File> => {
-  if (!p.natural || !adaPotongan(p)) return berkas
+  if (!p.natural) return berkas
+
+  const penuh = ukuranTerputar(p.natural, p.putaran)
+  const memotong = adaPotongan(p)
+
+  // Ukuran keluaran sebelum dikecilkan: kotak potong bila memotong, gambar utuh
+  // bila tidak.
+  const sumberLebar = memotong ? Math.max(1, Math.round(p.crop.w)) : penuh.w
+  const sumberTinggi = memotong ? Math.max(1, Math.round(p.crop.h)) : penuh.h
+
+  const susut = faktorSusut(sumberLebar, sumberTinggi)
+  const sudahRingkas = berkas.type === MIME_KELUARAN && susut === 1
+
+  // Tidak memotong, tidak perlu dikecilkan, dan sudah WebP — tidak ada yang bisa
+  // diperbaiki dengan menggambar ulang.
+  if (!memotong && sudahRingkas) return berkas
 
   const img = await muatGambar(sumber)
   const { w: nw, h: nh } = p.natural
 
-  const lebar = Math.max(1, Math.round(p.crop.w))
-  const tinggi = Math.max(1, Math.round(p.crop.h))
+  const lebar = Math.max(1, Math.round(sumberLebar * susut))
+  const tinggi = Math.max(1, Math.round(sumberTinggi * susut))
 
   const canvas = document.createElement('canvas')
   canvas.width = lebar
@@ -100,17 +135,20 @@ export const potongGambar = async (
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas tidak tersedia di peramban ini.')
 
-  const mime = jenisKeluaran(berkas.type)
-  // JPEG tidak punya alpha; tanpa latar putih, area transparan jadi hitam.
-  if (mime === 'image/jpeg') {
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, lebar, tinggi)
-  }
+  // Penghalusan mutu tinggi hanya berarti saat gambarnya diperkecil — dan di situ
+  // ia yang membedakan hasil yang tajam dari hasil yang bergerigi.
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+
+  // Pengecilan dikerjakan oleh matriks, bukan oleh ukuran kanvas: dengan begitu
+  // seluruh perhitungan potongan & putaran di bawah tetap dalam piksel sumber,
+  // persis seperti saat potongannya disimpan.
+  if (susut !== 1) ctx.scale(susut, susut)
 
   // Pindahkan titik asal ke sudut kiri-atas potongan, lalu gambar seluruh foto
   // ke dalam ruang yang sudah diputar. Urutannya penting: menggeser dulu baru
   // memutar akan menggeser sepanjang sumbu yang ikut miring.
-  ctx.translate(-Math.round(p.crop.x), -Math.round(p.crop.y))
+  if (memotong) ctx.translate(-Math.round(p.crop.x), -Math.round(p.crop.y))
 
   switch (p.putaran) {
     case 90:
@@ -130,8 +168,8 @@ export const potongGambar = async (
   ctx.drawImage(img, 0, 0)
 
   const blob = await new Promise<Blob | null>(selesai =>
-    canvas.toBlob(selesai, mime, 0.92))
+    canvas.toBlob(selesai, MIME_KELUARAN, MUTU))
   if (!blob) throw new Error('Gagal menyusun gambar hasil potongan.')
 
-  return new File([blob], gantiEkstensi(berkas.name, mime), { type: mime })
+  return new File([blob], gantiEkstensi(berkas.name), { type: MIME_KELUARAN })
 }

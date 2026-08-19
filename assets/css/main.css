@@ -989,11 +989,11 @@ a[href^="https://wa.me/"]::before {
    bisa dijadikan patokan — sementara spesifisitasnya harus tetap menyamai aturan
    gradien `.card:nth-child(2) .card-image` agar menang lewat urutan sumber. */
 .card .card-image.leadership-image {
-    background: url('/images/leadership-with-compassion.png') center/cover no-repeat
+    background: url('/images/leadership-with-compassion.webp') center/cover no-repeat
 }
 
 .card .card-image.listening-image {
-    background: url('/images/listening-as-leadership.png') center/cover no-repeat
+    background: url('/images/listening-as-leadership.webp') center/cover no-repeat
 }
 
 #insights {

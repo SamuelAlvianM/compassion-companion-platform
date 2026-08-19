@@ -53,6 +53,27 @@ export const readImageSize = (buf: Buffer): { width: number; height: number } | 
     if (buf.length > 10 && buf.toString('ascii', 0, 3) === 'GIF') {
       return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) }
     }
+    // WebP: RIFF....WEBP lalu satu chunk yang bentuknya berbeda per varian.
+    // Perlu ditangani sejak seluruh unggahan gambar dikodekan ulang jadi WebP di
+    // sisi peramban — tanpa cabang ini, width/height setiap gambar baru null.
+    if (buf.length > 30 && buf.toString('ascii', 0, 4) === 'RIFF'
+      && buf.toString('ascii', 8, 12) === 'WEBP') {
+      const chunk = buf.toString('ascii', 12, 16)
+      // Lossy: dua uint16 LE di offset 26, 14 bit terpakai.
+      if (chunk === 'VP8 ') {
+        return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff }
+      }
+      // Lossless: 14 bit lebar lalu 14 bit tinggi, dikemas mulai offset 21.
+      if (chunk === 'VP8L') {
+        const bits = buf.readUInt32LE(21)
+        return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 }
+      }
+      // Diperluas (dipakai saat ada alpha): dua uint24 LE, nilainya kurang satu.
+      if (chunk === 'VP8X') {
+        const uint24 = (o: number) => buf[o]! | (buf[o + 1]! << 8) | (buf[o + 2]! << 16)
+        return { width: uint24(24) + 1, height: uint24(27) + 1 }
+      }
+    }
     // JPEG: telusuri marker sampai ketemu SOFn
     if (buf.length > 4 && buf.readUInt16BE(0) === 0xffd8) {
       let off = 2

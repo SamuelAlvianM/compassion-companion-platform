@@ -28,7 +28,7 @@ const site = computed(() =>
       },
 )
 
-const ogImage = absolute('/images/about-compassionate-companion.png')
+const ogImage = absolute('/images/about-compassionate-companion.webp')
 
 // Dibungkus computed supaya canonical & hreflang ikut berubah saat navigasi
 // sisi klien — setup app.vue hanya berjalan sekali seumur aplikasi.

@@ -24,12 +24,12 @@
                     </div>
                 </div>
                 <div class="about-image-wrap">
-                    <img src="/images/about-compassionate-companion.png" alt="Compassionate Companion berjalan bersama">
+                    <img src="/images/about-compassionate-companion.webp" alt="Compassionate Companion berjalan bersama">
                 </div>
             </div>
         </section>
         <section class="section profile">
-            <div class="container profile-grid"><NuxtImg src="/images/henk-profile.png" alt="Henk T. Sengkey"/>
+            <div class="container profile-grid"><NuxtImg src="/images/henk-profile.webp" alt="Henk T. Sengkey"/>
                 <div>
                     <div class="eyebrow">Leadership coach & facilitator</div>
                     <h2 class="section-title">Henk T. Sengkey</h2>
