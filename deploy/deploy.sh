@@ -157,15 +157,26 @@ ENDSSH
 # kegagalan palsu seperti itu melatih orang mengabaikan hasil smoke test.
 log "Cek origin di server (127.0.0.1:3010)..."
 ssh "$REMOTE" bash <<'ENDSSH'
-  for i in $(seq 1 15); do
-    kode=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3010/ 2>/dev/null || echo 000)
-    if [[ "$kode" != "000" ]]; then
+  # Yang diterima HANYA 2xx/3xx.
+  #
+  # Sebelumnya syaratnya "bukan 000", dan itu meloloskan deploy yang gagal: saat
+  # origin belum siap, curl menulis 000 ke stdout DAN keluar dengan status bukan-nol,
+  # sehingga `|| echo 000` ikut jalan dan $kode berisi "000000". Nilai itu memang
+  # bukan "000", jadi penjaganya lolos, loop tunggunya putus di detik pertama, dan
+  # deploy dilaporkan sukses tanpa origin pernah menjawab sekali pun.
+  #
+  # Mencocokkan dengan pola sukses, bukan dengan satu nilai gagal, membuat setiap
+  # keadaan tak terduga jatuh ke sisi "belum siap" — termasuk 000000 itu sendiri,
+  # dan termasuk 500 dari aplikasi yang start lalu mati.
+  for i in $(seq 1 20); do
+    kode=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3010/ 2>/dev/null || true)
+    if [[ "$kode" =~ ^[23][0-9][0-9]$ ]]; then
       echo "HTTP $kode setelah ${i}s"
       exit 0
     fi
     sleep 1
   done
-  echo "TIDAK MERESPONS setelah 15s — cek: pm2 logs ccwebsite --lines 50"
+  echo "TIDAK MERESPONS SEHAT setelah 20s (kode terakhir: ${kode:-kosong}) — cek: pm2 logs ccwebsite --lines 50"
   exit 1
 ENDSSH
 
