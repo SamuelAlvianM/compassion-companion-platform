@@ -112,6 +112,49 @@ pernah terpicu" lebih baik dihapus daripada dijelaskan.
 `Compassion in Practice` — yang dipakai sebagai bahan uji PATCH — dikembalikan
 persis ke nilai semula (tanggal, batas pendaftaran, lokasi, kuota, harga, status).
 
+### Deploy ke produksi
+
+Commit `d4e317f` di-push ke `main`, lalu `bash deploy/deploy.sh` (rutin — tanpa
+`--migrasi`, karena tidak ada berkas baru di `server/db/migrations/`; database
+tidak disentuh).
+
+Dua hal yang perlu diingat untuk deploy berikutnya:
+
+**Skripnya harus dijalankan dari Git Bash, bukan lewat PowerShell.** Percobaan
+pertama gagal di langkah transfer dengan `ssh: Could not resolve hostname cc` —
+alias `Host cc` ada di `~/.ssh/config` dan bekerja normal dari Git Bash, tapi bash
+yang dipanggil dari PowerShell tidak menemukannya (HOME-nya berbeda). Build
+sendiri sudah selesai saat itu, jadi pengulangannya cukup `--skip-build`.
+
+**Smoke test di dalam `deploy.sh` bisa meloloskan deploy yang gagal.** Barisnya:
+
+```bash
+kode=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3010/ || echo 000)
+if [[ "$kode" != "000" ]]; then ...
+```
+
+Saat origin belum siap, `curl` menulis `000` ke stdout **dan** keluar dengan status
+bukan-nol, sehingga `|| echo 000` ikut jalan dan `$kode` jadi `000000`. Nilai itu
+tidak sama dengan `000`, jadi penjaganya lolos, loop tunggu 15 detiknya putus pada
+detik pertama, dan deploy dilaporkan sukses tanpa origin pernah menjawab. Persis
+kegagalan palsu yang komentarnya sendiri bilang ingin dicegah — cuma terbalik
+arahnya.
+
+Diperiksa manual sesudahnya, dan hasilnya memang sehat:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| origin `127.0.0.1:3010` | **302** (ke `/id`) |
+| PM2 `ccwebsite` | online, stabil (tidak crash-loop) |
+| `cloudflared` | active |
+| `/id`, `/en`, `/id/events`, `/id/jurnal` | 200 |
+
+Karena seluruh perubahan sesi ini ada di area admin, tidak ada yang bisa dibuktikan
+dari halaman publik. Buktinya diambil dari bundle yang benar-benar terpasang di
+server — kelima string barunya ada di `/root/ccwebsite/.output`: "Perlu Diproses",
+"Jurnal disetujui", "Lokasi wajib diisi", "Memeriksa jurnal yang ditugaskan",
+"Editor membaca dan memutuskan".
+
 ### Belum dikerjakan
 
 - [ ] Jalan masuk untuk membatalkan / menutup event lebih awal — lihat di atas.
@@ -119,6 +162,10 @@ persis ke nilai semula (tanggal, batas pendaftaran, lokasi, kuota, harga, status
       sebaiknya ikut dicabut supaya tidak menjanjikan pembedaan yang tidak bisa
       dibuat siapa pun.
 - [ ] Kartu dashboard sekarang 9 pada kisi 4 kolom (4 + 4 + 1).
+- [ ] Smoke test `deploy/deploy.sh` — lihat di atas. Perbaikannya kecil (buang
+      `|| echo 000`, atau bandingkan dengan pola `2xx/3xx` alih-alih dengan `000`),
+      tapi selama belum diperbaiki, "Deploy selesai" tidak boleh dibaca sebagai
+      bukti bahwa aplikasinya benar-benar menjawab.
 
 ### Task berikutnya: riwayat versi naskah
 
