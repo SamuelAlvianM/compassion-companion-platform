@@ -1,6 +1,17 @@
 // server/api/admin/jurnal/index.post.ts
 // Buat jurnal baru. Selalu lahir sebagai draft — tidak ada jalan membuat tulisan
 // yang langsung terbit, sama seperti tidak ada transisi draft -> terbit.
+//
+// ADMIN KE ATAS SAJA. Endpoint ini sempat bergerbang `editor`, sisa dari masa
+// ketika editor memang menulis. Sejak `bolehSunting` menolak level 3 tanpa
+// kecuali, gerbang itu cuma menyisakan satu jalan yang tidak berujung: editor
+// bisa MEMBUAT baris, lalu tidak bisa menyentuh isinya sedetik kemudian — draf
+// kosong yang mengendap di antrean, dengan namanya sebagai pembuat.
+//
+// Editor yang ingin menulis atas namanya sendiri tetap bisa, lewat
+// /api/jurnal-saya — di sana ia berdiri sebagai PENULIS, tulisannya melewati
+// editor lain, dan admin yang menerbitkannya. Yang ditutup di sini adalah
+// menulis dari dalam dashboard redaksi, tempat ia bertugas menilai.
 
 import { db } from '../../../db'
 import { ccJurnal } from '../../../db/schema'
@@ -10,7 +21,7 @@ import { catatLog, namaAkun } from '../../../utils/log'
 import { LOG_AKSI } from '../../../db/schema'
 
 export default defineEventHandler(async (event) => {
-  const pengakses = await wajibRole(event, 'editor')
+  const pengakses = await wajibRole(event, 'admin')
 
   const body = await readBody<Record<string, unknown>>(event)
   const data = bacaBodyJurnal(body ?? {})
@@ -23,9 +34,11 @@ export default defineEventHandler(async (event) => {
   // Tetap boleh kosong: draft memang boleh mengendap tanpa editor. Yang menolak
   // kekosongan itu ada di ambang `review`, bukan di sini.
   //
-  // Nilai kosong dilewatkan tanpa diperiksa, bukan dikirim ke `periksaEditorId`
-  // yang akan menolaknya dengan 403 — endpoint ini juga terbuka bagi editor, dan
-  // "tidak menugaskan siapa pun" bukan tindakan yang perlu wewenang admin.
+  // Nilai kosong tetap dilewatkan tanpa diperiksa, bukan dikirim ke
+  // `periksaEditorId`. Sejak gerbangnya naik ke admin, keduanya memang tidak
+  // pernah lagi berbeda hasilnya — tapi "tidak menugaskan siapa pun" bukan
+  // tindakan yang perlu wewenang, dan menuliskannya begitu membuat baris ini
+  // tetap benar seandainya gerbangnya bergeser lagi.
   const editorId = body?.editorId ? periksaEditorId(body.editorId, pengakses) : null
 
   const baris = db

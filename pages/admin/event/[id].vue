@@ -261,25 +261,6 @@ const payload = () => {
   }
 }
 
-/**
- * Syarat sebuah event boleh lahir.
- *
- * Judul dan tanggal mulai dituntut server (`bacaKegiatan()`). Gambar TIDAK — ia
- * aturan halaman ini, dan ditegakkan hanya saat membuat.
- *
- * Alasannya: setiap event tampil sebagai kartu di daftar event dan sebagai kepala
- * halaman detailnya. Event tanpa gambar tidak menghasilkan galat apa pun, ia cuma
- * menghasilkan kartu abu-abu di antara kartu-kartu bergambar — dan itu baru
- * ketahuan sesudah terbit, oleh orang yang bukan pembuatnya.
- *
- * Tidak ditegakkan pada mode ubah dengan sengaja: event lama yang belum punya
- * gambar akan membuat autosave menolak SETIAP perubahan, termasuk perbaikan salah
- * ketik yang tidak ada hubungannya dengan gambar.
- */
-const bisaDilahirkan = computed(() =>
-  Boolean(form.value.judul.trim() && form.value.tanggalMulai && form.value.coverMediaId)
-  && !peringatan.value)
-
 // Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
 // bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
 const wajibKosong = belumDiisi
@@ -297,10 +278,34 @@ const dicoba = ref(false)
 const kurang = computed(() => {
   const daftar: string[] = []
   if (!form.value.judul.trim()) daftar.push('judul')
+  if (!form.value.lokasi.trim()) daftar.push('lokasi')
   if (!form.value.tanggalMulai) daftar.push('tanggal mulai')
   if (!form.value.coverMediaId) daftar.push('gambar event')
   return daftar
 })
+
+/**
+ * Syarat sebuah event boleh lahir.
+ *
+ * Judul, lokasi, dan tanggal mulai dituntut server (`bacaKegiatan()`). Gambar
+ * TIDAK — ia aturan halaman ini, dan ditegakkan hanya saat membuat.
+ *
+ * Alasannya: setiap event tampil sebagai kartu di daftar event dan sebagai kepala
+ * halaman detailnya. Event tanpa gambar tidak menghasilkan galat apa pun, ia cuma
+ * menghasilkan kartu abu-abu di antara kartu-kartu bergambar — dan itu baru
+ * ketahuan sesudah terbit, oleh orang yang bukan pembuatnya.
+ *
+ * Tidak ditegakkan pada mode ubah dengan sengaja: event lama yang belum punya
+ * gambar akan membuat autosave menolak SETIAP perubahan, termasuk perbaikan salah
+ * ketik yang tidak ada hubungannya dengan gambar.
+ *
+ * Daftar kolomnya dipinjam dari `kurang`, tidak ditulis ulang. Dua daftar kolom
+ * wajib yang berdiri sendiri-sendiri hanya menunggu menyimpang, dan saat
+ * menyimpang gejalanya tombol yang menolak tanpa menyebutkan kolom mana yang
+ * kurang — atau, lebih buruk, menerima yang kurang. Karena itu ia berdiri SESUDAH
+ * `kurang`, bukan sebelumnya.
+ */
+const bisaDilahirkan = computed(() => kurang.value.length === 0 && !peringatan.value)
 
 /**
  * "Buat event" — satu-satunya tombol simpan yang tersisa di halaman ini, dan pada
@@ -809,7 +814,10 @@ const BAGIAN = [
           <UTextarea v-model="form.deskripsiEn" :rows="1" autoresize :maxrows="6" class="w-full" />
         </UFormField>
 
-        <UFormField label="Lokasi">
+        <!-- Wajib. Acara daring pun punya lokasi — "Online via Zoom" — dan
+             menuliskannya membedakan acara yang memang daring dari kolom yang
+             sekadar lupa diisi. -->
+        <UFormField label="Lokasi" required :error="wajibKosong(form.lokasi, dicoba)">
           <UInput v-model="form.lokasi" class="w-full" placeholder="Jakarta · Rumah Retret St. Ignatius" />
         </UFormField>
         <UFormField label="Tautan daring">

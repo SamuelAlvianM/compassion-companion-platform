@@ -160,7 +160,7 @@ watch(tab, (nilai) => {
       <!-- Editor tidak membuat jurnal baru dari sini: pekerjaannya memeriksa
            tulisan yang masuk, bukan menambah antrean sendiri. -->
       <UButton v-if="level <= 2" to="/admin/jurnal/new" color="secondary" icon="i-lucide-plus" class="shrink-0">
-        Tulis jurnal
+        Tambah jurnal
       </UButton>
     </div>
 

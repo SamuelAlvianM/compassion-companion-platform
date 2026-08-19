@@ -81,16 +81,16 @@ const tanggal = (nilai: string | number | null) =>
 
 const t = computed(() => isEn.value
   ? {
-      eyebrow: 'My writing', judul: 'My journal',
-      intro: 'Your own writing — drafts, pieces being reviewed, and what has been published.',
+      eyebrow: 'My Journal', judul: 'My journal',
+      intro: 'Your own Journal — drafts, pieces being reviewed, and what has been published.',
       tulis: 'Write a journal', kosong: 'You have not written anything yet.',
-      tertutup: 'Writing access has not been opened for your account yet. Ask an admin if you would like to contribute.',
+      tertutup: 'Journal access has not been opened for your account yet. Ask an admin if you would like to contribute.',
       diperbarui: 'Updated', buka: 'Open',
     }
   : {
       eyebrow: 'Tulisan saya', judul: 'Jurnal saya',
       intro: 'Tulisan Anda sendiri — draf, yang sedang diperiksa, dan yang sudah terbit.',
-      tulis: 'Tulis jurnal', kosong: 'Anda belum menulis apa pun.',
+      tulis: 'Tambah jurnal', kosong: 'Jurnal anda masih kosong.',
       tertutup: 'Akses menulis belum dibuka untuk akun Anda. Hubungi admin bila ingin ikut menulis.',
       diperbarui: 'Diperbarui', buka: 'Buka',
     })

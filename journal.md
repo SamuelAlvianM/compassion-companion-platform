@@ -5,6 +5,266 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-19 — Sesi 26: Kartu yang hilang di balik catatan, dan lokasi yang berhenti opsional
+
+Empat permintaan dari catatan tinjauan. Tiga jadi perubahan, satu ternyata jawaban.
+
+### Kolom "Pendaftar Baru" jadi "Perlu Diproses"
+
+Di tabel event dashboard, kolomnya berdiri persis di sebelah "Perlu Dikonfirmasi".
+Yang tergambar sebelumnya adalah satu baris berisi sebuah KEADAAN di sebelah sebuah
+PEKERJAAN — dan hanya satu dari keduanya yang memberi tahu pembacanya apa yang harus
+ia lakukan. Nama barunya sama persis dengan chip di tab peserta.
+
+### "Jurnal Disetujui" berdiri sebagai kartu sendiri
+
+Sebelumnya angka `approved` cuma hidup sebagai catatan kecil di bawah kartu "Jurnal
+terbit": *"2 disetujui, menunggu diterbitkan"*.
+
+Tempatnya salah, dan salahnya bukan soal ukuran. **Ini satu-satunya angka jurnal yang
+menuntut tindakan admin secara khusus** — editor sudah selesai membacanya, dan yang
+ditunggu tinggal keputusan kapan terbit. Sebagai catatan di kartu lain ia terbaca
+sebagai keterangan tentang yang SUDAH terbit, padahal artinya justru kebalikannya.
+
+Ditaruh sebelum "Jurnal terbit", sehingga kelima kartunya terbaca menurut alurnya
+sendiri: draft → direview → perlu revisi → disetujui → terbit.
+
+Satu hal yang ikut ketahuan saat menambahnya: rangka pemuatan di sebelahnya ditulis
+`v-for="n in 8"` — angka yang disalin dari jumlah kartu saat itu. Komentarnya
+menyebut rangka itu ada supaya barisnya tidak melompat begitu angkanya tiba, dan
+angka yang tertinggal satu menghasilkan **persis lompatan yang seharusnya
+dicegahnya**. Diganti jadi `kartu.length`.
+
+**Akibat yang perlu diputuskan:** kartunya sekarang sembilan pada kisi empat kolom,
+jadi barisnya 4 + 4 + 1 — satu kartu berdiri sendirian di baris ketiga. Sebelumnya
+8 = 4 + 4, rata. Belum diapa-apakan karena merapikannya berarti memutuskan
+pengelompokan (operasional vs jurnal), dan itu bukan bagian dari permintaan.
+
+### "Event Berlangsung tidak bisa diedit" — sengaja, tapi ada sisanya
+
+Ditelusuri dan **tidak ditemukan satu pun penghalang**. Yang diperiksa:
+
+| Yang diduga | Kenyataan |
+|---|---|
+| Server menolak PATCH event berlangsung | **Tidak** — dicoba langsung, 200 |
+| Ada gerbang berbasis fase di endpoint admin | **Tidak ada** — `faseKegiatan()`/`pendaftaranTerbuka()` hanya dipakai endpoint publik, satu-satunya penolakan ada di pendaftaran peserta |
+| Formulirnya dimatikan untuk event berlangsung | **Tidak** — inputnya hidup semua |
+| Tombol "Ubah" disembunyikan | **Tidak** — selalu digambar |
+
+Yang **memang** tidak bisa diubah adalah **fase itu sendiri**. "Berlangsung" bukan
+kolom yang disimpan melainkan turunan tanggal (`server/utils/kegiatan.ts`), dan itu
+keputusan lama yang ada alasannya: fase yang disimpan akan basi begitu tanggalnya
+lewat, dan menjaganya tetap benar butuh cron yang bisa mati diam-diam. Jadi
+jawabannya **sengaja** — yang berubah tanggalnya, bukan fasenya.
+
+Tapi menelusurinya menyingkap satu sisa yang belum diputuskan siapa pun:
+
+**Admin tidak punya jalan membatalkan event.** Kolom `status` masih menyimpan
+`batal` dan `selesai`, `faseKegiatan()` masih menghormati keduanya di atas
+perhitungan tanggal — komentarnya bahkan berbunyi *"admin bisa menutup kegiatan
+lebih awal, dan itu harus dihormati"* — tapi **tidak ada satu pun formulir yang
+memasangnya** sejak kolom status dicabut. Penyaring di daftar event masih menawarkan
+"Dibatalkan", sebuah pilihan yang sekarang tidak akan pernah cocok dengan apa pun
+yang baru.
+
+Yang sudah aman: PATCH menumpuk body di atas baris lama (`status: lama.status`),
+jadi menyunting event yang berstatus `selesai` tidak diam-diam mengembalikannya ke
+`terbit`. Lubangnya cuma soal tidak ada jalan masuk, bukan soal data yang rusak.
+
+### Lokasi jadi wajib
+
+Ditegakkan di server (`bacaKegiatan`), bukan hanya di layar — dan tipenya ikut
+berubah jadi `lokasi: string`, supaya tidak ada pemanggil yang masih memperlakukannya
+sebagai boleh-null.
+
+Kolomnya di database sengaja **tetap** nullable. Yang diwajibkan adalah apa yang
+masuk lewat validator, bukan apa yang sudah terlanjur ada — baris lama yang lahir
+sebelum aturan ini tidak boleh jadi tidak bisa dibuka. (Diperiksa: keenam event yang
+ada sekarang semuanya sudah punya lokasi, jadi tidak ada yang terkunci.)
+
+Acara daring pun tetap dituntut mengisinya. "Online via Zoom" memberi tahu pembacanya
+bahwa acaranya memang daring; kolom kosong tidak bisa dibedakan dari kolom yang lupa
+diisi.
+
+Di formulir, `bisaDilahirkan` tadinya menyimpan **daftar kolom wajibnya sendiri**,
+terpisah dari `kurang` yang menyusun kalimat "masih kosong: …". Menambahkan lokasi ke
+dua-duanya berarti meninggalkan dua daftar yang tinggal menunggu menyimpang — dan
+saat menyimpang, gejalanya tombol yang menolak tanpa menyebut kolom mana yang kurang,
+atau menerima yang kurang. `bisaDilahirkan` sekarang meminjam dari `kurang`, dan
+dipindahkan ke BAWAHnya: ia hanya dibaca dari handler klik, jadi forward-reference-nya
+tidak akan pernah terpicu SSR — dan aturan yang benarnya bergantung pada "tidak akan
+pernah terpicu" lebih baik dihapus daripada dijelaskan.
+
+### Hasil uji
+
+| Perkara | Hasil |
+|---|---|
+| `POST /api/admin/events` tanpa lokasi | **400** |
+| `POST /api/admin/events` dengan lokasi | 200 ✓ |
+| `PATCH` event berlangsung, lokasi dikosongkan | **400** |
+| `PATCH` event berlangsung, lokasi diisi | 200 ✓ |
+| Label "Lokasi" di formulir | tergambar dengan penanda wajib (`after:content-['*']`) |
+| Urutan kartu jurnal | draft → direview → perlu revisi → **disetujui** → terbit ✓ |
+| Header tabel event | "Perlu Diproses" ✓ |
+| `/admin`, `/admin/event/new`, `/admin/event/{id}`, `/admin/events`, `/admin/jurnal` | 200, tanpa galat runtime |
+
+`npm run typecheck` bersih. Event uji `ZZ Uji Lokasi` sudah dihapus, dan
+`Compassion in Practice` — yang dipakai sebagai bahan uji PATCH — dikembalikan
+persis ke nilai semula (tanggal, batas pendaftaran, lokasi, kuota, harga, status).
+
+### Belum dikerjakan
+
+- [ ] Jalan masuk untuk membatalkan / menutup event lebih awal — lihat di atas.
+      Kalau tidak akan pernah ada, pilihan "Dibatalkan" di penyaring daftar event
+      sebaiknya ikut dicabut supaya tidak menjanjikan pembedaan yang tidak bisa
+      dibuat siapa pun.
+- [ ] Kartu dashboard sekarang 9 pada kisi 4 kolom (4 + 4 + 1).
+
+### Task berikutnya: riwayat versi naskah
+
+Dipilih dari empat kandidat yang tersisa, dan rancangannya sudah diputuskan sebelum
+sesi ini berbelok ke catatan tinjauan. Ditulis di sini supaya tidak diturunkan ulang.
+
+Yang dijawabnya: **member tidak punya cara melihat apa yang berubah dari naskahnya**
+(item terbuka sejak Sesi 21). Tiga fakta yang menentukan bentuknya, dan ketiganya
+sudah diperiksa di kode, bukan diperkirakan:
+
+- **Autosave jalan tiap 800 ms diam** (`pages/admin/jurnal/[id].vue`). Satu versi per
+  simpanan berarti ratusan baris per naskah. Ini kendala utamanya — alasan yang sama
+  membuat `cc_log` menolak mencatat autosave.
+- **`cc_log` tidak bisa dipakai**: umur simpannya 7 hari. Riwayat naskah harus hidup
+  lebih lama daripada keluhan yang mau dijawabnya.
+- **Naskahnya kecil** — isi terpanjang di database 1.531 karakter. Snapshot utuh jauh
+  lebih murah daripada menyimpan diff, jadi soal ukuran selesai sebelum ditanyakan.
+
+Dua keputusan yang diambil pemilik produk:
+
+1. **Versi disimpan tiap PERPINDAHAN STATUS**, bukan tiap simpanan — dikirim ke
+   review, dikembalikan untuk revisi, disetujui, diterbitkan. Menghasilkan 2–6 versi
+   per jurnal, dan tiap versi punya arti yang bisa dinamai ("yang saya kirim", "yang
+   dikembalikan"). Autosave tidak pernah ikut.
+2. **Diff teks per paragraf.** HTML dipecah per blok lalu dilucuti pakai
+   `sanitize-html` yang sudah terpasang — tanpa dependency baru. Kehilangan format
+   (tebal/miring), tapi yang ingin dilihat penulis adalah kalimatnya berubah jadi apa.
+
+Rancangan yang menyertainya:
+
+- Tabel `cc_jurnal_versi`, migrasi `0012_jurnal-versi.sql`. Snapshot utuh (`judul` +
+  `isi`), transisi pemicunya (`dari` → `ke`), dan pelaku yang **disalin namanya**
+  seperti `cc_log` — bukan di-join, supaya baris riwayat tidak kehilangan artinya
+  saat akun pelakunya dihapus. **Tanpa umur simpan**; inilah bedanya dengan `cc_log`.
+  Ikut terhapus lewat FK cascade kalau jurnalnya dihapus.
+- Helper `server/utils/versi-jurnal.ts`, dipanggil dari dua endpoint yang bisa
+  memindahkan status: `server/api/admin/jurnal/[id].patch.ts` dan
+  `server/api/jurnal-saya/[id].patch.ts`. Seperti `catatLog`, **tidak boleh
+  melempar** — riwayat yang gagal ditulis tidak boleh menjatuhkan penyimpanan
+  naskahnya.
+- **Snapshot diambil SESUDAH UPDATE, bukan sebelum.** Alur "perbaiki lalu ajukan"
+  mengirim isi baru dan status baru dalam satu PATCH — itu disengaja dan tertulis di
+  kepala berkasnya. Snapshot sebelum UPDATE akan menyimpan naskah lama lalu
+  melabelinya sebagai yang dikirim.
+- Diff dihitung di server, bukan di klien: satu aturan di satu tempat, dan klien
+  tidak perlu memuat dua naskah utuh cuma untuk membandingkannya.
+- Label versi memakai bahasa penulisnya — "Anda kirimkan", "Dikembalikan untuk
+  revisi", "Diterbitkan" — melanjutkan `JURNAL_STATUS_LABEL_PENULIS` yang sudah ada
+  di skema, bukan nama status mentah.
+
+Satu bentrokan yang belum diputuskan: panel riwayat di sisi pengelola jatuh di
+`pages/admin/jurnal/[id].vue`, berkas yang sedang disunting sendiri oleh pemilik
+produk. Sisi member (`pages/jurnal-saya/[id].vue`) bebas. Pilihannya: kerjakan server
++ sisi member dulu dan tinggalkan sisi admin, atau tunggu suntingan itu di-commit
+lalu kerjakan sekaligus.
+
+---
+
+## 2026-08-19 — Sesi 25: Pintu terakhir editor ditutup, dan satu keterangan role yang sudah bohong
+
+Sesi pendek yang menyelesaikan satu-satunya item yang masih menggantung dari Sesi
+23, ditambah satu temuan yang muncul saat memeriksanya.
+
+### Editor tidak lagi bisa membuat jurnal
+
+Sejak Sesi 24, `bolehSunting()` menolak level 3 tanpa kecuali. Tapi
+`POST /api/admin/jurnal` masih bergerbang `wajibRole('editor')` — sisa dari masa
+ketika editor memang menulis.
+
+Yang tersisa dari gerbang itu bukan "sedikit kelonggaran" melainkan **jalan yang
+tidak berujung**: editor bisa MEMBUAT barisnya, lalu tidak bisa menyentuh isinya
+sedetik kemudian. Hasilnya draf kosong yang mengendap di antrean dengan namanya
+sebagai pembuat, dan tidak ada seorang pun — termasuk dia sendiri — yang bisa
+menyelesaikannya kecuali admin turun tangan.
+
+Gerbangnya dinaikkan jadi `wajibRole('admin')`.
+
+Editor yang ingin menulis atas namanya sendiri tetap punya jalan, dan jalan itu
+memang jalan yang benar: `/api/jurnal-saya`. Di sana ia berdiri sebagai
+**penulis**, bukan sebagai pemeriksa — tulisannya melewati editor lain, dan admin
+yang menerbitkannya. Yang ditutup sesi ini adalah menulis dari dalam dashboard
+redaksi, tempat ia bertugas menilai.
+
+### Halamannya ikut ditutup, bukan cuma servernya
+
+`/admin/jurnal/new` masih terbuka bila alamatnya diketik langsung. Tombolnya
+sudah tidak digambar sejak Sesi 23 (`v-if="level <= 2"`), tapi **tombol yang
+hilang bukan pintu yang terkunci**.
+
+Kalau hanya servernya yang menolak, yang dialami editor adalah: formulir terbuka
+lengkap, judul diisi, isi ditulis, lalu Simpan menjawab 403. Menahannya di ambang
+lebih jujur daripada membiarkannya mengisi satu formulir penuh untuk sebuah
+penolakan.
+
+Penjaganya ditaruh di `middleware/admin.global.ts`, sejajar dengan penjaga
+`/admin/log` yang sudah ada — satu tempat yang menjaga semua jalan masuk, dan
+middleware rute Nuxt ikut berjalan saat SSR sehingga URL yang diketik di address
+bar tertahan sebelum HTML-nya dikirim.
+
+Dikembalikan ke `/admin/jurnal`, bukan ke `/admin`: bagi editor `/admin` sendiri
+sudah dialihkan ke sana, dan mengirimnya ke halaman yang akan mengalihkannya lagi
+cuma menambah satu lompatan yang tidak berarti.
+
+### Keterangan role editor sudah tidak benar
+
+Ditemukan saat memeriksa yang di atas. `ROLE_DESCRIPTIONS.editor` masih berbunyi
+**"Menulis dan menerbitkan konten jurnal serta mengelola media."** Dua kata kerja
+di kalimat itu — menulis dan menerbitkan — dua-duanya sudah dicabut dari editor.
+
+Ini bukan komentar di dalam kode. Kalimat itu tampil di dashboard admin
+(`/api/admin/stats`) dan di **halaman profil orangnya sendiri**
+(`server/utils/profil.ts`), jadi setiap editor membuka profilnya dan membaca
+uraian tugas yang akan dijawab 403 kalau ia mencoba menjalankannya.
+
+Diganti jadi: *"Memeriksa jurnal yang ditugaskan kepadanya: menyetujui, atau
+mengembalikan untuk revisi beserta catatannya."*
+
+### Hasil uji
+
+Dijalankan pada dev server 3009 dengan sesi login sungguhan, bukan mock.
+
+| Sebagai | Permintaan | Hasil |
+|---|---|---|
+| editor | `POST /api/admin/jurnal` | **403** |
+| editor | `GET /admin/jurnal/new` | **302 → `/admin/jurnal?akses=ditolak`** |
+| editor | `GET /api/admin/jurnal` | 200 ✓ (tetap bisa membaca antrean) |
+| editor | `GET /admin/jurnal` | 200 ✓ |
+| editor | `GET /admin` | 302 → `/admin/jurnal` (tidak berubah) |
+| admin | `POST /api/admin/jurnal` | 200 ✓ |
+| admin | `GET /admin/jurnal/new` | 200 ✓ |
+
+`npm run typecheck` bersih. Baris uji `Uji gerbang admin ZZTEST` yang dibuat saat
+menguji jalur admin **sudah dihapus**; jumlah jurnal kembali ke 11 seperti semula.
+Yang tersisa di `cc_log` adalah dua baris jejak pengujian itu (dibuat + dihapus),
+yang akan gugur sendiri oleh umur simpan 7 hari.
+
+### Catatan
+
+Satu hal yang **tidak** diubah, dan sengaja dibiarkan: `periksaEditorId()` tidak
+memeriksa apakah editor yang ditugaskan adalah penulis tulisan itu sendiri. Jadi
+admin masih bisa menugaskan seorang editor untuk memeriksa naskahnya sendiri —
+yang lolos lewat `/api/jurnal-saya`. Belum pernah terjadi, dan aturannya belum
+diputuskan (tolak, atau cuma peringatkan admin), jadi tidak diambil sendiri.
+
+---
+
 ## 2026-08-18 — Sesi 24: Editor berhenti menyunting, log event jadi terbaca, log bisa dicari
 
 ### Editor hanya membaca dan memutuskan
@@ -218,10 +478,12 @@ keadaan semula.
 
 ### Belum diputuskan
 
-- [ ] Server masih mengizinkan editor membuat jurnal (`POST /api/admin/jurnal`
+- [x] ~~Server masih mengizinkan editor membuat jurnal (`POST /api/admin/jurnal`
       bergerbang `wajibRole('editor')`) dan `/admin/jurnal/new` terbuka bila
       alamatnya diketik langsung. Tidak ada tombol yang mengarah ke sana, jadi
-      praktis tertutup — tapi belum ditutup di servernya.
+      praktis tertutup — tapi belum ditutup di servernya.~~
+      **Ditutup di Sesi 25 (19 Agu):** gerbangnya naik ke `wajibRole('admin')`,
+      dan rutenya dijaga di `middleware/admin.global.ts`.
 
 ---
 

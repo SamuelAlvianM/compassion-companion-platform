@@ -192,7 +192,7 @@ const columns = [
         icon="i-lucide-plus"
         class="shrink-0"
       >
-        Event baru
+        Tambah Event
       </UButton>
     </div>
 

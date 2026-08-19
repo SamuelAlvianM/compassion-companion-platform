@@ -673,7 +673,7 @@ const tabBahasa = ref("id");
              sebagai teks ia cuma deretan tanda hubung yang tidak pernah dibaca. -->
         <div class="mt-4 flex flex-wrap items-center justify-center gap-4">
           <h1 class="font-serif text-4xl break-words text-cc-green-800">
-            {{ baru ? "Tulis jurnal" : form.judul || "Tanpa judul" }}
+            {{ baru ? "Tambah Jurnal" : form.judul || "Tanpa judul" }}
           </h1>
           <UBadge
             v-if="!baru"

@@ -33,7 +33,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   master: 'Akses penuh, termasuk mengelola akun dan menetapkan role.',
   admin: 'Pendataan operasional: event, pendaftar, peserta, dan transaksi.',
-  editor: 'Menulis dan menerbitkan konten jurnal serta mengelola media.',
+  editor: 'Memeriksa jurnal yang ditugaskan kepadanya: menyetujui, atau mengembalikan untuk revisi beserta catatannya.',
   user: 'Peserta: mendaftar event dan membuka materi yang menjadi haknya.',
 }
 

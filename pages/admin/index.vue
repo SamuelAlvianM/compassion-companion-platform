@@ -178,13 +178,26 @@ const kartu = computed<Kartu[]>(() => [
     catatan: 'dikembalikan ke penulis',
     ke: '/admin/jurnal?status=revisi',
   },
+  // Disetujui berdiri sebagai kartunya sendiri, bukan lagi sebagai catatan kecil di
+  // bawah "Jurnal terbit". Ini SATU-SATUNYA angka jurnal yang menuntut tindakan
+  // admin secara khusus — editor sudah selesai membacanya, dan yang ditunggu
+  // tinggal keputusan kapan terbit. Sebagai catatan di kartu lain ia terbaca
+  // sebagai keterangan tentang yang sudah terbit, padahal artinya kebalikannya:
+  // yang BELUM terbit dan sedang menunggu.
+  //
+  // Ditaruh sebelum "Jurnal terbit" supaya keempat kartunya terbaca menurut alurnya
+  // sendiri — draft, direview, perlu revisi, disetujui, terbit.
+  {
+    key: 'jurnal-approved',
+    label: 'Jurnal disetujui',
+    nilai: jurnal.value?.approved ?? 0,
+    catatan: 'menunggu diterbitkan',
+    ke: '/admin/jurnal?status=approved',
+  },
   {
     key: 'jurnal-terbit',
     label: 'Jurnal terbit',
     nilai: jurnal.value?.published ?? 0,
-    catatan: (jurnal.value?.approved ?? 0)
-      ? `${jurnal.value?.approved} disetujui, menunggu diterbitkan`
-      : undefined,
     ke: '/admin/jurnal?status=published',
   },
 ])
@@ -193,7 +206,12 @@ const kartu = computed<Kartu[]>(() => [
 const kolomEvent = [
   { accessorKey: 'judul', header: 'Event' },
   { accessorKey: 'tanggalMulai', header: 'Tanggal' },
-  { accessorKey: 'baru', header: 'Pendaftar Baru' },
+  // "Perlu Diproses", bukan "Pendaftar Baru". Kolom sebelahnya sudah berbunyi
+  // "Perlu Dikonfirmasi", jadi yang tergambar sebelumnya adalah satu baris berisi
+  // sebuah KEADAAN di sebelah sebuah PEKERJAAN — dan hanya satu dari keduanya yang
+  // memberi tahu apa yang harus dilakukan orang yang membacanya. Nama yang sama
+  // sudah dipakai chip di tab peserta.
+  { accessorKey: 'baru', header: 'Perlu Diproses' },
   { accessorKey: 'proses', header: 'Perlu Dikonfirmasi' },
   { accessorKey: 'konfirmasi', header: 'Terkonfirmasi' },
 ]
@@ -254,10 +272,15 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
       description="Angka di halaman ini dibaca langsung dari database. Buat event pertama lewat menu Event."
     />
 
-    <!-- Delapan kartu, dua baris. Rangka pemuatan berbentuk sama dengan kartunya
-         supaya barisnya tidak melompat begitu angkanya tiba. -->
+    <!-- Rangka pemuatan berbentuk sama dengan kartunya supaya barisnya tidak
+         melompat begitu angkanya tiba.
+         Jumlahnya dihitung dari daftar kartunya, bukan ditulis sebagai angka:
+         angka yang disalin di sini sudah pernah tertinggal sekali saat kartunya
+         bertambah, dan ketika tertinggal ia menghasilkan persis lompatan yang
+         seharusnya dicegahnya. `kartu` sudah berisi penuh selama memuat — yang
+         belum ada baru nilainya, bukan barisnya. -->
     <div v-if="memuatAwal" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
-      <USkeleton v-for="n in 8" :key="n" class="h-[124px] w-full rounded-lg" />
+      <USkeleton v-for="n in kartu.length" :key="n" class="h-[124px] w-full rounded-lg" />
     </div>
 
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

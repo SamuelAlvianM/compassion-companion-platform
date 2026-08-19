@@ -329,13 +329,13 @@ const acakPassword = () => {
 
         <!-- Izin menulis jurnal. Dibuka per orang, bukan mengikuti role: yang
              menulis adalah mereka yang memang diminta atau mengajukan diri. Selama
-             tertutup, tombol "Tulis jurnal" tidak digambar sama sekali di halaman
+             tertutup, tombol "Tambah jurnal" tidak digambar sama sekali di halaman
              member — bukan digambar lalu menolak saat ditekan. -->
         <UFormField v-if="!baru" name="bolehTulisJurnal">
           <USwitch
             v-model="form.bolehTulisJurnal"
             label="Boleh menulis jurnal"
-            description="Membuka tombol “Tulis jurnal” di halaman member. Tulisannya tetap melewati review editor dan diterbitkan admin."
+            
           />
         </UFormField>
 

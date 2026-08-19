@@ -318,7 +318,7 @@ const inisial = computed(() =>
           </dl>
 
           <!-- Angka ringkasan, dan di ujung kanan baris yang sama: jalan masuk ke
-               area tulis jurnal.
+               area tambah jurnal.
                Tombolnya duduk di sini, bukan di bawah kepala profil, karena yang
                dibacanya bersebelahan — "jurnal: 2" dan "buat jurnal baru" adalah
                angka dan tindakan atas hal yang sama. Ditaruh di baris sendiri, ia

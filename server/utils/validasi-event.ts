@@ -89,7 +89,7 @@ export interface BodyKegiatan {
   judulEn: string | null
   deskripsi: string | null
   deskripsiEn: string | null
-  lokasi: string | null
+  lokasi: string
   waktu: string | null
   ajakan: string | null
   ajakanEn: string | null
@@ -112,6 +112,19 @@ export interface BodyKegiatan {
 export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
   const judul = teks(body.judul)
   if (!judul) throw salah('Judul kegiatan wajib diisi')
+
+  // Lokasi wajib, sejajar dengan judul dan tanggal mulai.
+  //
+  // Kolomnya di database tetap nullable, dan itu disengaja: baris lama yang lahir
+  // sebelum aturan ini tidak boleh jadi tidak bisa dibuka. Yang ditegakkan adalah
+  // apa yang masuk lewat sini — bukan apa yang sudah terlanjur ada.
+  //
+  // Acara daring pun tetap punya lokasi, dan menuliskannya lebih baik daripada
+  // membiarkan kolomnya kosong: "Online via Zoom" memberi tahu pembacanya bahwa
+  // acaranya memang daring, sementara kolom kosong tidak bisa dibedakan dari
+  // kolom yang lupa diisi.
+  const lokasi = teks(body.lokasi)
+  if (!lokasi) throw salah('Lokasi wajib diisi')
 
   const tanggalMulai = keTanggal(body.tanggalMulai)
   if (!tanggalMulai) throw salah('Tanggal mulai wajib diisi')
@@ -174,7 +187,7 @@ export const bacaKegiatan = (body: Record<string, unknown>): BodyKegiatan => {
     judulEn: teksAtauNull(body.judulEn),
     deskripsi: teksAtauNull(body.deskripsi),
     deskripsiEn: teksAtauNull(body.deskripsiEn),
-    lokasi: teksAtauNull(body.lokasi),
+    lokasi,
     waktu: teksAtauNull(body.waktu),
     ajakan: teksAtauNull(body.ajakan),
     ajakanEn: teksAtauNull(body.ajakanEn),

@@ -41,8 +41,8 @@ const tambahModal = defineModel<boolean>('bukaTambah', { default: false })
 // labelnya — lima tombol yang bentuknya identik menuntut dibaca satu per satu.
 const STATUS = [
   { key: 'semua', label: 'Semua', warna: 'neutral' as const, ikon: 'i-lucide-users' },
-  { key: 'baru', label: 'Baru', warna: 'warning' as const, ikon: 'i-lucide-inbox' },
-  { key: 'proses', label: 'Diproses', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
+  { key: 'baru', label: 'Perlu diproses', warna: 'warning' as const, ikon: 'i-lucide-inbox' },
+  { key: 'proses', label: 'Perlu dikonfirmasi', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
   { key: 'konfirmasi', label: 'Terkonfirmasi', warna: 'primary' as const, ikon: 'i-lucide-check' },
   { key: 'batal', label: 'Batal', warna: 'neutral' as const, ikon: 'i-lucide-x' },
 ]

@@ -38,6 +38,20 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/admin/jurnal')
   }
 
+  // Menulis jurnal baru dari dashboard bukan pekerjaan editor. Tombolnya memang
+  // sudah tidak digambar di /admin/jurnal, tapi tombol yang hilang bukan pintu
+  // yang terkunci — alamatnya masih bisa diketik, dan layar yang terbuka itu
+  // menjanjikan formulir yang servernya sekarang tolak dengan 403 begitu Simpan
+  // ditekan. Lebih jujur menahannya di ambang daripada membiarkannya mengisi
+  // satu formulir penuh untuk sebuah penolakan.
+  //
+  // Dikembalikan ke daftar jurnal, bukan ke /admin: bagi editor /admin sendiri
+  // sudah dialihkan ke sana, dan mengirimnya ke halaman yang akan mengalihkannya
+  // lagi cuma menambah satu lompatan yang tidak berarti.
+  if (to.path === '/admin/jurnal/new' && user.value.level === 3) {
+    return navigateTo('/admin/jurnal?akses=ditolak')
+  }
+
   // Log kerja hanya untuk master. Ditegakkan di sini, bukan cuma dengan
   // menyembunyikan menunya: halaman yang dijaga hanya oleh menu yang tidak
   // digambar tetap bisa dibuka siapa pun yang mengetik alamatnya. Endpointnya

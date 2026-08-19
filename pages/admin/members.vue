@@ -106,7 +106,7 @@ const columns = [
         </p>
       </div>
       <UButton to="/admin/member/new" color="secondary" size="lg" icon="i-lucide-user-plus" class="shrink-0">
-        Add Member
+        Tambah Member
       </UButton>
     </div>
 
