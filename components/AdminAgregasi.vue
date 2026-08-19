@@ -61,8 +61,8 @@ const ukuran = (bytes: number) => bytes >= 1048576
     /admin/jurnal dan kartu dashboard. */
 const LABEL_STATUS_JURNAL: Record<string, string> = {
   draft: 'Draft',
-  review: 'Direview',
-  revisi: 'Perlu revisi',
+  review: 'Minta direview',
+  revisi: 'Minta direvisi',
   approved: 'Disetujui',
   published: 'Terbit',
 }

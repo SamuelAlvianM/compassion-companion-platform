@@ -38,8 +38,8 @@ const memuatAwal = computed(() => muatStatus.value === 'pending' && !data.value)
 const STATUS = [
   { key: 'semua', label: 'Semua', warna: 'neutral' },
   { key: 'draft', label: 'Draft', warna: 'neutral' },
-  { key: 'review', label: 'Direview', warna: 'warning' },
-  { key: 'revisi', label: 'Perlu revisi', warna: 'secondary' },
+  { key: 'review', label: 'Minta direview', warna: 'warning' },
+  { key: 'revisi', label: 'Minta direvisi', warna: 'secondary' },
   { key: 'approved', label: 'Disetujui', warna: 'accent' },
   { key: 'published', label: 'Terbit', warna: 'primary' },
 ]
@@ -74,16 +74,54 @@ const tipeOptions = [
 
 const labelTipe = (t: string) => tipeOptions.find(o => o.value === t)?.label ?? t
 
+/**
+ * Lebar kolom ditetapkan, dan tabelnya TIDAK bisa digeser ke samping.
+ *
+ * Sebelumnya tabelnya dibungkus `overflow-x-auto`: begitu isinya melebihi lebar
+ * layar, kolom "Diperbarui" dan "Editor" terdorong keluar dan hanya bisa dilihat
+ * dengan menggeser — dan pada tabel yang barisnya panjang, menggeser berarti
+ * kehilangan kolom judul yang jadi patokan sedang membaca baris yang mana.
+ *
+ * Sekarang lebarnya dipatok dalam persen dan teksnya dibiarkan turun ke baris
+ * berikutnya. Barisnya jadi lebih tinggi — itu memang konsekuensinya, dan itu
+ * pilihan yang lebih baik: tinggi bisa dibaca sambil menggulir ke bawah, yang
+ * memang sudah dilakukan orang; lebar yang terpotong tidak bisa dibaca sama
+ * sekali tanpa tindakan tambahan.
+ *
+ * Persentasenya dijumlahkan sampai 100. Judul mendapat porsi terbesar karena ia
+ * yang paling sering panjang dan paling dibutuhkan utuh.
+ */
+const LEBAR: Record<string, string> = {
+  judul: 'w-[32%]',
+  // Status paling sempit: isinya satu badge pendek yang panjangnya tetap. Porsi
+  // yang lebih besar cuma menghasilkan ruang kosong di sebelah kanannya, dan
+  // ruang kosong itu memisahkan Status dari Penulis sejauh mata harus melompat.
+  status: 'w-[10%]',
+  tipe: 'w-[14%]',
+  kontributor: 'w-[16%]',
+  editorNama: 'w-[16%]',
+  updatedAt: 'w-[12%]',
+}
+
+const kolomUi = (key: string) => ({
+  meta: {
+    class: {
+      th: `${LEBAR[key]} px-2 py-2 align-bottom whitespace-normal`,
+      td: 'px-2 py-2.5 align-top whitespace-normal break-words',
+    },
+  },
+})
+
 const columns = computed(() => [
-  { accessorKey: 'judul', header: 'Judul' },
-  { accessorKey: 'tipe', header: 'Kategori' },
-  { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'kontributor', header: 'Penulis' },
+  { accessorKey: 'judul', header: 'Judul', ...kolomUi('judul') },
+  { accessorKey: 'tipe', header: 'Kategori', ...kolomUi('tipe') },
+  { accessorKey: 'status', header: 'Status', ...kolomUi('status') },
+  { accessorKey: 'kontributor', header: 'Penulis', ...kolomUi('kontributor') },
   // Kolom editor hanya berarti bagi yang bisa menugaskan atau yang sedang mencari
   // bagiannya sendiri; keduanya level <= 3, yaitu semua yang bisa membuka halaman
   // ini. Tetap dibuat computed karena isinya berbeda untuk admin dan editor.
-  { accessorKey: 'editorNama', header: 'Editor in Charge' },
-  { accessorKey: 'updatedAt', header: 'Diperbarui' },
+  { accessorKey: 'editorNama', header: 'Editor', ...kolomUi('editorNama') },
+  { accessorKey: 'updatedAt', header: 'Diperbarui', ...kolomUi('updatedAt') },
 ])
 
 const tanggal = (nilai: string | number | null) =>
@@ -103,7 +141,10 @@ watch(tab, (nilai) => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl">
+  <!-- Lebih lebar daripada halaman admin lain (max-w-6xl). Tabel ini punya enam
+       kolom, dan sejak ia tidak lagi bisa digeser ke samping, lebar wadah itulah
+       satu-satunya yang menentukan berapa banyak teks yang harus menekuk. -->
+  <div class="mx-auto max-w-[92rem]">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <p class="text-xs font-bold tracking-[0.14em] text-cc-brown-500 uppercase">Admin area</p>
@@ -168,7 +209,7 @@ watch(tab, (nilai) => {
         :data="jurnal"
         :columns="columns"
         empty="Belum ada jurnal pada status ini."
-        class="overflow-x-auto"
+        :ui="{ base: 'w-full table-fixed' }"
       >
         <template #judul-cell="{ row }">
           <NuxtLink
@@ -222,7 +263,7 @@ watch(tab, (nilai) => {
         </template>
 
         <template #updatedAt-cell="{ row }">
-          <span class="text-sm whitespace-nowrap text-cc-stone-600">{{ tanggal(row.original.updatedAt) }}</span>
+          <span class="text-sm text-cc-stone-600">{{ tanggal(row.original.updatedAt) }}</span>
         </template>
       </UTable>
     </UCard>

@@ -57,6 +57,41 @@ const milikSaya = computed(
  */
 const bolehMengirim = computed(() => bolehMenerbitkan.value || milikSaya.value);
 
+/**
+ * Jurnal ini DITUGASKAN kepada saya sebagai editor.
+ *
+ * Inilah yang menentukan tergambar-tidaknya "Setujui" dan "Revisi" — BUKAN
+ * `bolehSunting`. Keduanya sempat disamakan, dan begitu editor dilarang
+ * menyunting (`bolehSunting` selalu false untuk level 3), kedua tombol itu ikut
+ * hilang: editor yang sudah ditugaskan membuka halamannya dan tidak menemukan
+ * apa pun yang bisa ia lakukan.
+ *
+ * Pelajarannya: hak MENYUNTING dan hak MEMUTUSKAN adalah dua hal, dan sejak
+ * editor kehilangan yang pertama, yang kedua tidak boleh lagi menumpang padanya.
+ * Aturan yang sama sudah dipakai server di `KEPUTUSAN_EDITOR`
+ * (server/utils/validasi-jurnal.ts): yang berhak memutuskan adalah editor yang
+ * `editorId`-nya dirinya sendiri.
+ */
+const tugasSaya = computed(
+  () => adalahEditor.value && Boolean(editorId.value) && editorId.value === user.value?.id,
+);
+
+/**
+ * Kalimat penanda kunci. Tiga keadaan yang artinya berbeda, dan sebelumnya
+ * ketiganya dibaca sebagai satu kalimat yang sama: "Tidak memiliki Akses Edit".
+ *
+ * Bagi editor yang SEDANG DITUGASKAN, kalimat itu keliru dan menyesatkan — ia
+ * memang tidak menyunting, tapi ia justru orang yang paling berwenang atas
+ * tulisan ini. Membacanya sebagai "tidak punya akses" membuatnya mengira sistem
+ * yang salah, lalu berhenti — dan itu persis yang terjadi.
+ */
+const penandaKunci = computed(() => {
+  if (bolehSunting.value) return null;
+  if (tugasSaya.value) return "Tugas Anda — cukup dibaca, lalu putuskan";
+  if (adalahEditor.value) return "Ditugaskan kepada editor lain";
+  return "Tidak memiliki Akses Edit";
+});
+
 const kosong = () => ({
   judul: "",
   judulEn: "",
@@ -95,8 +130,8 @@ const TIPE = [
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
-  review: "Direview",
-  revisi: "Perlu revisi",
+  review: "Minta direview",
+  revisi: "Minta direvisi",
   approved: "Disetujui",
   published: "Terbit",
 };
@@ -273,6 +308,32 @@ const pilihPenulis = (nilai: string) => {
   form.userId = nilai;
   form.kontributor =
     akunPenulis.value.find((u: any) => u.id === nilai)?.nama ?? "";
+};
+
+/**
+ * Menambahkan penulis yang TIDAK punya akun, dengan mengetik namanya.
+ *
+ * Sebagian penulis memang bukan member: pembicara tamu, orang yang menulis sekali
+ * lalu tidak pernah membuka akun, atau nama yang cuma muncul di satu tulisan.
+ * Sebelumnya kotak ini hanya menerima nama dari daftar akun, sehingga tulisan
+ * seperti itu tidak punya jalan masuk sama sekali — dan yang biasanya terjadi,
+ * namanya ditempelkan ke akun orang lain yang kebetulan ada.
+ *
+ * Yang tersimpan cuma teksnya: `userId` sengaja dikosongkan, bukan diisi id palsu.
+ * Kolom `kontributor` di database memang dirancang begitu (lihat komentarnya di
+ * server/db/schema/jurnal.ts) — nama bertahan meski tidak ada akun yang
+ * menaunginya, dan tidak ada tautan profil yang menjanjikan halaman yang tidak
+ * ada.
+ *
+ * Hanya ditampung di memori halaman ini; tidak ada akun yang dibuat. Nama itu
+ * berangkat bersama simpanan berikutnya sebagai teks biasa.
+ */
+const tambahPenulis = (nama: string) => {
+  const bersih = String(nama ?? "").trim();
+  if (!bersih) return;
+  penulisTanpaAkun.value = bersih;
+  form.userId = "";
+  form.kontributor = bersih;
 };
 
 const pesan = (e: any, bawaan: string) =>
@@ -684,7 +745,7 @@ const tabBahasa = ref("id");
                sengaja: kalau editor berhalangan dan pekerjaannya harus jalan,
                jalannya masih ada — hanya tidak lagi ditawarkan sebagai tombol
                yang tinggal dipencet. -->
-          <template v-if="adalahEditor && bolehSunting">
+          <template v-if="tugasSaya">
             <UButton
               v-if="statusJurnal === 'review'"
               color="primary"
@@ -801,8 +862,8 @@ const tabBahasa = ref("id");
            halaman sudah tergulir ke atas begitu orang sampai di kotak kedua. -->
       <div v-if="!bolehSunting" class="mb-4 flex justify-end">
         <span class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600">
-          <UIcon name="i-lucide-lock" class="size-3.5" />
-          Tidak memiliki <strong>Akses Edit</strong>
+          <UIcon :name="tugasSaya ? 'i-lucide-eye' : 'i-lucide-lock'" class="size-3.5" />
+          {{ penandaKunci }}
         </span>
       </div>
 
@@ -821,11 +882,15 @@ const tabBahasa = ref("id");
           />
         </UFormField>
 
+        <!-- Urutan barisnya mengikuti urutan keputusan, bukan urutan kolom di
+             database: baris pertama menempatkan tulisan ini SEBAGAI APA
+             (kategori) dan TENTANG APA (event), baris kedua menempatkan SIAPA
+             yang menulis dan SIAPA yang memeriksa. Dua pertanyaan tentang isi,
+             lalu dua pertanyaan tentang orang. -->
         <UFormField
           label="Kategori jurnal"
           required
           :error="dicoba && kategoriKosong ? 'Belum diisi' : undefined"
-          hint="wajib sebelum terbit"
         >
           <USelect
             v-model="form.tipe"
@@ -837,67 +902,7 @@ const tabBahasa = ref("id");
           />
         </UFormField>
 
-        <!-- Penulis DIPILIH, bukan diketik dan bukan sekadar diberitahukan.
-             Tulisan yang lahir di layar ini biasanya tulisan admin sendiri —
-             karena itu isian awalnya nama yang sedang login — tapi admin juga
-             memasukkan tulisan orang lain, dan itu harus bisa dikatakan.
-
-             Daftar akun, bukan isian bebas: nama yang datang dari akun ikut
-             menautkan tulisan ke profil orangnya, sementara nama yang diketik
-             ulang cuma teks yang mirip. Penulis lama yang tidak punya akun tetap
-             muncul di daftar apa adanya (lihat `penulisTanpaAkun`), supaya
-             membuka halaman ini tidak pernah menjadi cara kehilangan namanya. -->
-        <UFormField
-          label="Penulis"
-          required
-          :hint="baru ? 'awalnya Anda' : undefined"
-          :error="wajibKosong(form.kontributor, dicoba)"
-        >
-          <USelectMenu
-            :model-value="penulisPilihan"
-            :items="penulisOptions"
-            value-key="value"
-            :disabled="!bolehSunting"
-            placeholder="Pilih penulis"
-            class="w-full"
-            @update:model-value="pilihPenulis"
-          />
-        </UFormField>
-
-        <!-- Memilih editor: admin saja. Penulisnya tidak pernah melihat kolom
-             ini — nama editornya sengaja tidak sampai ke layar member.
-
-             Tergambar juga di layar "tulis baru", bukan hanya sesudah drafnya
-             jadi: admin yang sudah tahu siapa yang akan memeriksa tidak perlu
-             kembali ke formulir yang sama untuk satu isian. Boleh dikosongkan di
-             sini — yang menolak kekosongan itu "Kirim untuk direview". -->
-        <UFormField
-          v-if="bolehMenerbitkan"
-          label="Pilih editor"
-          required
-          :hint="baru ? 'bisa menyusul' : 'dipilih admin'"
-          :error="!editorId && dicoba && !baru ? 'Belum ditugaskan' : undefined"
-        >
-          <USelectMenu
-            v-model="editorPilihan"
-            :items="editorOptions"
-            value-key="value"
-            placeholder="Belum ditugaskan"
-            class="w-full"
-          />
-        </UFormField>
-
-        <!-- Event yang direfleksikan.
-             Untuk sekarang tautannya TIDAK tergambar di kartu daftar publik —
-             barisnya dikomentari di pages/jurnal/index.vue atas permintaan. Yang
-             masih memakainya penyaring "Nama event" di halaman yang sama. Hint di
-             bawah menyebutkan itu apa adanya; menjanjikan "tampil di kartu" saat
-             kartunya tidak menggambarnya cuma cara membuat orang mengira ada yang
-             rusak. -->
-        <UFormField
-          label="Event terkait"
-          hint="opsional — dipakai penyaring di halaman jurnal"
-        >
+        <UFormField label="Event terkait">
           <USelectMenu
             :model-value="kegiatanPilihan"
             :items="kegiatanOptions"
@@ -906,6 +911,64 @@ const tabBahasa = ref("id");
             placeholder="Tidak terkait event"
             class="w-full"
             @update:model-value="pilihKegiatan"
+          />
+        </UFormField>
+
+        <!-- Penulis DIPILIH dari daftar akun, ATAU diketik sebagai nama baru.
+             Tulisan yang lahir di layar ini biasanya tulisan admin sendiri —
+             karena itu isian awalnya nama yang sedang login — tapi admin juga
+             memasukkan tulisan orang lain, termasuk orang yang tidak punya akun
+             di situs ini: pembicara tamu, penulis sekali jalan, atau nama yang
+             hanya muncul di satu tulisan.
+
+             Nama yang datang dari akun ikut menautkan tulisan ke profil orangnya
+             (`userId`); nama yang diketik hanya tersimpan sebagai teks. Keduanya
+             sah, dan bedanya disimpan apa adanya, bukan dipaksa jadi salah satu. -->
+        <UFormField
+          label="Penulis"
+          required
+          :error="wajibKosong(form.kontributor, dicoba)"
+        >
+          <USelectMenu
+            :model-value="penulisPilihan"
+            :items="penulisOptions"
+            value-key="value"
+            :disabled="!bolehSunting"
+            placeholder="Pilih atau ketik nama penulis"
+            create-item="always"
+            class="w-full"
+            @create="tambahPenulis"
+            @update:model-value="pilihPenulis"
+          >
+            <!-- Nuxt UI menuliskan baris ini sebagai `Create "…"`. Seluruh layar
+                 ini berbahasa Indonesia, dan satu baris Inggris di tengah daftar
+                 nama terbaca seperti pesan sistem, bukan pilihan yang bisa
+                 ditekan. -->
+            <template #create-item-label="{ item }">
+              Pakai nama baru: <strong>{{ item }}</strong>
+            </template>
+          </USelectMenu>
+        </UFormField>
+
+        <!-- Memilih editor: admin saja. Penulisnya tidak pernah melihat kolom
+             ini — nama editornya sengaja tidak sampai ke layar member.
+
+             Tergambar juga di layar "tulis baru", bukan hanya sesudah drafnya
+             jadi: admin yang sudah tahu siapa yang akan memeriksa tidak perlu
+             kembali ke formulir yang sama untuk satu isian. Boleh dikosongkan di
+             sini — yang menolak kekosongan itu "Kirim untuk diperiksa". -->
+        <UFormField
+          v-if="bolehMenerbitkan"
+          label="Pilih editor"
+          required
+          :error="!editorId && dicoba && !baru ? 'Belum ditugaskan' : undefined"
+        >
+          <USelectMenu
+            v-model="editorPilihan"
+            :items="editorOptions"
+            value-key="value"
+            placeholder="Belum ditugaskan"
+            class="w-full"
           />
         </UFormField>
 
@@ -953,8 +1016,8 @@ const tabBahasa = ref("id");
               v-if="!bolehSunting"
               class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600"
             >
-              <UIcon name="i-lucide-lock" class="size-3.5" />
-              Tidak memiliki <strong>Akses Edit</strong>
+              <UIcon :name="tugasSaya ? 'i-lucide-eye' : 'i-lucide-lock'" class="size-3.5" />
+              {{ penandaKunci }}
             </span>
             <UTabs
               v-model="tabBahasa"
@@ -970,7 +1033,7 @@ const tabBahasa = ref("id");
       </template>
 
       <div v-show="tabBahasa === 'id'" class="space-y-4">
-        <UFormField label="Ringkasan" hint="kalimat pembuka di kartu daftar">
+        <UFormField label="Sub Judul">
           <UTextarea
             v-model="form.ringkasan"
             :disabled="!bolehSunting"
@@ -987,7 +1050,7 @@ const tabBahasa = ref("id");
       </div>
 
       <div v-show="tabBahasa === 'en'" class="space-y-4">
-        <UFormField label="Judul (EN)" hint="opsional">
+        <UFormField label="Judul (EN)">
           <UInput
             v-model="form.judulEn"
             :disabled="!bolehSunting"
@@ -995,7 +1058,7 @@ const tabBahasa = ref("id");
           />
         </UFormField>
 
-        <UFormField label="Ringkasan (EN)" hint="opsional">
+        <UFormField label="Sub Judul (EN)">
           <UTextarea
             v-model="form.ringkasanEn"
             :disabled="!bolehSunting"
@@ -1006,7 +1069,7 @@ const tabBahasa = ref("id");
           />
         </UFormField>
 
-        <UFormField label="Tuliskan versi Inggrisnya di sini:" hint="opsional">
+        <UFormField label="Tuliskan versi Inggrisnya di sini:">
           <JurnalEditor
             v-model="form.isiEn"
             :terkunci="!bolehSunting"

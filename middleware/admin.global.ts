@@ -27,6 +27,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/id/?akses=ditolak')
   }
 
+  // Editor tidak punya dashboard. Sidebarnya cuma berisi satu menu — Jurnal —
+  // dan /admin menyambutnya dengan ringkasan member, event, serta transaksi yang
+  // bukan pekerjaannya.
+  //
+  // Ditaruh di middleware, bukan hanya di pengalihan sesudah login: logo di
+  // kepala sidebar juga menautkan ke /admin, begitu pula penanda yang mungkin
+  // sudah disimpan orangnya. Satu tempat menjaga semua jalan masuk.
+  if (to.path === '/admin' && user.value.level === 3) {
+    return navigateTo('/admin/jurnal')
+  }
+
   // Log kerja hanya untuk master. Ditegakkan di sini, bukan cuma dengan
   // menyembunyikan menunya: halaman yang dijaga hanya oleh menu yang tidak
   // digambar tetap bisa dibuka siapa pun yang mengetik alamatnya. Endpointnya

@@ -19,8 +19,15 @@ const dilipat = useCookie<boolean>('cc-admin-sidebar-collapsed', { default: () =
 const menu = computed(() => {
   const level = user.value?.level ?? 99
 
+  // Pengaturan akun ada untuk SEMUA pengelola, termasuk editor. Ia mengurus data
+  // dirinya sendiri, bukan pekerjaan redaksi — jadi ia ikut di kedua daftar.
+  const akun = { to: '/admin/akun', label: 'Pengaturan akun', icon: 'i-lucide-user-cog' }
+
   if (level === 3) {
-    return [{ to: '/admin/jurnal', label: 'Jurnal', icon: 'i-lucide-notebook-pen' }]
+    return [
+      { to: '/admin/jurnal', label: 'Jurnal', icon: 'i-lucide-notebook-pen' },
+      akun,
+    ]
   }
 
   // Log kerja hanya untuk master (level 1). Catatan itu merekam pekerjaan admin
@@ -44,12 +51,14 @@ const menu = computed(() => {
     // hidup di /admin/contributors; kembalikan baris ini kalau sudah tersambung.
     // { to: '/admin/contributors', label: 'Contributors', icon: 'i-lucide-pen-line' },
     ...log,
+    akun,
   ]
 })
 
-// Petunjuk berisi penjelasan role & wewenang. Diletakkan di bagian bawah bersama
-// "kembali ke beranda" dan "keluar" — sifatnya rujukan, bukan menu kerja harian.
-// Master melihat rekap datanya langsung di dashboard; admin & editor hanya di sini.
+// Petunjuk berisi penjelasan role & wewenang — sifatnya rujukan, bukan menu kerja
+// harian. Menunya sedang DISEMBUNYIKAN (lihat blok yang dikomentari di template);
+// nilai ini sengaja dipertahankan supaya mengembalikannya cukup dengan membuka
+// komentar itu, tanpa perlu menulis ulang syaratnya.
 const bolehPetunjuk = computed(() => (user.value?.level ?? 99) <= 3)
 
 const aktif = (to: string) => to === '/admin' ? route.path === '/admin' : route.path.startsWith(to)
@@ -63,10 +72,13 @@ const logout = async () => {
 <template>
   <div class="admin-shell" :class="dilipat ? 'is-collapsed' : ''">
     <aside class="admin-side">
-      <NuxtLink v-if="!dilipat" to="/admin" class="brand !mb-0">
+      <!-- Logo menuju HALAMAN UTAMA situs, bukan dashboard. Itu yang biasa
+           dilakukan logo di mana pun, dan sejak "Kembali ke beranda" dicabut dari
+           kaki sidebar, inilah satu-satunya jalan pulang dari area admin. -->
+      <NuxtLink v-if="!dilipat" to="/id" class="brand !mb-0">
         <span class="mark">CC</span>Compassionate<br>Companion
       </NuxtLink>
-      <NuxtLink v-else to="/admin" class="mark mx-auto shrink-0" aria-label="Dashboard">CC</NuxtLink>
+      <NuxtLink v-else to="/id" class="mark mx-auto shrink-0" aria-label="Halaman utama">CC</NuxtLink>
 
 
       <nav class="admin-menu" :aria-label="'Menu admin'">
@@ -83,11 +95,14 @@ const logout = async () => {
       </nav>
 
       <div class="admin-side-footer">
-        <NuxtLink to="/id" class="admin-menu-item" :title="dilipat ? 'Kembali ke beranda' : undefined">
-          <UIcon name="i-lucide-home" class="size-[18px] shrink-0" />
-          <span v-if="!dilipat">Kembali ke beranda</span>
-        </NuxtLink>
+        <!-- "Kembali ke beranda" dicabut atas permintaan; jalannya pindah ke
+             logo di kepala sidebar. -->
 
+        <!-- Petunjuk DISEMBUNYIKAN sementara, atas permintaan. Halamannya sendiri
+             tetap hidup di /admin/petunjuk dan tetap bisa dibuka lewat alamat
+             langsung; yang dicabut cuma jalannya dari sidebar. `bolehPetunjuk` di
+             <script> sengaja dibiarkan supaya blok ini bisa dikembalikan dengan
+             menghapus dua baris komentar ini saja.
         <NuxtLink
           v-if="bolehPetunjuk"
           to="/admin/petunjuk"
@@ -97,6 +112,7 @@ const logout = async () => {
           <UIcon name="i-lucide-book-open" class="size-[18px] shrink-0" />
           <span v-if="!dilipat">Petunjuk</span>
         </NuxtLink>
+        -->
 
         <button type="button" class="admin-menu-item is-logout" :title="dilipat ? 'Keluar' : undefined" @click="logout">
           <UIcon name="i-lucide-log-out" class="size-[18px] shrink-0" />

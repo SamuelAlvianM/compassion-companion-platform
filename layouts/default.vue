@@ -15,10 +15,13 @@ const bolehKeAdmin = computed(() => (user.value?.level ?? 99) <= 3)
 // sebenarnya profil.
 const menuAkun = computed(() => [
   [
-    { label: isEn.value ? 'My profile' : 'Profil saya', icon: 'i-lucide-user-round', to: localized('/profil') },
+    // "Profil saya" hanya untuk peserta. Halaman itu menampilkan riwayat event
+    // yang diikuti dan jurnal yang ditulisnya — dua hal yang tidak dimiliki akun
+    // pengelola, sehingga yang tergambar baginya cuma kerangka kosong. Data
+    // dirinya sendiri diurus di /admin/akun.
     ...(bolehKeAdmin.value
       ? [{ label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' }]
-      : []),
+      : [{ label: isEn.value ? 'My profile' : 'Profil saya', icon: 'i-lucide-user-round', to: localized('/profil') }]),
   ],
   [
     { label: isEn.value ? 'Sign out' : 'Keluar', icon: 'i-lucide-log-out', onSelect: async () => { await keluar(); await navigateTo(localized('/')) } },

@@ -166,8 +166,8 @@ export type DBJurnal = InferSelectModel<typeof ccJurnal>
     daftar admin, dan halaman publik. */
 export const JURNAL_STATUS_LABEL: Record<JurnalStatus, string> = {
   draft: 'Draft',
-  review: 'Direview',
-  revisi: 'Perlu revisi',
+  review: 'Minta direview',
+  revisi: 'Minta direvisi',
   approved: 'Disetujui',
   published: 'Terbit',
 }

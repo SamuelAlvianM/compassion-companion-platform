@@ -338,6 +338,11 @@ const inisial = computed(() =>
                  belum dibuka tidak melihat tombol yang akan menolaknya.
                  `variant="solid"` di sini, bukan `soft`: latarnya hijau tua, dan
                  tombol lembut di atasnya nyaris tidak terbaca sebagai tombol. -->
+            <!-- Tombol "Buat jurnal baru" DINONAKTIFKAN sementara, atas permintaan.
+                 Jalur menulisnya sendiri tetap hidup: /jurnal-saya bisa dibuka
+                 langsung, dan izin `bolehTulisJurnal` tetap menentukan. Yang
+                 dicabut cuma pintu masuknya dari halaman profil. Kembalikan blok
+                 ini kalau tombolnya diperlukan lagi.
             <UButton
               v-if="milikSaya && bolehTulisJurnal"
               :to="`${base}/jurnal-saya`"
@@ -348,6 +353,7 @@ const inisial = computed(() =>
             >
               {{ isEn ? 'New journal entry' : 'Buat jurnal baru' }}
             </UButton>
+            -->
           </div>
         </div>
 

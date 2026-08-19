@@ -53,6 +53,24 @@ const cekCapsLock = (e: KeyboardEvent) => {
 
 await muat()
 
+/**
+ * Halaman pertama sesudah masuk, per peran.
+ *
+ * Editor mendarat langsung di daftar jurnal, bukan di dashboard. Dashboard
+ * memang bukan miliknya — sidebar-nya cuma berisi satu menu, Jurnal — jadi
+ * mendaratkannya di /admin berarti menyambutnya dengan ringkasan member, event,
+ * dan transaksi yang bukan pekerjaannya, lalu memaksanya mengklik satu kali lagi
+ * untuk sampai ke satu-satunya hal yang bisa ia kerjakan.
+ *
+ * Master dan admin tetap ke dashboard: bagi mereka ringkasan itu memang titik
+ * mulai harian.
+ */
+const tujuanBawaan = (role: string) => {
+  if (role === 'user') return localized('/')
+  if (role === 'editor') return '/admin/jurnal'
+  return '/admin'
+}
+
 /** Ke mana diarahkan setelah berhasil masuk. */
 const tujuan = computed(() => {
   const redirect = route.query.redirect
@@ -65,9 +83,7 @@ const kirim = async () => {
   memproses.value = true
   try {
     const hasil = await masuk(form.username, form.password)
-    // Staf (level <= 3) diarahkan ke area admin; peserta biasa kembali ke beranda.
-    const bawaan = hasil.role === 'user' ? localized('/') : '/admin'
-    await router.push(tujuan.value ?? bawaan)
+    await router.push(tujuan.value ?? tujuanBawaan(hasil.role))
   } catch (error: any) {
     galat.value = error?.data?.statusMessage || error?.statusMessage || teks.value.gagal
   } finally {

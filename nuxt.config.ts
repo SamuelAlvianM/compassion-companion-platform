@@ -210,6 +210,7 @@ export default defineNuxtConfig({
       // yang sebenarnya lalu jatuh ke penangkap /admin/[section] dan yang tampil
       // adalah halaman POC lama, tanpa galat apa pun yang memberi tahu.
       'admin-log': false,
+      'admin-akun': false,
     },
     locales: [
       { code: 'id', language: 'id-ID', name: 'Indonesia' },

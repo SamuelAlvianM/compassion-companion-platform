@@ -231,9 +231,6 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
         >
           Muat ulang
         </UButton>
-        <UButton to="/" target="_blank" trailing-icon="i-lucide-external-link" color="neutral" variant="outline">
-          Lihat website
-        </UButton>
       </div>
     </div>
 
