@@ -202,6 +202,27 @@ const kartu = computed<Kartu[]>(() => [
   },
 ])
 
+/**
+ * Kartunya dipecah jadi dua baris: empat kartu operasional di atas, lima kartu
+ * jurnal di bawah.
+ *
+ * Sebelumnya kesembilannya berbagi satu kisi empat kolom, sehingga barisnya jatuh
+ * 4 + 4 + 1 dan satu kartu berdiri sendirian di baris ketiga — melebar penuh tanpa
+ * alasan, seolah ia yang paling penting.
+ *
+ * Pemisahnya bukan sekadar demi kerapian: keempat kartu atas berbicara tentang
+ * event dan orang, kelima kartu bawah tentang naskah. Itu dua pekerjaan berbeda
+ * yang dipegang orang berbeda pula, dan kisi yang berbeda lebar membuat batas
+ * antarkeduanya terbaca tanpa perlu satu judul tambahan.
+ *
+ * Pengelompokannya dibaca dari awalan `jurnal-` pada `key`. Kartu baru yang tidak
+ * berawalan itu jatuh ke baris atas — pilihan yang aman: salah tempat masih
+ * tergambar, sementara daftar kunci terpisah yang tertinggal akan membuat kartunya
+ * hilang sama sekali.
+ */
+const kartuOperasional = computed(() => kartu.value.filter(k => !k.key.startsWith('jurnal-')))
+const kartuJurnal = computed(() => kartu.value.filter(k => k.key.startsWith('jurnal-')))
+
 // ── Tabel event ──────────────────────────────────────────────────────────────
 const kolomEvent = [
   { accessorKey: 'judul', header: 'Event' },
@@ -279,22 +300,44 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
          bertambah, dan ketika tertinggal ia menghasilkan persis lompatan yang
          seharusnya dicegahnya. `kartu` sudah berisi penuh selama memuat — yang
          belum ada baru nilainya, bukan barisnya. -->
-    <div v-if="memuatAwal" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
-      <USkeleton v-for="n in kartu.length" :key="n" class="h-[124px] w-full rounded-lg" />
-    </div>
+    <template v-if="memuatAwal">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+        <USkeleton v-for="n in kartuOperasional.length" :key="n" class="h-[124px] w-full rounded-lg" />
+      </div>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-hidden="true">
+        <USkeleton v-for="n in kartuJurnal.length" :key="n" class="h-[124px] w-full rounded-lg" />
+      </div>
+    </template>
 
-    <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <AdminKartu
-        v-for="k in kartu"
-        :key="k.key"
-        :label="k.label"
-        :nilai="k.nilai"
-        :catatan="k.catatan"
-        :ke="k.ke"
-        :mati="k.mati"
-        @buka="panel = k.antrian ?? null"
-      />
-    </div>
+    <template v-else>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminKartu
+          v-for="k in kartuOperasional"
+          :key="k.key"
+          :label="k.label"
+          :nilai="k.nilai"
+          :catatan="k.catatan"
+          :ke="k.ke"
+          :mati="k.mati"
+          @buka="panel = k.antrian ?? null"
+        />
+      </div>
+
+      <!-- Baris jurnal: lima kolom, jadi tiap kartunya lebih ramping daripada baris
+           di atasnya. Perbedaan lebar itu sendiri yang memisahkan kedua kelompok. -->
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <AdminKartu
+          v-for="k in kartuJurnal"
+          :key="k.key"
+          :label="k.label"
+          :nilai="k.nilai"
+          :catatan="k.catatan"
+          :ke="k.ke"
+          :mati="k.mati"
+          @buka="panel = k.antrian ?? null"
+        />
+      </div>
+    </template>
 
     <!-- Tabel event: yang sedang berjalan dan yang akan datang saja.
          Event selesai tidak menuntut apa pun lagi, dan menaruhnya di sini membuat
