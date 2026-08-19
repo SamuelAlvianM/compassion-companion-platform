@@ -75,6 +75,17 @@ const toast = useToast()
 const gambar = ref<string | null>(null)
 
 /**
+ * Status redaksional event yang tersimpan di server.
+ *
+ * DI LUAR `form`, dan itu disengaja. `form` diawasi autosave; kalau status ikut di
+ * dalamnya, membatalkan event akan tercampur ke dalam PATCH yang sama dengan
+ * pengetikan judul, dan pembatalan bukan sesuatu yang boleh terjadi sebagai efek
+ * samping mengetik. Ia diubah hanya lewat tombolnya sendiri, sekali kirim.
+ */
+const statusEvent = ref<string>('terbit')
+const dibatalkan = computed(() => statusEvent.value === 'batal')
+
+/**
  * Sidik isian yang terakhir diketahui sudah tersimpan.
  *
  * Autosave membandingkan diri dengan ini sebelum mengirim apa pun. Tanpanya,
@@ -124,6 +135,7 @@ const muat = async () => {
     form.value = kosong()
     sesi.value = []
     gambar.value = null
+    statusEvent.value = 'terbit'
     return
   }
   // Saat SSR, $fetch tidak ikut membawa cookie browser — tanpa penerusan ini,
@@ -145,6 +157,7 @@ const muat = async () => {
   }
   // Event lama bisa punya salah satunya saja; yang mana pun ada, itu yang tampil.
   gambar.value = d.cover ?? d.thumbnail ?? null
+  statusEvent.value = d.status ?? 'terbit'
   sesi.value = res.sesi ?? []
   tersimpan.value = sidik()
 }
@@ -247,6 +260,42 @@ const lepasGambar = () => {
   form.value.coverMediaId = ''
   form.value.thumbnailMediaId = ''
   gambar.value = null
+}
+
+// ── Pembatalan event ─────────────────────────────────────────────────────────
+//
+// Sampai sekarang kolom `status` menyimpan 'batal' dan `faseKegiatan()` menghormatinya
+// di atas perhitungan tanggal, tapi tidak ada satu pun formulir yang memasangnya —
+// sisa dari saat kolom status dicabut dari layar. Akibatnya penyaring "Dibatalkan"
+// di daftar event menawarkan pembedaan yang tidak bisa dibuat siapa pun.
+//
+// Tombolnya dibuat DUA ARAH. Satu tombol yang hanya bisa membatalkan berarti salah
+// tekan sekali membuat event tidak bisa dikembalikan dari layar mana pun — dan
+// pembatalan justru tindakan yang paling mungkin ditekan karena keliru membaca.
+const konfirmasiBatal = ref(false)
+const memprosesStatus = ref(false)
+
+const ubahStatusEvent = async (status: 'batal' | 'terbit') => {
+  memprosesStatus.value = true
+  galat.value = ''
+  try {
+    await $fetch(`/api/admin/events/${id.value}`, { method: 'PATCH', body: { status } })
+    statusEvent.value = status
+    konfirmasiBatal.value = false
+    toast.add({
+      title: status === 'batal' ? 'Event dibatalkan' : 'Event dipulihkan',
+      description: status === 'batal'
+        ? 'Halaman event kini ditandai dibatalkan dan pendaftaran ditutup.'
+        : 'Fase event kembali dihitung dari tanggal acara.',
+      color: status === 'batal' ? 'warning' : 'success',
+    })
+  }
+  catch (e: any) {
+    galat.value = pesan(e, 'Gagal mengubah status event.')
+  }
+  finally {
+    memprosesStatus.value = false
+  }
 }
 
 /** Body yang dikirim ke API: dua kotak batas pendaftaran dilebur jadi satu nilai,
@@ -759,7 +808,33 @@ const BAGIAN = [
            masing-masing. Tempat tombol itu dulu berdiri kini ditempati penanda
            autosave, supaya mata yang mencari "sudah tersimpan belum" mendarat di
            tempat yang sama seperti sebelumnya. -->
-      <IndikatorSimpan v-if="!baru" :keadaan="keadaanSimpan" class="mt-3" />
+      <div v-if="!baru" class="mt-3 flex items-center gap-2">
+        <IndikatorSimpan :keadaan="keadaanSimpan" />
+
+        <!-- Dua arah dalam satu tempat: yang sudah dibatalkan menawarkan pemulihan,
+             yang masih berjalan menawarkan pembatalan. -->
+        <UButton
+          v-if="dibatalkan"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-rotate-ccw"
+          :loading="memprosesStatus"
+          @click="ubahStatusEvent('terbit')"
+        >
+          Pulihkan event
+        </UButton>
+        <UButton
+          v-else
+          color="error"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-ban"
+          @click="konfirmasiBatal = true"
+        >
+          Batalkan event
+        </UButton>
+      </div>
       <!-- Tetap hidup meski isian belum lengkap. Tombol yang mati tidak bisa
            memberi tahu apa yang kurang — dan di halaman bertab seperti ini, kolom
            yang kosong bisa saja sedang tidak terlihat sama sekali. Menekannya
@@ -783,6 +858,20 @@ const BAGIAN = [
       color="secondary"
       variant="link"
       class="mb-6"
+    />
+
+    <!-- Penanda keadaan, bukan sekadar hiasan: seluruh halaman ini tetap bisa
+         disunting sesudah event dibatalkan, jadi tanpa spanduk tidak ada apa pun di
+         layar yang memberi tahu bahwa yang sedang disunting adalah acara yang sudah
+         dibatalkan. -->
+    <UAlert
+      v-if="dibatalkan"
+      color="warning"
+      variant="subtle"
+      class="mb-4"
+      icon="i-lucide-ban"
+      title="Event ini telah dibatalkan"
+      description="Halaman publiknya masih dapat dibuka dan ditandai sebagai dibatalkan, dan pendaftaran baru ditutup. Data peserta tetap tersimpan dan statusnya masih dapat diubah."
     />
 
     <!-- Galat mengendap di sini, tidak lewat toast: yang gagal harus tetap terbaca
@@ -1159,32 +1248,46 @@ const BAGIAN = [
       @tersimpan="muat()"
       @draf="drafGaleri"
     />
+
+    <!-- Konfirmasi pembatalan. Bahasanya menyebutkan akibat yang benar-benar terjadi,
+         bukan sekadar bertanya "Anda yakin?" — pertanyaan itu tidak menambah
+         informasi apa pun bagi yang sedang ragu. -->
+    <UModal :open="konfirmasiBatal" title="Batalkan event" @update:open="konfirmasiBatal = $event">
+      <template #body>
+        <p class="text-sm text-cc-stone-700">
+          Anda akan membatalkan <strong>{{ form.judul || 'event ini' }}</strong>.
+        </p>
+
+        <ul class="mt-3 space-y-2 text-sm text-cc-stone-600">
+          <li class="flex gap-2">
+            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
+            <span>Halaman event tetap dapat dibuka publik dan akan ditandai sebagai dibatalkan.</span>
+          </li>
+          <li class="flex gap-2">
+            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
+            <span>Pendaftaran baru ditutup, terlepas dari tanggal yang tercantum.</span>
+          </li>
+          <li class="flex gap-2">
+            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
+            <span>Data peserta yang telah terdaftar tidak dihapus, dan statusnya tetap dapat diubah.</span>
+          </li>
+          <li class="flex gap-2">
+            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
+            <span>Pembatalan ini dapat dianulir sewaktu-waktu melalui tombol <strong>Pulihkan event</strong>.</span>
+          </li>
+        </ul>
+      </template>
+
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" :disabled="memprosesStatus" @click="konfirmasiBatal = false">
+            Kembali
+          </UButton>
+          <UButton color="error" :loading="memprosesStatus" @click="ubahStatusEvent('batal')">
+            Ya, batalkan event
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
-
-<style scoped>
-/*
- * Animasi saat urutan berubah.
- *
- * `-move` saja tidak cukup: menggeser satu baris menaikkan tetangganya sekaligus,
- * dan tanpa `-leave-active { position: absolute }` baris yang dihapus tetap
- * memakan tempatnya sampai animasinya habis — sisanya melompat dua kali.
- *
- * 220 ms: cukup untuk mata mengikuti perpindahannya, masih di bawah ambang di mana
- * menekan "geser" dua kali berturut-turut mulai terasa tertahan.
- */
-.urut-move,
-.urut-enter-active,
-.urut-leave-active {
-  transition: transform 220ms ease, opacity 220ms ease;
-}
-
-.urut-enter-from,
-.urut-leave-to {
-  opacity: 0;
-}
-
-.urut-leave-active {
-  position: absolute;
-}
-</style>
