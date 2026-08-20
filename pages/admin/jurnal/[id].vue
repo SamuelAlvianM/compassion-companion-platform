@@ -76,21 +76,12 @@ const tugasSaya = computed(
   () => adalahEditor.value && Boolean(editorId.value) && editorId.value === user.value?.id,
 );
 
-/**
- * Kalimat penanda kunci. Tiga keadaan yang artinya berbeda, dan sebelumnya
- * ketiganya dibaca sebagai satu kalimat yang sama: "Tidak memiliki Akses Edit".
- *
- * Bagi editor yang SEDANG DITUGASKAN, kalimat itu keliru dan menyesatkan — ia
- * memang tidak menyunting, tapi ia justru orang yang paling berwenang atas
- * tulisan ini. Membacanya sebagai "tidak punya akses" membuatnya mengira sistem
- * yang salah, lalu berhenti — dan itu persis yang terjadi.
- */
-const penandaKunci = computed(() => {
-  if (bolehSunting.value) return null;
-  if (tugasSaya.value) return "Tugas Anda — cukup dibaca, lalu putuskan";
-  if (adalahEditor.value) return "Ditugaskan kepada editor lain";
-  return "Tidak memiliki Akses Edit";
-});
+// Penanda "Tugas Anda …" dan "Hanya bisa dibaca" dicabut, atas permintaan.
+//
+// Keduanya menjelaskan keadaan yang sudah terbaca sendiri dari layar: isian yang
+// tidak bisa diketik, dan tombol keputusan yang justru berdiri menyala di kepala
+// halaman. Yang tersisa cuma dua chip abu-abu yang menyita baris di dua tempat
+// untuk mengulang hal yang sama.
 
 const kosong = () => ({
   judul: "",
@@ -499,11 +490,27 @@ watch(
 
 onBeforeUnmount(() => clearTimeout(timer));
 
-const buatJurnal = async () => {
+/**
+ * Melahirkan barisnya. Dua tombol memanggilnya dengan maksud berbeda:
+ *
+ *   "Simpan draft"   -> tersimpan sebagai draft, berhenti di situ
+ *   "Minta direview" -> tersimpan LALU langsung masuk antrean editor
+ *
+ * Yang kedua bukan sekadar pintasan. Tanpanya, admin yang tulisannya sudah siap
+ * harus menyimpan, menunggu halaman berpindah, mencari tombol kirim, lalu menekan
+ * tombol kedua — tiga langkah untuk satu maksud yang sudah ia putuskan sebelum
+ * mulai mengetik. Syarat kelengkapannya tetap berbeda, dan itu yang penting:
+ * draft boleh mengendap tanpa editor, yang dikirim ke antrean tidak boleh.
+ */
+const buatJurnal = async (lanjutReview = false) => {
   dicoba.value = true;
   galat.value = "";
-  if (kurang.value.length) {
-    galat.value = `Masih kosong: ${kurang.value.join(", ")}.`;
+
+  const belum = lanjutReview ? kurangUntukReview.value : kurang.value;
+  if (belum.length) {
+    galat.value = lanjutReview
+      ? `Lengkapi dulu sebelum dikirim: ${belum.join(", ")}.`
+      : `Masih kosong: ${belum.join(", ")}.`;
     return;
   }
 
@@ -511,20 +518,33 @@ const buatJurnal = async () => {
   try {
     const { data } = await $fetch<{ data: any }>("/api/admin/jurnal", {
       method: "POST",
-      // Editor ikut dikirim kalau sudah dipilih di layar ini. Boleh kosong —
-      // draft memang boleh mengendap tanpa editor; yang menolak kekosongan itu
-      // "Kirim untuk direview", bukan tombol ini.
+      // Editor ikut dikirim kalau sudah dipilih di layar ini. Boleh kosong saat
+      // menyimpan draft; yang menolak kekosongan cuma jalur "Minta direview".
       body: { ...payload(), editorId: editorId.value || null },
     });
+
+    // Perpindahan status dikerjakan SESUDAH barisnya ada, lewat PATCH terpisah.
+    // Endpoint POST hanya tahu melahirkan draft, dan menambah "status" ke sana
+    // berarti satu permintaan yang bisa setengah jadi — barisnya lahir tapi
+    // statusnya gagal berpindah, tanpa ada yang bisa mengulangnya.
+    if (lanjutReview) {
+      await $fetch(`/api/admin/jurnal/${data.id}`, {
+        method: "PATCH",
+        body: { status: "review" },
+      });
+    }
+
     toast.add({
-      title: "Jurnal telah dibuat",
-      description: `Status saat ini: ${STATUS_LABEL.draft}`,
+      title: lanjutReview ? "Jurnal dikirim untuk direview" : "Draft tersimpan",
+      description: `Status saat ini: ${lanjutReview ? STATUS_LABEL.review : STATUS_LABEL.draft}`,
       icon: "i-lucide-check",
       color: "primary",
     });
     await router.replace(`/admin/jurnal/${data.id}`);
   } catch (e: any) {
-    galat.value = pesan(e, "Gagal membuat jurnal.");
+    galat.value = pesan(e, lanjutReview
+      ? "Gagal mengirim jurnal untuk direview."
+      : "Gagal menyimpan draft.");
   } finally {
     sibuk.value = false;
   }
@@ -694,15 +714,28 @@ const tabBahasa = ref("id");
       </div>
 
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <UButton
-          v-if="baru"
-          color="secondary"
-          icon="i-lucide-plus"
-          :loading="sibuk"
-          @click="buatJurnal"
-        >
-          Buat draft
-        </UButton>
+        <template v-if="baru">
+          <UButton
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-save"
+            :loading="sibuk"
+            @click="buatJurnal(false)"
+          >
+            Simpan draft
+          </UButton>
+          <!-- Berdampingan, dan yang berwarna adalah yang mengantarkan tulisannya
+               ke orang berikutnya. "Simpan draft" tetap ada di sebelahnya untuk
+               tulisan yang memang belum selesai. -->
+          <UButton
+            color="secondary"
+            icon="i-lucide-send"
+            :loading="sibuk"
+            @click="buatJurnal(true)"
+          >
+            Minta direview
+          </UButton>
+        </template>
 
         <template v-else>
           <!-- Kirim untuk diperiksa: milik yang menulis.
@@ -755,14 +788,18 @@ const tabBahasa = ref("id");
             >
               Setujui
             </UButton>
+            <!-- Coklat tua pekat, bukan abu-abu lembut. Berdiri di sebelah
+                 "Setujui" yang hijau, keduanya adalah keputusan redaksi dengan
+                 bobot yang sama — dan tombol abu-abu di sebelah tombol berwarna
+                 terbaca sebagai "batal", bukan sebagai keputusan yang setara. -->
             <UButton
               v-if="statusJurnal === 'review' || statusJurnal === 'approved'"
               color="neutral"
-              variant="subtle"
               icon="i-lucide-message-square-warning"
+              class="!bg-cc-brown-700 !text-white hover:!bg-cc-brown-800"
               @click="modalRevisi = true"
             >
-              Revisi
+              Minta direvisi
             </UButton>
           </template>
 
@@ -832,15 +869,27 @@ const tabBahasa = ref("id");
       :description="galat"
     />
 
-    <UAlert
-      v-if="statusJurnal === 'revisi' && catatanRevisi"
-      class="mb-4"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-message-square-warning"
-      title="Catatan revisi"
-      :description="catatanRevisi"
-    />
+    <!-- Catatan minta direvisi.
+         Tergambar selama catatannya MASIH ADA, bukan hanya selagi statusnya
+         "perlu revisi". Begitu penulis mengirim hasil perbaikannya, statusnya
+         berpindah ke "sedang diperiksa" — dan dengan syarat lama, catatan yang
+         justru harus dibaca ulang editor saat memeriksa hasil revisi menghilang
+         tepat pada saat ia paling dibutuhkan.
+         Yang membersihkannya server: `catatanRevisi` dikosongkan begitu tulisannya
+         disetujui atau terbit, dan ditimpa catatan baru bila revisi diminta lagi.
+         Jadi tidak ada catatan basi yang tertinggal di sini. -->
+    <div
+      v-if="catatanRevisi"
+      class="mb-4 rounded-lg border border-cc-stone-200 bg-white/60 p-4"
+    >
+      <div class="flex items-center gap-2 text-sm font-semibold text-red-700">
+        <UIcon name="i-lucide-message-square-warning" class="size-4 shrink-0" />
+        Catatan minta direvisi
+      </div>
+      <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line text-cc-stone-700">
+        {{ catatanRevisi }}
+      </p>
+    </div>
 
     <!-- Kategori wajib sebelum terbit. Diberitahukan sejak sekarang, bukan saat
          tombol Terbitkan ditekan: tulisan titipan member selalu datang tanpa
@@ -860,28 +909,7 @@ const tabBahasa = ref("id");
            baris tombol. Alasan kenapa sebuah isian tidak bisa diubah harus berada
            di kotak yang sedang dicoba diubah orangnya — baris tombol di kepala
            halaman sudah tergulir ke atas begitu orang sampai di kotak kedua. -->
-      <div v-if="!bolehSunting" class="mb-4 flex justify-end">
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600">
-          <UIcon :name="tugasSaya ? 'i-lucide-eye' : 'i-lucide-lock'" class="size-3.5" />
-          {{ penandaKunci }}
-        </span>
-      </div>
-
       <div class="grid gap-4 sm:grid-cols-2">
-        <UFormField
-          label="Judul"
-          required
-          class="sm:col-span-2"
-          :error="wajibKosong(form.judul, dicoba)"
-        >
-          <UInput
-            v-model="form.judul"
-            :disabled="!bolehSunting"
-            placeholder="Judul tulisan"
-            class="w-full"
-          />
-        </UFormField>
-
         <!-- Urutan barisnya mengikuti urutan keputusan, bukan urutan kolom di
              database: baris pertama menempatkan tulisan ini SEBAGAI APA
              (kategori) dan TENTANG APA (event), baris kedua menempatkan SIAPA
@@ -909,6 +937,7 @@ const tabBahasa = ref("id");
             value-key="value"
             :disabled="!bolehSunting"
             placeholder="Tidak terkait event"
+            :search-input="{ placeholder: 'Cari nama event…' }"
             class="w-full"
             @update:model-value="pilihKegiatan"
           />
@@ -935,6 +964,7 @@ const tabBahasa = ref("id");
             value-key="value"
             :disabled="!bolehSunting"
             placeholder="Pilih atau ketik nama penulis"
+            :search-input="{ placeholder: 'Cari nama, atau ketik nama baru…' }"
             create-item="always"
             class="w-full"
             @create="tambahPenulis"
@@ -968,6 +998,7 @@ const tabBahasa = ref("id");
             :items="editorOptions"
             value-key="value"
             placeholder="Belum ditugaskan"
+            :search-input="{ placeholder: 'Cari nama editor…' }"
             class="w-full"
           />
         </UFormField>
@@ -1012,13 +1043,6 @@ const tabBahasa = ref("id");
           <div class="flex flex-wrap items-center gap-3">
             <!-- Penanda yang sama seperti di kotak pertama; di kotak ini ia
                  menumpang baris kepala yang memang sudah ada. -->
-            <span
-              v-if="!bolehSunting"
-              class="inline-flex items-center gap-1.5 rounded-full bg-cc-stone-100 px-3 py-1.5 text-xs font-semibold text-cc-stone-600"
-            >
-              <UIcon :name="tugasSaya ? 'i-lucide-eye' : 'i-lucide-lock'" class="size-3.5" />
-              {{ penandaKunci }}
-            </span>
             <UTabs
               v-model="tabBahasa"
               size="sm"
@@ -1033,6 +1057,26 @@ const tabBahasa = ref("id");
       </template>
 
       <div v-show="tabBahasa === 'id'" class="space-y-4">
+        <!-- Judul duduk di sini, bukan di kartu identitas di atas.
+             Judul adalah bagian dari TULISANNYA, sejajar dengan sub judul dan
+             badan naskah — bukan sejajar dengan kategori, event, dan penulis yang
+             menempatkan tulisan itu di dalam sistem. Selain itu versi Inggrisnya
+             memang sudah sejak awal berada di tab sebelah; dengan judul Indonesia
+             di atas dan judul Inggris di sini, satu isian yang sama terpecah ke
+             dua kotak yang berjauhan. -->
+        <UFormField
+          label="Judul"
+          required
+          :error="wajibKosong(form.judul, dicoba)"
+        >
+          <UInput
+            v-model="form.judul"
+            :disabled="!bolehSunting"
+            placeholder="Judul tulisan"
+            class="w-full"
+          />
+        </UFormField>
+
         <UFormField label="Sub Judul">
           <UTextarea
             v-model="form.ringkasan"
@@ -1090,8 +1134,7 @@ const tabBahasa = ref("id");
           />
         </UFormField>
         <p class="mt-2 text-xs text-cc-stone-500">
-          Catatan ini yang dibaca penulisnya. Nama Anda tidak ikut ditampilkan
-          kepadanya.
+          Penulis akan melihat catatan dari Anda sebagai anonim.
         </p>
       </template>
       <template #footer>

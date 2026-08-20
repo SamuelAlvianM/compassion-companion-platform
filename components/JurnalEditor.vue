@@ -206,14 +206,9 @@ watch(galatUnggah, (pesan) => {
           </div>
         </div>
 
-        <!-- Keadaan terkunci tetap dikatakan: formulir yang diam-diam tidak bisa
-             diketik terbaca sebagai halaman rusak, bukan sebagai aturan. -->
-        <div v-else class="jurnal-editor-kepala">
-          <div class="jurnal-editor-baris jurnal-editor-kabar">
-            <UIcon name="i-lucide-lock" class="size-3.5" />
-            <span>Hanya bisa dibaca</span>
-          </div>
-        </div>
+        <!-- Saat terkunci, bilah kepalanya tidak digambar sama sekali. Penanda
+             "Hanya bisa dibaca" dicabut atas permintaan; menyisakan bilahnya
+             tanpa isi hanya menghasilkan bingkai kosong setinggi satu baris. -->
       </template>
     </UEditor>
 

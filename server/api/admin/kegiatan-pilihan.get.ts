@@ -15,22 +15,6 @@ import { ccKegiatan } from '../../db/schema'
 import { faseKegiatan } from '../../utils/kegiatan'
 import { wajibRole } from '../../utils/session'
 
-/**
- * Berapa lama sesudah sebuah event berakhir ia masih boleh dipilih.
- *
- * Refleksi ditulis selagi kejadiannya masih hangat. Event yang sudah lewat
- * setahun praktis tidak akan pernah jadi bahan tulisan baru, dan membiarkannya di
- * dropdown berarti daftar itu tumbuh selamanya — tiap tahun makin panjang, dan
- * yang benar-benar dicari makin dalam terkubur.
- *
- * Angkanya di sini, satu tempat. Kalau nanti terasa terlalu pendek (mis. ada
- * program yang refleksinya baru terkumpul dua bulan sesudahnya), ganti angka ini
- * saja — tidak ada tempat kedua yang menyimpan asumsi yang sama.
- */
-const HARI_MASIH_RELEVAN = 30
-
-const HARI = 24 * 60 * 60 * 1000
-
 export default defineEventHandler(async (event) => {
   await wajibRole(event, 'editor')
 
@@ -55,22 +39,21 @@ export default defineEventHandler(async (event) => {
     .orderBy(desc(ccKegiatan.tanggalMulai))
     .all()
 
-  const sekarang = Date.now()
-
+  // Dua fase yang boleh dipilih: yang sedang BERLANGSUNG dan yang sudah SELESAI.
+  //
+  // Sebelumnya yang selesai dibatasi umurnya — 30 hari sejak berakhir — dengan
+  // alasan refleksi ditulis selagi kejadiannya masih hangat. Alasan itu benar untuk
+  // sebagian tulisan tapi salah sebagai aturan: dokumentasi acara lama memang baru
+  // masuk berbulan-bulan kemudian, dan saat itu terjadi, eventnya sudah tidak ada
+  // di daftar dan tidak ada apa pun di layar yang menjelaskan kenapa.
+  //
+  // Konsekuensinya daftar ini tumbuh seiring waktu. Yang menahannya: urutan terbaru
+  // di atas, dan tahun yang ikut ditulis di tiap label.
   const dipakai = rows.filter((row) => {
     const fase = faseKegiatan(row)
-
-    // Yang belum terjadi tidak bisa direfleksikan. Ini penyaring yang paling
-    // banyak membersihkan daftar, dan yang paling jelas alasannya.
-    if (fase === 'mendatang') return false
-    // Yang dibatalkan tidak pernah terjadi sama sekali.
-    if (fase === 'batal') return false
-    if (fase === 'berlangsung') return true
-
-    // Sisanya `selesai`: dibatasi umurnya. Patokannya tanggal berakhirnya —
-    // untuk event sehari, tanggalSelesai kosong dan tanggalMulai yang dipakai.
-    const berakhir = (row.tanggalSelesai ?? row.tanggalMulai).getTime()
-    return sekarang - berakhir <= HARI_MASIH_RELEVAN * HARI
+    // Yang belum terjadi tidak bisa direfleksikan; yang dibatalkan tidak pernah
+    // terjadi sama sekali.
+    return fase === 'berlangsung' || fase === 'selesai'
   })
 
   // Tahun ikut ditulis di labelnya. Sebuah program berulang tiap tahun dengan
@@ -83,6 +66,5 @@ export default defineEventHandler(async (event) => {
       fase: faseKegiatan(row),
       label: `${row.judul} (${new Date(row.tanggalMulai).getFullYear()})`,
     })),
-    meta: { hariMasihRelevan: HARI_MASIH_RELEVAN },
   }
 })

@@ -35,14 +35,14 @@ const sortOptions = computed(() => [
 const teks = computed(() => isEn.value
   ? {
       eyebrow: 'Journal', judul: 'Stories that accompany the journey.',
-      intro: 'Experiences, reflections, insights, and practices growing out of encounter and service.',
+      intro: 'Reflections written by event participants — experiences, perspectives, and good practices shared by our Contributors and reviewed by Editors.',
       tipe: 'Type', event: 'Event', urutkan: 'Sort', cari: 'Search journal titles or content',
       hitung: (n: number) => `${n} journal${n === 1 ? '' : 's'} found`,
       semuaEvent: 'All events', baca: 'Read more', kosong: 'No journal matches your search or filter yet.',
     }
   : {
       eyebrow: 'Jurnal', judul: 'Cerita yang menemani perjalanan.',
-      intro: 'Pengalaman, refleksi, insight, dan praktik yang bertumbuh dari perjumpaan serta pelayanan.',
+      intro: 'Tulisan hasil refleksi peserta acara, sharing pengalaman, pandangan, dan praktik baik dari para Kontributor dan direview oleh Editor.',
       tipe: 'Tipe jurnal', event: 'Nama event', urutkan: 'Urutkan', cari: 'Cari judul atau isi jurnal',
       hitung: (n: number) => `${n} jurnal ditemukan`,
       semuaEvent: 'Semua event', baca: 'Baca lebih lanjut', kosong: 'Belum ada jurnal yang sesuai dengan pencarian atau filter Anda.',

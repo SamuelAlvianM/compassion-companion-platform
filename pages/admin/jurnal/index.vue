@@ -149,9 +149,12 @@ watch(tab, (nilai) => {
       <div>
         <p class="text-xs font-bold tracking-[0.14em] text-cc-brown-500 uppercase">Admin area</p>
         <h1 class="mt-1 font-serif text-4xl text-cc-green-800">Jurnal</h1>
+        <!-- Kalimat yang sama persis dengan yang dibaca pengunjung di /jurnal.
+             Dua rumusan berbeda untuk satu hal yang sama membuat pengelola dan
+             pembaca punya pengertian yang berbeda tentang isi rubrik ini. -->
         <p class="mt-1 max-w-3xl text-sm text-cc-stone-600">
-          Cerita peserta, sharing pengalaman, insight, dan praktik baik. Yang mereview
-          editor yang ditugaskan; yang menerbitkan admin.
+          Tulisan hasil refleksi peserta acara, sharing pengalaman, pandangan, dan
+          praktik baik dari para Kontributor dan direview oleh Editor.
         </p>
         <p v-if="level === 3" class="mt-1 text-sm font-semibold text-cc-green-800">
           {{ tugasSaya }} jurnal jadi tugas Anda.
@@ -246,16 +249,15 @@ watch(tab, (nilai) => {
         </template>
 
         <template #status-cell="{ row }">
-          <div class="flex items-center gap-2">
-            <UBadge :color="warnaBadge[row.original.status]" variant="subtle" size="sm">
-              {{ labelStatus(row.original.status) }}
-            </UBadge>
-            <!-- Penanda catatan revisi. Tanpa ini, "perlu revisi" di daftar tidak
-                 memberi tahu apakah alasannya sudah ditulis atau belum. -->
-            <UTooltip v-if="row.original.catatanRevisi" :text="row.original.catatanRevisi">
-              <UIcon name="i-lucide-message-square-warning" class="size-4 text-cc-brown-500" />
-            </UTooltip>
-          </div>
+          <!-- Tanpa ikon catatan revisi. Ia dulu menumpang di sini supaya "perlu
+               revisi" di daftar memberi tahu apakah alasannya sudah ditulis, tapi
+               isinya menggantung sebagai tooltip — dan catatan revisi biasanya
+               beberapa kalimat, yang pada tooltip berubah jadi balok teks panjang
+               menutupi barisnya sendiri. Catatan itu dibaca di halaman jurnalnya,
+               tempat ia memang berdiri sebagai satu blok yang bisa dibaca tenang. -->
+          <UBadge :color="warnaBadge[row.original.status]" variant="subtle" size="sm">
+            {{ labelStatus(row.original.status) }}
+          </UBadge>
         </template>
 
         <template #kontributor-cell="{ row }">
