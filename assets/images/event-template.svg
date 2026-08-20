@@ -1,99 +1,96 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <!--
+    Template sampul event.
+
+    Dirancang untuk DUA bingkai sekaligus: kartu daftar event yang memotongnya jadi
+    kira-kira 2,1:1 (372x176 — kecil, dan bagian atas-bawah terbuang), dan kepala
+    halaman detail yang memakainya penuh 16:9.
+
+    Karena itu seluruh isi yang harus terbaca duduk di PITA TENGAH setinggi 900px
+    dikurangi ~110px di atas dan bawah. Versi pertama menaruh lambang di pojok
+    kiri-atas dan ranting di kanan-atas; pada kartu keduanya terpotong, dan yang
+    tersisa di tengah cuma bidang pucat yang terbaca sebagai gambar gagal muat.
+
+    Bentuknya juga dibuat lebih tegas: pada lebar 372px, blur tebal berubah jadi
+    bubur. Yang dipakai sekarang lengkung rapi berisi warna datar, dengan blur
+    hanya sebagai lapis kedalaman di belakangnya.
+  -->
   <defs>
-    <linearGradient id="dasar" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FDFBF7"/>
-      <stop offset="0.55" stop-color="#F8F4ED"/>
-      <stop offset="1" stop-color="#F2ECE1"/>
+    <linearGradient id="langit" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#FCF8F2"/>
+      <stop offset="0.62" stop-color="#F6EFE4"/>
+      <stop offset="1" stop-color="#EFE5D6"/>
     </linearGradient>
 
-    <linearGradient id="sage1" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#8FA68C"/>
-      <stop offset="1" stop-color="#B9C9B2"/>
+    <linearGradient id="bukit1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C9D6C2"/>
+      <stop offset="1" stop-color="#AFC3A9"/>
     </linearGradient>
-    <linearGradient id="sage2" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#A8BDA6"/>
-      <stop offset="1" stop-color="#CFDCC8"/>
+    <linearGradient id="bukit2" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0" stop-color="#8FA98A"/>
+      <stop offset="1" stop-color="#7B9576"/>
     </linearGradient>
-    <linearGradient id="pasir" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#D8BC98"/>
-      <stop offset="1" stop-color="#EBD9C0"/>
+    <linearGradient id="bukit3" x1="0" y1="0" x2="1" y2="0.5">
+      <stop offset="0" stop-color="#46603F"/>
+      <stop offset="1" stop-color="#2F4A2C"/>
     </linearGradient>
-    <linearGradient id="pasirMuda" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#E7D3B6"/>
-      <stop offset="1" stop-color="#F5EADA"/>
+    <linearGradient id="pasir" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E8CFA9"/>
+      <stop offset="1" stop-color="#D3B489"/>
     </linearGradient>
 
-    <radialGradient id="cahaya" cx="0.42" cy="0.34" r="0.72">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.85"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    <radialGradient id="mentari" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#EFDDB4" stop-opacity="0.62"/>
+      <stop offset="0.55" stop-color="#EBD8B4" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#EBD8B4" stop-opacity="0"/>
     </radialGradient>
 
-    <filter id="lembut" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="26"/>
-    </filter>
-    <filter id="lembutTipis" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="9"/>
+    <filter id="halus" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="34"/>
     </filter>
   </defs>
 
-  <rect width="1600" height="900" fill="url(#dasar)"/>
+  <rect width="1600" height="900" fill="url(#langit)"/>
 
-  <!-- Lingkaran pucat kanan atas -->
-  <circle cx="1355" cy="205" r="255" fill="#DCE5D6" opacity="0.5" filter="url(#lembut)"/>
-  <circle cx="1408" cy="168" r="150" fill="#EEE4D3" opacity="0.55" filter="url(#lembut)"/>
+  <!-- Matahari rendah: jangkar tenang di sepertiga kanan, tetap utuh saat dipotong -->
+  <circle cx="1128" cy="418" r="330" fill="url(#mentari)"/>
+  <circle cx="1128" cy="418" r="96" fill="#EBD6A8" opacity="0.30" filter="url(#halus)"/>
+  <circle cx="1128" cy="418" r="70" fill="#E9D3A4" opacity="0.26"/>
 
-  <!-- Pita organik kiri bawah, berlapis dari paling gelap ke paling muda -->
-  <path d="M-40 900 C 150 690, 430 742, 640 640 C 830 548, 900 372, 1080 300 L 1080 900 Z"
-        fill="url(#pasirMuda)" opacity="0.5" filter="url(#lembutTipis)"/>
-  <path d="M-40 900 C 120 726, 380 780, 560 686 C 742 590, 828 430, 1010 356 L 1010 900 Z"
-        fill="url(#sage2)" opacity="0.45" filter="url(#lembutTipis)"/>
-  <path d="M-40 900 C 96 764, 322 818, 486 730 C 656 640, 742 500, 900 430 L 900 900 Z"
-        fill="url(#pasir)" opacity="0.42" filter="url(#lembutTipis)"/>
-  <path d="M-40 900 C 70 806, 260 852, 402 776 C 560 692, 640 566, 780 508 L 780 900 Z"
-        fill="url(#sage1)" opacity="0.44" filter="url(#lembutTipis)"/>
-  <path d="M-40 900 C 40 846, 190 884, 310 822 C 452 748, 520 640, 640 586 L 640 900 Z"
-        fill="#7E9679" opacity="0.30" filter="url(#lembutTipis)"/>
+  <!-- Kedalaman di belakang bukit, satu-satunya yang diburamkan -->
+  <ellipse cx="420" cy="560" rx="520" ry="180" fill="#DCE4D3" opacity="0.55" filter="url(#halus)"/>
 
-  <!-- Sapuan pasir tipis di kanan bawah, supaya sisi kanan tidak kosong -->
-  <path d="M1600 900 C 1450 838, 1332 762, 1268 640 C 1214 538, 1236 452, 1310 392 L 1600 392 Z"
-        fill="url(#pasir)" opacity="0.26" filter="url(#lembutTipis)"/>
+  <!-- Tiga lapis bukit. Puncaknya sengaja di antara y=430 dan y=620 supaya tetap
+       tergambar utuh pada potongan kartu yang membuang atas dan bawah. -->
+  <path d="M0 640 C 190 528, 366 512, 530 566 C 690 618, 800 596, 944 540
+           C 1108 476, 1290 470, 1430 522 C 1512 552, 1560 574, 1600 588 L 1600 900 L 0 900 Z"
+        fill="url(#bukit1)"/>
+  <path d="M0 716 C 168 632, 340 620, 496 664 C 660 710, 792 690, 940 638
+           C 1116 576, 1300 588, 1430 640 C 1510 672, 1556 692, 1600 706 L 1600 900 L 0 900 Z"
+        fill="url(#bukit2)"/>
+  <path d="M0 806 C 150 748, 322 744, 470 776 C 640 812, 800 800, 962 764
+           C 1140 724, 1320 730, 1450 766 C 1520 786, 1564 800, 1600 810 L 1600 900 L 0 900 Z"
+        fill="url(#bukit3)"/>
 
-  <!-- Cahaya tengah, meredam pertemuan warna -->
-  <rect width="1600" height="900" fill="url(#cahaya)"/>
+  <!-- Guratan pasir hangat di kaki bukit terdepan -->
+  <path d="M0 862 C 180 834, 384 838, 556 858 C 728 878, 900 872, 1064 856
+           C 1240 838, 1420 842, 1600 862 L 1600 900 L 0 900 Z"
+        fill="url(#pasir)" opacity="0.5"/>
 
-  <!-- Ranting zaitun kanan atas -->
-  <g stroke="#6E8768" stroke-width="3.4" fill="#7D9877" opacity="0.72" stroke-linecap="round">
-    <path d="M1560 62 C 1452 118, 1356 196, 1288 300" fill="none"/>
-    <g fill="#7D9877" stroke="none">
-      <ellipse cx="1518" cy="72" rx="34" ry="15" transform="rotate(-28 1518 72)"/>
-      <ellipse cx="1487" cy="118" rx="36" ry="15.5" transform="rotate(-16 1487 118)"/>
-      <ellipse cx="1447" cy="106" rx="32" ry="14" transform="rotate(-52 1447 106)"/>
-      <ellipse cx="1432" cy="164" rx="37" ry="16" transform="rotate(-12 1432 164)"/>
-      <ellipse cx="1388" cy="150" rx="31" ry="13.5" transform="rotate(-58 1388 150)"/>
-      <ellipse cx="1378" cy="212" rx="36" ry="15.5" transform="rotate(-8 1378 212)"/>
-      <ellipse cx="1336" cy="200" rx="30" ry="13" transform="rotate(-62 1336 200)"/>
-      <ellipse cx="1330" cy="262" rx="33" ry="14.5" transform="rotate(-4 1330 262)"/>
-      <ellipse cx="1292" cy="252" rx="28" ry="12.5" transform="rotate(-66 1292 252)"/>
+  <!-- Ranting kiri: menjorok ke tengah, jadi ujungnya tetap terlihat di kartu -->
+  <g opacity="0.88">
+    <path d="M-20 196 C 128 214, 268 288, 372 404" fill="none" stroke="#5E7758" stroke-width="6" stroke-linecap="round"/>
+    <g fill="#6B8564">
+      <ellipse cx="58" cy="176" rx="54" ry="21" transform="rotate(-16 58 176)"/>
+      <ellipse cx="64" cy="250" rx="50" ry="20" transform="rotate(26 64 250)"/>
+      <ellipse cx="160" cy="212" rx="52" ry="20.5" transform="rotate(-8 160 212)"/>
+      <ellipse cx="168" cy="290" rx="48" ry="19" transform="rotate(34 168 290)"/>
+      <ellipse cx="256" cy="272" rx="47" ry="18.5" transform="rotate(2 256 272)"/>
+      <ellipse cx="266" cy="348" rx="45" ry="18" transform="rotate(42 266 348)"/>
+      <ellipse cx="340" cy="352" rx="40" ry="16" transform="rotate(16 340 352)"/>
     </g>
-  </g>
-
-  <!-- Bayangan daun samar di kiri atas: memberi kedalaman tanpa menambah objek tegas -->
-  <g fill="#8FA68C" opacity="0.13" filter="url(#lembutTipis)">
-    <ellipse cx="150" cy="120" rx="86" ry="34" transform="rotate(-34 150 120)"/>
-    <ellipse cx="272" cy="196" rx="76" ry="30" transform="rotate(-22 272 196)"/>
-    <ellipse cx="96" cy="248" rx="66" ry="27" transform="rotate(-52 96 248)"/>
-  </g>
-
-  <!-- Lambang bulat kiri atas: satu ranting bertiga daun -->
-  <g transform="translate(120 118)" opacity="0.9">
-    <circle r="44" fill="none" stroke="#7E9679" stroke-width="2.4"/>
-    <g stroke="#6E8768" stroke-width="2.6" stroke-linecap="round" fill="none">
-      <path d="M0 20 C 0 6, 0 -6, 0 -20"/>
-    </g>
-    <g fill="#7E9679">
-      <ellipse cx="-13" cy="-2" rx="14" ry="6.5" transform="rotate(-32 -13 -2)"/>
-      <ellipse cx="13" cy="-8" rx="14" ry="6.5" transform="rotate(32 13 -8)"/>
-      <ellipse cx="-11" cy="12" rx="12" ry="5.6" transform="rotate(-28 -11 12)"/>
-    </g>
+    <circle cx="118" cy="228" r="12" fill="#A7BA9E"/>
+    <circle cx="222" cy="304" r="10" fill="#A7BA9E"/>
+    <circle cx="312" cy="386" r="8.5" fill="#A7BA9E"/>
   </g>
 </svg>
