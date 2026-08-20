@@ -1891,3 +1891,24 @@ a[href^="https://wa.me/"]::before {
     box-shadow: 0 0 0 3px rgba(191, 149, 63, .45);
   }
 }
+
+/* ── Jarak antarparagraf di halaman baca jurnal ──────────────────────────────
+   `.article-body p` selama ini hanya mengatur rupa hurufnya — font, ukuran, tinggi
+   baris — tanpa satu pun margin, sementara reset di kepala berkas ini sudah
+   memasang `margin: 0` untuk semua elemen. Akibatnya paragraf menempel satu sama
+   lain: tinggi barisnya renggang, tapi pergantian paragrafnya tidak terlihat sama
+   sekali, dan naskah panjang terbaca sebagai satu blok tanpa napas.
+
+   Yang dipakai di sini jarak yang sama dengan editornya, supaya yang menulis
+   melihat bentuk yang sama dengan yang dibaca pembacanya.
+
+   Ditulis di akhir berkas dengan sengaja: aturan lama ada di blok terminifikasi
+   yang berspesifisitas sama, jadi yang belakangan yang menang. */
+.article-body p {
+    margin: 0 0 1.15em
+}
+
+/* Paragraf penutup tidak perlu menyisakan ruang di dasar kotaknya. */
+.article-body p:last-child {
+    margin-bottom: 0
+}

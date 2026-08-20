@@ -62,9 +62,8 @@ export default defineEventHandler(async (event) => {
   // Cover diambil terpisah, bukan lewat join, karena `coverMediaId` sengaja tidak
   // memakai .references() (lihat design.md §5.2) — join-nya tidak dijamin ada.
   //
-  // Thumbnail ikut diambil di query yang sama: kartu memakai gambar yang dipotong
-  // untuk bingkainya sendiri, dan jatuh kembali ke gambar utama hanya bila
-  // thumbnailnya belum pernah dipasang.
+  // Thumbnail ikut diambil, tapi hanya sebagai CADANGAN — lihat catatan di
+  // pemasangan `cover` di bawah.
   const coverIds = rows
     .flatMap(r => [r.thumbnailMediaId, r.coverMediaId])
     .filter((id): id is string => Boolean(id))
@@ -103,8 +102,20 @@ export default defineEventHandler(async (event) => {
         deskripsiEn: row.deskripsiEn,
         lokasi: row.lokasi,
         daring: Boolean(row.tautanDaring),
-        cover: (row.thumbnailMediaId ? coverPer.get(row.thumbnailMediaId) : null)
-          ?? (row.coverMediaId ? coverPer.get(row.coverMediaId) : null)
+        // GAMBAR UTAMA yang didahulukan, bukan thumbnail.
+        //
+        // Urutannya dulu terbalik, dari zaman formulir masih meminta dua unggahan
+        // terpisah — kartu memakai potongan 4:3-nya sendiri, halaman detail memakai
+        // yang 16:9. Sejak formulirnya jadi satu unggahan, keduanya menunjuk media
+        // yang sama dan urutannya tidak lagi berarti untuk event baru.
+        //
+        // Yang belum selesai adalah event LAMA yang telanjur menyimpan dua gambar
+        // berbeda: kartunya menampilkan satu foto, halaman detailnya foto lain, dan
+        // orang yang mengklik kartu merasa mendarat di acara yang salah. Dengan
+        // `cover` didahulukan, keduanya selalu memperlihatkan gambar yang sama.
+        // Thumbnail tetap jadi cadangan untuk baris lama yang justru hanya punya itu.
+        cover: (row.coverMediaId ? coverPer.get(row.coverMediaId) : null)
+          ?? (row.thumbnailMediaId ? coverPer.get(row.thumbnailMediaId) : null)
           ?? null,
         tanggalMulai: row.tanggalMulai,
         tanggalSelesai: row.tanggalSelesai,
