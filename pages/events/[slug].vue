@@ -134,6 +134,37 @@ const eyebrow = computed(() => {
 
 const testimoni = computed(() => e.value?.testimoni ?? [])
 
+/**
+ * Jurnal bertipe "event reflection" yang menunjuk event ini.
+ *
+ * Refleksi peserta sudah lama ditulis sebagai jurnal — lengkap dengan alur review
+ * dan halaman bacanya sendiri — tapi halaman eventnya tidak pernah menyebutkan
+ * bahwa tulisan-tulisan itu ada. Yang mencarinya harus menebak untuk membuka
+ * /jurnal lalu menyaring sendiri berdasarkan nama event.
+ *
+ * Disaring di klien dari daftar jurnal yang sudah terbit. Alasannya sama seperti
+ * penyaringan di halaman /jurnal: daftarnya puluhan, bukan ribuan, jadi endpoint
+ * baru hanya menambah satu tempat yang harus dijaga tetap sama aturannya.
+ *
+ * Yang diambil RINGKASANNYA saja, bukan isinya. Isi jurnal bisa ribuan karakter,
+ * dan panel di samping halaman event bukan tempat membaca artikel utuh — untuk itu
+ * ada tautan "baca lebih lanjut" ke halamannya sendiri.
+ */
+const { data: semuaJurnal } = useFetch('/api/jurnal')
+
+const refleksiJurnal = computed(() => {
+  const id = e.value?.id
+  if (!id) return []
+  return (semuaJurnal.value?.data ?? [])
+    .filter((j: any) => j.kegiatanId === id && j.tipe === 'event-reflection')
+    .map((j: any) => ({
+      slug: j.slug,
+      judul: (isEn.value ? (j.judulEn ?? j.judul) : j.judul) ?? '',
+      ringkasan: (isEn.value ? (j.ringkasanEn ?? j.ringkasan) : j.ringkasan) ?? '',
+      kontributor: j.kontributor,
+    }))
+})
+
 /** Sampul: dari DB bila ada, kalau tidak gambar statis milik event itu, dan kalau
     keduanya tidak ada — template. Aturannya tinggal di utils/mediaHelper.ts, satu
     tempat untuk kartu daftar dan halaman ini. */
@@ -143,8 +174,16 @@ const sampul = computed(() => sampulEvent(e.value?.slug, e.value?.cover))
 // bersama markup-nya, dan label testimoni di EventTestimoni — supaya tidak ada dua
 // tempat yang harus diubah bersamaan.
 const t = computed(() => isEn.value
-  ? { kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location' }
-  : { kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi' })
+  ? {
+      kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location',
+      jurnalEyebrow: 'Event reflection', jurnalJudul: 'Written by participants',
+      baca: 'Read more',
+    }
+  : {
+      kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi',
+      jurnalEyebrow: 'Refleksi event', jurnalJudul: 'Tulisan peserta',
+      baca: 'Baca lebih lanjut',
+    })
 </script>
 
 <template>
@@ -207,8 +246,18 @@ const t = computed(() => isEn.value
           </div>
         </section>
 
-        <!-- Panel pendaftaran + testimoni -->
-        <div>
+        <!-- Panel pendaftaran + refleksi.
+             `space-y-6`: sebelumnya keduanya menempel tanpa jarak sama sekali, jadi
+             "Pendaftaran ditutup." dan "Refleksi event" terbaca sebagai satu blok
+             yang sama — padahal yang satu kabar tentang pendaftaran dan yang lain
+             suara peserta sesudah acaranya usai.
+
+             Panel pendaftarannya sendiri TIDAK dihilangkan pada event selesai.
+             "Pendaftaran ditutup, ditutup pada 15 Mei 2026" masih menjawab
+             pertanyaan yang wajar bagi yang baru menemukan halamannya — dan
+             menghapusnya berarti halaman event selesai tidak lagi punya satu pun
+             keterangan tentang pendaftarannya. -->
+        <div class="space-y-6">
           <EventRegisterPanel :event="e" :is-en="isEn" @berhasil="refresh()" />
 
           <!-- Refleksi event hanya pada event yang sudah SELESAI.
@@ -223,6 +272,44 @@ const t = computed(() => isEn.value
             :is-en="isEn"
             :simpan="simpanTestimoni"
           />
+
+          <!-- Tulisan peserta: jurnal bertipe "event reflection" yang menunjuk event
+               ini. Digambar hanya kalau memang ada — panel kosong berjudul "Tulisan
+               peserta" menjanjikan sesuatu yang belum ditulis siapa pun.
+
+               Yang tampil judul + RINGKASANNYA saja, lalu tautan ke halaman bacanya.
+               Panel di samping halaman event bukan tempat membaca artikel utuh, dan
+               refleksi yang disalin penuh ke sini akan membuat halaman eventnya
+               memanjang mengikuti sesuatu yang sudah punya halamannya sendiri.
+
+               Tidak dibatasi `fase === 'selesai'` seperti testimoni: jurnal hanya
+               bisa terbit lewat alur redaksi, jadi keberadaannya sendiri sudah
+               menjadi syarat yang cukup — dan sebuah refleksi yang terbit lebih
+               awal tidak ada alasannya disembunyikan. -->
+          <section v-if="refleksiJurnal.length" class="panel">
+            <div class="eyebrow">{{ t.jurnalEyebrow }}</div>
+            <h2 class="mb-4 font-serif text-2xl text-cc-green-800">{{ t.jurnalJudul }}</h2>
+
+            <ul class="divide-y divide-cc-stone-200">
+              <li v-for="j in refleksiJurnal" :key="j.slug" class="py-4 first:pt-0 last:pb-0">
+                <h3 class="font-serif text-lg leading-snug text-cc-green-800">{{ j.judul }}</h3>
+
+                <p v-if="j.ringkasan" class="mt-1 text-sm leading-relaxed text-cc-stone-600">
+                  {{ j.ringkasan }}
+                </p>
+
+                <p class="mt-1 text-xs text-cc-brown-500">{{ j.kontributor }}</p>
+
+                <NuxtLink
+                  :to="`${base}/jurnal/${j.slug}`"
+                  class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-cc-brown-500 hover:underline"
+                >
+                  {{ t.baca }}
+                  <UIcon name="i-lucide-arrow-right" class="size-3.5 shrink-0" />
+                </NuxtLink>
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
 

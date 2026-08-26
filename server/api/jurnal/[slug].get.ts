@@ -56,7 +56,21 @@ export default defineEventHandler(async (event) => {
       isi: baris.isi,
       isiEn: baris.isiEn,
       tipe: baris.tipe,
-      kontributor: baris.kontributor,
+
+      /**
+       * Nama akun yang HIDUP menang atas teks yang tersimpan di barisnya.
+       *
+       * `cc_jurnal.kontributor` sengaja menyimpan nama sebagai teks, supaya tulisan
+       * tidak kehilangan penulis saat akunnya dihapus (lihat komentarnya di
+       * server/db/schema/jurnal.ts). Tapi teks itu ditulis sekali saat jurnalnya
+       * dibuat dan tidak pernah ikut berubah — jadi member yang mengganti namanya
+       * di halaman akun tetap tampil dengan nama lamanya di halaman publik, tanpa
+       * ada satu pun tempat yang bisa ia pakai membetulkannya.
+       *
+       * Urutannya menjawab keduanya sekaligus: selama akunnya ada, namanya yang
+       * dipakai; begitu akunnya hilang, teks tersimpan yang bertahan.
+       */
+      kontributor: penulis?.nama ?? baris.kontributor,
       kontributorPeran: baris.kontributorPeran,
       tanggal: baris.diterbitkanPada ?? baris.createdAt,
       coverUrl: cover?.url ?? null,

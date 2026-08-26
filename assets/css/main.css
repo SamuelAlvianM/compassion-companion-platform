@@ -2115,9 +2115,30 @@ a[href^="https://wa.me/"]::before {
     /* ── Kepala halaman ──────────────────────────────────────────────────────
        Judul serif 45px yang patah tiga baris memakan 143px sendirian. 30px cukup
        untuk tetap terbaca sebagai judul halaman tanpa menjadi separuh layar. */
+    /* Pita gelap di kepala halaman MENGIKUTI ISINYA, bukan setinggi angka mati.
+       Versi sebelumnya menggambarnya sebagai gradien yang berhenti di piksel ke-190
+       sementara teksnya berwarna putih dan tingginya bergantung isi. Diukur pada
+       satu jurnal dengan sub-judul panjang: teks berakhir di 306px, jadi 116px
+       terakhirnya tergambar putih di atas latar krem — persis yang terbaca sebagai
+       "judulnya kepotong".
+
+       Membatasi jumlah karakter judul akan menyembunyikan gejalanya, bukan
+       memperbaikinya: judul yang panjangnya pas hari ini tetap akan menabrak batas
+       itu pada layar yang lebih sempit, atau saat pembaca memperbesar hurufnya.
+       Yang diperbaiki di sini penyebabnya — pitanya jadi latar `.page-head`
+       sendiri, jadi setinggi apa pun isinya, ia selalu persis menutupinya.
+
+       `margin-inline` negatif menembus selokan `.container` supaya pitanya tetap
+       selebar layar seperti sebelumnya. */
     .event-page {
-        padding: 20px 0 48px;
-        background: linear-gradient(#102944 0 190px, var(--paper) 190px)
+        padding: 0 0 48px;
+        background: var(--paper)
+    }
+
+    .event-page .page-head {
+        background: #102944;
+        margin-inline: -16px;
+        padding: 18px 16px 22px
     }
 
     .event-page h1 {

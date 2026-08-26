@@ -6,7 +6,7 @@
 
 import { desc, eq } from 'drizzle-orm'
 import { db } from '../../db'
-import { ccJurnal, ccKegiatan, ccMedia } from '../../db/schema'
+import { ccJurnal, ccKegiatan, ccMedia, ccUser } from '../../db/schema'
 import { keTeks } from '../../utils/html'
 
 export default defineEventHandler(async () => {
@@ -21,6 +21,9 @@ export default defineEventHandler(async () => {
       isi: ccJurnal.isi,
       tipe: ccJurnal.tipe,
       kontributor: ccJurnal.kontributor,
+      // Nama akun yang hidup, kalau penulisnya memang punya akun. Dipakai
+      // menggantikan `kontributor` di bawah — lihat alasannya di sana.
+      namaAkun: ccUser.fullName,
       kontributorPeran: ccJurnal.kontributorPeran,
       kegiatanId: ccJurnal.kegiatanId,
       kegiatanJudul: ccKegiatan.judul,
@@ -31,11 +34,29 @@ export default defineEventHandler(async () => {
     .from(ccJurnal)
     .leftJoin(ccKegiatan, eq(ccJurnal.kegiatanId, ccKegiatan.id))
     .leftJoin(ccMedia, eq(ccJurnal.coverMediaId, ccMedia.id))
+    // `leftJoin`, bukan `innerJoin`: sebagian penulis memang tidak punya akun —
+    // pembicara tamu, penulis sekali jalan — dan innerJoin akan membuang tulisan
+    // mereka dari daftar publik sama sekali.
+    .leftJoin(ccUser, eq(ccJurnal.userId, ccUser.id))
     .where(eq(ccJurnal.status, 'published'))
     .orderBy(desc(ccJurnal.diterbitkanPada))
 
-  const data = rows.map(({ isi, ...row }) => ({
+  const data = rows.map(({ isi, namaAkun, ...row }) => ({
     ...row,
+
+    /**
+     * Nama akun yang HIDUP menang atas teks yang tersimpan di barisnya.
+     *
+     * `cc_jurnal.kontributor` sengaja menyimpan nama sebagai teks supaya tulisan
+     * tidak kehilangan penulis saat akunnya dihapus. Tapi teks itu ditulis sekali
+     * saat jurnalnya dibuat dan tidak pernah ikut berubah — jadi member yang
+     * mengganti namanya tetap tampil dengan nama lamanya di kartu daftar publik,
+     * tanpa ada satu pun tempat yang bisa ia pakai membetulkannya.
+     *
+     * Urutannya menjawab keduanya: selama akunnya ada, namanya yang dipakai;
+     * begitu akunnya hilang, teks tersimpan yang bertahan.
+     */
+    kontributor: namaAkun ?? row.kontributor,
     // Kartu daftar memakai ringkasan bila ada; kalau penulisnya tidak mengisi,
     // dipotong dari isi tulisannya. Pemotongan dilakukan di server supaya HTML-nya
     // tidak perlu dikirim utuh hanya untuk diambil 180 karakter pertamanya —

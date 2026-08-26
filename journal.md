@@ -5,6 +5,100 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 32: Nama penulis yang membeku, pita kepala yang memotong, dan refleksi dari jurnal
+
+### Nama penulis tidak ikut berubah saat akunnya diganti nama
+
+Dilaporkan: member diubah namanya jadi "User Baru" di halaman akun, tapi di jurnal
+namanya tetap yang lama.
+
+`cc_jurnal.kontributor` memang menyimpan nama sebagai **teks**, dan itu disengaja —
+supaya tulisan tidak kehilangan penulis saat akunnya dihapus. Tapi teks itu ditulis
+sekali saat jurnalnya dibuat dan tidak pernah ikut berubah, jadi member yang
+mengganti namanya tidak punya satu pun tempat untuk membetulkan namanya di halaman
+publik.
+
+Aturannya sekarang: **nama akun yang hidup menang atas teks tersimpan.** Endpoint
+daftar mendapat `leftJoin` ke `cc_user` (leftJoin, bukan innerJoin — sebagian
+penulis memang tidak punya akun, dan innerJoin akan membuang tulisan mereka dari
+daftar publik), endpoint detail memakai `penulis` yang memang sudah diambilnya.
+
+Urutan `namaAkun ?? kontributor` menjawab keduanya sekaligus: selama akunnya ada,
+namanya yang dipakai; begitu akunnya hilang, teks tersimpan yang bertahan.
+
+Diuji dengan mengganti nama akun lalu mengembalikannya:
+
+| | daftar | detail |
+|---|---|---|
+| sebelum | User Percobaan | — |
+| akun diganti "User Baru" | **User Baru** | **User Baru** |
+| penulis tanpa akun (Nicholas, Anna, Henk, Maria) | tetap dari teks tersimpan | — |
+
+### "Judul kepotong" ternyata bukan soal panjang teks
+
+Dilaporkan di detail jurnal ponsel: sub-judul yang panjang terpotong, dengan usul
+membatasi jumlah karakter judul & sub-judul.
+
+Diukur dulu. Pita gelap di kepala halaman digambar sebagai gradien yang berhenti di
+**piksel ke-190**, sementara teksnya BERWARNA PUTIH dan tingginya mengikuti isi. Pada
+satu jurnal, teks berakhir di **306px** — jadi 116px terakhirnya tergambar putih di
+atas latar krem. Itu yang terbaca sebagai "kepotong".
+
+Membatasi karakter akan menyembunyikan gejalanya, bukan memperbaikinya: judul yang
+panjangnya pas hari ini tetap akan menabrak batas itu di layar yang lebih sempit,
+atau saat pembaca memperbesar hurufnya. Yang diperbaiki penyebabnya — pitanya jadi
+latar `.page-head` sendiri (dengan `margin-inline` negatif supaya tetap selebar
+layar), jadi setinggi apa pun isinya ia selalu persis menutupinya.
+
+| Halaman | Pita | Teks di dalam pita |
+|---|---|---|
+| Jurnal sub-judul panjang | 63→326px | ya (teks berakhir 304px) |
+| Jurnal lain | 263px | ya |
+| Daftar event | 185px | ya |
+
+### Refleksi event: dari jurnal, bukan hanya testimoni ketikan
+
+Dua permintaan pada detail event selesai.
+
+**Jarak.** Panel "Pendaftaran ditutup." dan "Refleksi event" menempel tanpa jarak
+sama sekali, jadi terbaca sebagai satu blok — padahal yang satu kabar tentang
+pendaftaran dan yang lain suara peserta sesudah acaranya usai. `space-y-6`; jarak
+antar panel sekarang 24px.
+
+Panel pendaftarannya sendiri **tidak dihilangkan**. "Pendaftaran ditutup, ditutup
+pada 15 Mei 2026" masih menjawab pertanyaan yang wajar bagi yang baru menemukan
+halamannya, dan menghapusnya berarti halaman event selesai tidak lagi punya satu pun
+keterangan tentang pendaftarannya. Kalau memang tetap ingin dihilangkan, itu satu
+baris `v-if`.
+
+**Tulisan peserta.** Panel baru berisi jurnal bertipe `event-reflection` yang
+menunjuk event itu. Refleksi peserta sudah lama ditulis sebagai jurnal — lengkap
+dengan alur review dan halaman bacanya — tapi halaman eventnya tidak pernah
+menyebutkan bahwa tulisan itu ada; yang mencarinya harus menebak untuk membuka
+/jurnal lalu menyaring sendiri.
+
+Yang tampil judul + **ringkasannya saja**, lalu "Baca lebih lanjut" ke halamannya.
+Panel di samping halaman event bukan tempat membaca artikel utuh. Digambar hanya
+kalau memang ada — panel kosong berjudul "Tulisan peserta" menjanjikan sesuatu yang
+belum ditulis siapa pun (diperiksa: event tanpa refleksi tidak menggambarnya).
+
+`EventTestimoni` (testimoni ketikan tangan) **dibiarkan utuh**, tidak digantikan —
+menggantinya berarti membuang satu fitur beserta datanya, dan itu keputusan yang
+bukan milik saya. Keduanya kini berdampingan.
+
+Desktop 1280px diperiksa: gradien 300px tetap, `.page-head` tanpa override, padding
+40/80 tetap, jarak antar panel 24px, panel baru ikut tampil. `npm run typecheck`
+bersih.
+
+### Belum diputuskan
+
+- [ ] Apakah "Refleksi event / Apa kata mereka" (testimoni ketikan) sebaiknya
+      DIGANTI oleh "Tulisan peserta" (dari jurnal), bukan berdampingan. Sekarang
+      keduanya tampil.
+- [ ] Panel pendaftaran pada event selesai: dipertahankan atau dihilangkan.
+
+---
+
 ## 2026-08-26 — Sesi 31: Penyaring pindah ke bawah navbar, dan ruang ponsel dirapatkan
 
 ### Diukur dulu, baru diubah
