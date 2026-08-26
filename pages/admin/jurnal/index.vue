@@ -192,14 +192,18 @@ watch(tab, (nilai) => {
         </button>
       </div>
 
-      <div class="flex min-w-0 flex-1 basis-80 flex-nowrap items-center justify-end gap-2">
+      <!-- `flex-nowrap` hanya dari `sm` ke atas. Di bawah itu ia menahan kotak cari
+           dan pemilih tipe tetap sebaris: tipenya lebar mati 176px, jadi yang
+           tersisa untuk kotak cari sekitar 160px — cukup untuk memotong "Cari judul
+           atau penulis…" jadi "Cari judul atau". Ditumpuk, keduanya lebar penuh. -->
+      <div class="flex min-w-0 flex-1 basis-80 flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
         <UInput
           v-model="cari"
           icon="i-lucide-search"
           placeholder="Cari judul atau penulis…"
           class="min-w-0 flex-1 lg:max-w-72"
         />
-        <USelect v-model="tipe" :items="tipeOptions" value-key="value" class="w-44 shrink-0" />
+        <USelect v-model="tipe" :items="tipeOptions" value-key="value" class="w-full shrink-0 sm:w-44" />
       </div>
     </div>
 
@@ -207,7 +211,9 @@ watch(tab, (nilai) => {
       <USkeleton v-for="n in 5" :key="n" class="h-11 w-full" />
     </div>
 
-    <UCard v-else :ui="{ body: 'p-0' }">
+    <!-- Enam kolom — judul, kategori, status, penulis, editor, diperbarui — jadi
+         tabel ini yang paling parah di layar sempit. Dari `md` ke atas saja. -->
+    <UCard v-else :ui="{ body: 'p-0' }" class="hidden md:block">
       <UTable
         :data="jurnal"
         :columns="columns"
@@ -269,5 +275,49 @@ watch(tab, (nilai) => {
         </template>
       </UTable>
     </UCard>
+
+    <!-- Layar sempit: satu kartu per tulisan. Statusnya naik ke baris pertama
+         bersama judul — di daftar redaksi, status itulah yang menentukan apakah
+         sebuah baris perlu dibuka sekarang. -->
+    <div v-if="!memuatAwal" class="space-y-3 md:hidden">
+      <p
+        v-if="!jurnal.length"
+        class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500"
+      >
+        Belum ada jurnal pada status ini.
+      </p>
+
+      <NuxtLink
+        v-for="j in jurnal"
+        :key="j.id"
+        :to="`/admin/jurnal/${j.id}`"
+        class="block rounded-lg border border-cc-stone-200 bg-white p-4"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <p class="min-w-0 font-semibold break-words text-cc-green-800">{{ j.judul }}</p>
+          <UBadge :color="warnaBadge[j.status]" variant="subtle" size="sm" class="shrink-0">
+            {{ labelStatus(j.status) }}
+          </UBadge>
+        </div>
+
+        <p v-if="j.kegiatanJudul" class="mt-0.5 text-xs break-words text-cc-stone-500">
+          {{ j.kegiatanJudul }}
+        </p>
+
+        <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-cc-stone-100 pt-3 text-xs text-cc-stone-600">
+          <span v-if="j.tipe">{{ labelTipe(j.tipe) }}</span>
+          <UBadge v-else color="warning" variant="subtle" size="sm">Belum ada kategori</UBadge>
+
+          <span>{{ j.kontributor }}</span>
+
+          <span v-if="j.editorNama">
+            Editor: {{ j.editorNama }}<span v-if="j.editorId === user?.id"> (Anda)</span>
+          </span>
+          <span v-else class="text-cc-stone-400">editor belum ditugaskan</span>
+
+          <span class="ml-auto whitespace-nowrap">{{ tanggal(j.updatedAt) }}</span>
+        </div>
+      </NuxtLink>
+    </div>
   </div>
 </template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Rangka kartu event selama data dimuat.
 //
-// Bentuknya sengaja meniru `.card` yang sesungguhnya — tinggi sampul 176px, satu
+// Bentuknya sengaja meniru `.card` yang sesungguhnya — sampul 16:9 (rasio yang
+// sama dengan `.event-page .event-card .card-image` di main.css), satu
 // baris meta, judul dua baris, deskripsi tiga baris, satu tombol. Rangka yang
 // ukurannya meleset justru menambah kedipan: begitu data datang, tata letaknya
 // melompat. Yang ingin dihilangkan adalah lompatannya, bukan sekadar layar kosong.
@@ -12,7 +13,7 @@ withDefaults(defineProps<{ jumlah?: number }>(), { jumlah: 6 })
 <template>
   <div class="cards">
     <article v-for="n in jumlah" :key="n" class="card" aria-hidden="true">
-      <USkeleton class="h-[176px] w-full rounded-none" />
+      <USkeleton class="aspect-[16/9] w-full rounded-none" />
 
       <div class="card-body">
         <USkeleton class="h-3 w-32" />

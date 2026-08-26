@@ -188,6 +188,12 @@ h3,
     gap: 80px
 }
 
+/* Nilai desktopnya sama persis dengan inline style yang digantikannya, supaya
+   tampilan lebar tidak ikut berubah — yang diperbaiki hanya layar sempit. */
+.about-intro {
+    padding: 80px 180px
+}
+
 .pillars {
     display: grid;
     gap: 24px
@@ -553,9 +559,20 @@ h3,
     margin: 0 0 8px
 }
 
+/* Tombol laci. Bawaannya tersembunyi dan dibuka di blok 760px di bawah — angka
+   yang sama dengan tempat `.links` dan `.nav-actions .btn` disembunyikan, supaya
+   tidak pernah ada lebar layar yang menampilkan keduanya atau tidak satu pun. */
+.nav-burger {
+    display: none
+}
+
 @media(max-width:760px) {
     .links {
         display: none
+    }
+
+    .nav-burger {
+        display: inline-flex
     }
 
     .hero {
@@ -572,57 +589,6 @@ h3,
         font-size: 40px
     }
 
-    /* Di layar kecil sidebar jadi bilah atas berisi ikon saja. Sebelumnya menu ini
-       di-display:none tanpa pengganti, sehingga navigasi admin hilang sama sekali. */
-    .admin-shell,
-    .admin-shell.is-collapsed {
-        grid-template-columns: 1fr
-    }
-
-    .admin-side {
-        position: static;
-        height: auto;
-        padding: 12px 16px
-    }
-
-    /* Di bilah atas tidak ada yang bisa dilipat, jadi tombolnya disembunyikan. */
-    .sidebar-toggle {
-        display: none
-    }
-
-    .admin-menu {
-        grid-auto-flow: column;
-        grid-auto-columns: max-content;
-        overflow-x: auto;
-        margin-top: 14px
-    }
-
-    .admin-menu-item {
-        justify-content: center;
-        width: auto;
-        padding: 9px 12px
-    }
-
-    .admin-menu-item span {
-        display: none
-    }
-
-    .admin-side-footer {
-        margin-top: 12px;
-        grid-auto-flow: column;
-        grid-auto-columns: max-content;
-        justify-content: start
-    }
-
-    .admin-side-footer .admin-menu-item span,
-    .admin-side-user {
-        display: none
-    }
-
-    .admin-main {
-        padding: 26px 20px
-    }
-
     .event-page h1 {
         font-size: 45px
     }
@@ -633,6 +599,57 @@ h3,
 
     .nav-actions .btn {
         display: none
+    }
+}
+
+/* Bilah atas hanya ada di layar sempit. Ditulis sebagai aturan tersendiri, bukan
+   hanya mengandalkan `md:hidden` di markup: kalau kelas utility-nya suatu saat
+   terhapus, yang muncul di desktop adalah bilah kedua di atas sidebar — bukan
+   sesuatu yang langsung terbaca sebagai kesalahan. */
+.admin-topbar {
+    display: none
+}
+
+/* ── Admin di layar sempit ────────────────────────────────────────────────────
+   Breakpoint 767px, bukan 760px seperti blok di atas, dan itu disengaja: bilah
+   atasnya digambar dengan `md:hidden` milik Tailwind, yang batasnya 768px. Dua
+   angka yang berbeda meninggalkan jendela selebar delapan piksel tempat sidebar
+   dan bilah atas tergambar berbarengan — cacat yang hanya muncul pada satu ukuran
+   layar, yaitu jenis cacat yang paling lama tidak ketahuan.
+
+   Sidebar disembunyikan seluruhnya, bukan diubah jadi bilah ikon. Versi yang
+   diubah jadi bilah ikon membuang label menunya, dan enam ikon tanpa nama bukan
+   navigasi yang bisa dibaca. Penggantinya laci di layouts/admin.vue, yang menyimpan
+   labelnya. */
+@media (max-width: 767px) {
+
+    .admin-shell,
+    .admin-shell.is-collapsed {
+        grid-template-columns: 1fr
+    }
+
+    .admin-side,
+    .sidebar-toggle {
+        display: none
+    }
+
+    .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--color-primary);
+        color: #fff;
+        padding: 10px 16px;
+        position: sticky;
+        top: 0;
+        z-index: 20
+    }
+
+    /* Padding konten dikecilkan: 40px kiri-kanan di layar 375px menyisakan 295px
+       untuk tabel dan formulir, dan itu terasa pada tiap kartu. */
+    .admin-main {
+        padding: 22px 16px
     }
 }
 
@@ -704,6 +721,22 @@ body {
 
 .site-header {
     background: rgba(var(--color-primary-rgb), .95)
+}
+
+/* Bilah penyaring yang menempel di bawah layar ponsel (halaman event & jurnal).
+   Warnanya MEMINJAM deklarasi header di atas, bukan menyalin nilainya: keduanya
+   memang harus selalu sama — satu di kepala, satu di kaki, membingkai halaman —
+   dan nilai yang disalin adalah nilai yang nanti berubah cuma di salah satunya.
+
+   Versi pertamanya berlatar krem muda seperti badan halaman, dan akibatnya ia tidak
+   terbaca sebagai bilah sama sekali: kotak cari tampak mengambang di atas kartu
+   event terakhir. Gelap, ia langsung terbaca sebagai tepi layar. */
+.filter-bar {
+    background: rgba(var(--color-primary-rgb), .95);
+    backdrop-filter: blur(8px);
+    /* Ruang aman iPhone: tanpa ini bilahnya berakhir persis di bawah garis home,
+       dan bagian bawah kotak carinya tidak bisa disentuh. */
+    padding-bottom: calc(10px + env(safe-area-inset-bottom))
 }
 
 .btn {
@@ -963,7 +996,15 @@ a[href^="https://wa.me/"]::before {
 }
 
 .about-copy p {
-    margin-bottom: 18px
+    margin-bottom: 18px;
+    text-align: justify;
+    /* Menyertai `justify`, bukan hiasan. Tanpa pemenggalan, teks rata kanan-kiri
+       melebarkan jarak antar-kata untuk menutup sisa baris — dan pada kolom sempit
+       dengan kata panjang ("mengintegrasikan", "pendampingan") celahnya cukup lebar
+       untuk membentuk "sungai" putih yang menarik mata turun, bukan ke samping.
+       Peramban yang tidak bisa memenggal bahasa Indonesia mengabaikan baris ini
+       tanpa efek samping. */
+    hyphens: auto
 }
 
 .about-image-wrap {
@@ -978,6 +1019,61 @@ a[href^="https://wa.me/"]::before {
     aspect-ratio: 4/3;
     object-fit: cover;
     border-radius: 7px
+}
+
+/* Gambar "Tentang kami" meluap 219px keluar layar di ponsel.
+   Arah penurunan ukurannya terbalik: `.about-image-wrap` setinggi 100% baris grid
+   — yang ditarik tinggi oleh kolom teksnya — lalu `aspect-ratio: 4/3` MENURUNKAN
+   LEBAR dari tinggi itu: 446px tinggi menghasilkan 594px lebar. Track `1fr` ikut
+   membengkak karena minimum otomatisnya min-content, dan seluruh halaman jadi bisa
+   digulir ke samping.
+
+   Di satu kolom yang benar justru sebaliknya: lebar ditentukan layar, tinggi
+   menyusul dari rasionya.
+
+   HARUS di bawah aturan dasar di atas — media query tidak menambah spesifisitas,
+   jadi yang menang adalah yang belakangan di sumber. */
+@media (max-width: 760px) {
+    /* `minmax(0, 1fr)`, bukan `1fr`. Minimum otomatis sebuah track `1fr` adalah
+       min-content, dan min-content sebuah <img> adalah lebar intrinsik berkasnya —
+       di sini 1152px. Jadi track itu menolak menyusut ke lebar layar, berapa pun
+       sempitnya, dan `1fr` yang tampak "sudah satu kolom" tetap menghasilkan kolom
+       selebar 594px. `minmax(0, …)` yang mencabut lantai itu. */
+    /* `.profile-grid` ikut di sini, dan itu perbaikan tersendiri: blok mobile yang
+       lama menyebut `.intro-grid, .cards, .stats` tapi MELEWATKAN `.profile-grid`,
+       padahal keduanya berbagi aturan dasar `1.2fr .8fr`. Akibatnya bagian profil
+       tetap dua kolom di ponsel — foto kecil di kiri, teks tergencet jadi dua-tiga
+       kata per baris di kanan. Yang sempat ditambal cuma gambarnya
+       (`.profile-grid img { width: 50% }`), bukan kolomnya. */
+    .intro-grid,
+    .profile-grid {
+        grid-template-columns: minmax(0, 1fr)
+    }
+
+    /* Alasan yang sama satu tingkat di bawahnya: item grid pun ber-`min-width: auto`. */
+    .about-image-wrap {
+        min-width: 0;
+        height: auto
+    }
+
+    .about-image-wrap img {
+        height: auto;
+        max-width: 100%
+    }
+
+    /* 180px kiri-kanan menyisakan 15px untuk teks di layar 375px. Diturunkan ke
+       lebar yang sama dengan `.container` supaya bagian ini sejajar dengan sisa
+       halaman, bukan menjorok sendiri. */
+    .about-intro {
+        padding: 48px 20px
+    }
+
+    /* Jarak 80px masuk akal sebagai selokan antar-kolom; ditumpuk vertikal ia jadi
+       lubang kosong sepertiga layar antara teks dan gambarnya. */
+    .intro-grid,
+    .profile-grid {
+        gap: 32px
+    }
 }
 
 .programs-section {
@@ -1161,10 +1257,15 @@ a[href^="https://wa.me/"]::before {
     align-items: start
 }
 
+/* Sampul acara: 16:9, rasio yang sama dengan yang dikunci saat mengunggah dan
+   dengan template bawaan. Tinggi tetap (dulu 290px) memberi bingkai ~1,4:1 yang
+   memotong kiri-kanan gambar; dengan rasio yang sama, `cover` tidak membuang apa
+   pun — dan kartu di halaman daftar memakai bingkai 16:9 yang sama, jadi satu
+   acara tampil sebagai gambar yang sama di kedua tempat. */
 .event-overview>img {
     display: block;
     width: 100%;
-    height: 290px;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
     border-radius: 7px;
     margin-bottom: 22px
@@ -1222,7 +1323,7 @@ a[href^="https://wa.me/"]::before {
     }
 
     .event-overview>img {
-        height: 240px
+        aspect-ratio: 16 / 9
     }
 }
 .sharing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.sharing-card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:7px;padding:26px;display:flex;flex-direction:column;align-items:flex-start}.sharing-card h2{font-size:31px;margin:12px 0}.sharing-card p{color:var(--color-muted);flex:1}.sharing-author{font-size:13px;color:var(--color-secondary);margin:14px 0 20px;font-weight:600}@media(max-width:850px){.sharing-grid{grid-template-columns:1fr}}
@@ -1334,9 +1435,8 @@ a[href^="https://wa.me/"]::before {
 }
 
 /* Kartu event memakai .card/.card-image/.card-body yang sama dengan beranda, jadi
-   sampulnya penuh sampai tepi dan tingginya tetap 176px. Yang ditambahkan di sini
-   hanya hal-hal yang tidak dimiliki kartu statis: jangkar badge, tata letak isi,
-   dan animasi. */
+   sampulnya penuh sampai tepi. Yang ditambahkan di sini hanya hal-hal yang tidak
+   dimiliki kartu statis: bingkai 16:9, jangkar badge, tata letak isi, dan animasi. */
 .event-page .cards {
     /* Tanpa `stretch`, tiap kartu setinggi isinya sendiri dan barisnya jomplang.
        .card-body dibuat kolom fleksibel supaya tombol tetap menempel di dasar. */
@@ -1348,12 +1448,27 @@ a[href^="https://wa.me/"]::before {
     flex-direction: column
 }
 
-.event-card .card-image {
+/* Selektornya sengaja 0,3,0 (`.event-page` ikut disebut), bukan `.event-card
+   .card-image` yang 0,2,0. Kartu beranda punya `.card:nth-child(2) .card-image
+   { background: linear-gradient(...) }` — juga 0,3,0, dan karena itu SHORTHAND,
+   ia mengembalikan `background-size`/`-position` ke nilai awal. Akibatnya kartu
+   KEDUA di halaman event kehilangan `cover`: gambarnya digambar 1:1 dari pojok
+   kiri-atas, jadi yang tampak cuma sudut gambar yang diperbesar. Dengan
+   spesifisitas yang sama, aturan yang di bawah menang — dan aturan ini ada di
+   bawah. Masalah yang sama pernah ditambal untuk `.leadership-image` di atas. */
+.event-page .event-card .card-image {
     position: relative;
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
-    transition: transform .35s ease
+    transition: transform .35s ease;
+    /* 16:9 — rasio yang sama dengan yang dikunci saat mengunggah sampul dan dengan
+       template bawaan. Selama bingkai dan gambar serasio, `cover` tidak memotong
+       apa pun: gambarnya tampil utuh, bukan pita tengahnya saja. Tinggi tetap
+       176px yang dipakai sebelumnya memotong ~70px di atas dan bawah — cukup untuk
+       membuang lambang dan ranting pada template. */
+    height: auto;
+    aspect-ratio: 16 / 9
 }
 
 /* Badge fase duduk di pojok kanan atas sampul. */
@@ -1445,7 +1560,7 @@ a[href^="https://wa.me/"]::before {
 
 /* Sampul ikut membesar sedikit saat kartu disentuh — gerakan tunggal, searah
    dengan angkatan kartunya. */
-.event-card:hover .card-image {
+.event-page .event-card:hover .card-image {
     transform: scale(1.05)
 }
 
@@ -1479,7 +1594,7 @@ a[href^="https://wa.me/"]::before {
     }
 
     .event-card:hover,
-    .event-card:hover .card-image {
+    .event-page .event-card:hover .card-image {
         transform: none
     }
 }
@@ -1911,4 +2026,46 @@ a[href^="https://wa.me/"]::before {
 /* Paragraf penutup tidak perlu menyisakan ruang di dasar kotaknya. */
 .article-body p:last-child {
     margin-bottom: 0
+}
+
+/* `.journal-controls` diberi `display: grid` oleh aturan tanpa layer di berkas ini,
+   dan aturan tanpa layer menang atas utility Tailwind yang ber-layer — jadi `hidden`
+   di markup tidak pernah menyembunyikannya.
+
+   HARUS di akhir berkas. Percobaan pertama menaruhnya di dekat `.filter-bar`
+   (baris ~730), sementara `.journal-controls` sendiri didefinisikan di baris ~1236 —
+   dan media query tidak menambah spesifisitas, jadi yang belakangan tetap menang.
+   Kesalahan yang sama sudah tiga kali muncul di berkas ini.
+
+   639px = tepat di bawah `sm` (640px), sejajar dengan `sm:hidden` pada bilah
+   bawahnya, supaya tidak ada lebar layar yang menampilkan keduanya atau tidak satu
+   pun. */
+@media (max-width: 639px) {
+    .journal-controls {
+        display: none
+    }
+}
+
+/* Ruang di ujung halaman untuk bilah penyaring yang `fixed` (halaman event &
+   jurnal di ponsel).
+
+   Diberikan ke <body>, bukan ke <main>: bilahnya melayang di atas SELURUH halaman
+   termasuk footer, jadi yang perlu diberi ruang adalah ujung dokumen. Versi
+   sebelumnya menaruh elemen kosong di dalam <main> — dan footer, yang berdiri
+   sesudahnya, tetap tertutup pada baris terakhirnya.
+
+   Kelasnya dipasang halaman lewat `useHead({ bodyAttrs })` dan dilepas Nuxt saat
+   berpindah, jadi halaman tanpa bilah tidak ikut menyisakan celah kosong. */
+@media (max-width: 639px) {
+
+    /* Ruangnya ditaruh DI DALAM footer, bukan sebagai padding <body>.
+       Versi pertama memberi padding ke <body>, dan yang tergambar di ruang itu
+       adalah latar body — sepotong pita krem di antara ujung footer dan bilah
+       gelapnya. Diberikan ke footer, warna hijaunya ikut memanjang sampai ke bawah
+       bilah, dan sambungannya tidak terlihat sama sekali.
+
+       46px = padding bawah bawaan `.footer`; sisanya ruang untuk bilahnya. */
+    body.ada-filter-bar .footer {
+        padding-bottom: calc(46px + 72px + env(safe-area-inset-bottom))
+    }
 }

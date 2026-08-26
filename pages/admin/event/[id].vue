@@ -357,6 +357,30 @@ const kurang = computed(() => {
 const bisaDilahirkan = computed(() => kurang.value.length === 0 && !peringatan.value)
 
 /**
+ * Alasan sebuah simpanan otomatis ditolak — kosong berarti boleh jalan.
+ *
+ * Dipisah dari `peringatan` karena keduanya menjawab pertanyaan yang berbeda.
+ * `peringatan` = "isian ini saling bertentangan"; ini = "karena itu tidak ada yang
+ * tersimpan". Yang kedua wajib terbaca; yang pertama boleh duduk di dekat isian
+ * yang bersangkutan.
+ *
+ * Gambar ikut menghalangi, dan itu perubahan yang disengaja. Sebelumnya ia hanya
+ * dituntut saat event LAHIR, dengan alasan bahwa event lama yang belum bergambar
+ * akan kehilangan kemampuan menyunting apa pun. Alasan itu masih benar — bedanya,
+ * sekarang penolakannya terbaca dan menyebutkan apa yang harus dikerjakan, bukan
+ * membuat formulirnya tampak mogok. Event tanpa gambar tetap tampil sebagai kartu
+ * abu-abu di antara kartu bergambar, dan itu baru ketahuan sesudah terbit, oleh
+ * orang yang bukan pembuatnya.
+ */
+const penghalangSimpan = computed(() => {
+  if (peringatan.value) return peringatan.value
+  if (!form.value.coverMediaId) {
+    return 'Gambar event wajib diisi. Unggah gambarnya di bagian “Gambar event” — sampai itu ada, perubahan lain belum bisa tersimpan.'
+  }
+  return ''
+})
+
+/**
  * "Buat event" — satu-satunya tombol simpan yang tersisa di halaman ini, dan pada
  * event baru ia menuliskan SELURUH isi formulir, bukan hanya tab pertamanya.
  *
@@ -490,9 +514,24 @@ const keadaanSimpan = ref<'diam' | 'menunggu' | 'menyimpan' | 'tersimpan' | 'gag
 
 const simpanSekarang = async () => {
   if (baru.value) return
-  // Isian yang belum sah tidak dikirim — pesannya sudah tergambar di `peringatan`,
-  // dan mengirimkannya cuma menukar peringatan itu dengan galat server yang sama.
-  if (peringatan.value) { keadaanSimpan.value = 'diam'; return }
+
+  // Isian yang belum sah tetap tidak dikirim — tapi penolakannya TIDAK BOLEH DIAM.
+  //
+  // Versi sebelumnya menyetel `keadaanSimpan = 'diam'` lalu keluar, dengan alasan
+  // "pesannya sudah tergambar di `peringatan`". Alasan itu keliru dalam praktik:
+  // peringatannya digambar di ujung bawah kartu, di bawah kotak unggah gambar,
+  // sementara isian yang memicunya (tanggal, jam, batas pendaftaran) ada jauh di
+  // atasnya. Yang mengetik di sana melihat indikator simpan kembali ke diam, tanpa
+  // toast, tanpa galat — dan menyimpulkan satu-satunya hal yang masuk akal dari
+  // apa yang terlihat: formulirnya rusak.
+  //
+  // Sekarang alasannya mendarat di tempat kegagalan lain sudah mendarat: UAlert di
+  // kepala halaman, plus indikator `gagal`. Satu penolakan, satu kabar.
+  if (penghalangSimpan.value) {
+    keadaanSimpan.value = 'gagal'
+    galat.value = penghalangSimpan.value
+    return
+  }
   if (sidik() === tersimpan.value) { keadaanSimpan.value = 'diam'; return }
 
   const dikirim = sidik()
@@ -884,6 +923,21 @@ const BAGIAN = [
         <h2 class="font-serif text-2xl text-cc-green-800">Identitas event</h2>
       </template>
 
+      <!-- Peringatan duduk DI ATAS isian, bukan di ujung bawah kartu.
+           Sebelumnya ia digambar sesudah kotak unggah gambar — sementara isian yang
+           memicunya (tanggal, jam, batas pendaftaran) ada di atasnya, dan di layar
+           laptop peringatan itu berada di luar pandangan orang yang baru saja
+           mengubah tanggal. Peringatan yang harus digulir untuk ditemukan tidak
+           memperingatkan siapa pun. -->
+      <UAlert
+        v-if="peringatan"
+        color="warning"
+        variant="subtle"
+        class="mb-4"
+        icon="i-lucide-triangle-alert"
+        :description="peringatan"
+      />
+
       <div class="grid gap-4 md:grid-cols-2">
         <UFormField label="Judul (ID)" required :error="wajibKosong(form.judul, dicoba)">
           <UInput v-model="form.judul" class="w-full" placeholder="Leadership with Compassion" />
@@ -977,8 +1031,8 @@ const BAGIAN = [
       <div class="mt-6 border-t border-cc-stone-200 pt-6">
         <GambarField
           label="Gambar event"
-          :wajib="baru"
-          :tanda-galat="dicoba && !form.coverMediaId"
+          wajib
+          :tanda-galat="!form.coverMediaId && (dicoba || !baru)"
           petunjuk="Dipakai di kepala halaman event sekaligus di kartu daftar event. Rasio 16:9."
           :url="gambar"
           :rasio="16 / 9"
@@ -988,14 +1042,6 @@ const BAGIAN = [
         />
       </div>
 
-      <UAlert
-        v-if="peringatan"
-        color="warning"
-        variant="subtle"
-        class="mt-4"
-        icon="i-lucide-triangle-alert"
-        :description="peringatan"
-      />
     </UCard>
 
     <!-- Daftar peserta -->

@@ -163,7 +163,10 @@ const columns = [
       </UButton>
     </div>
 
-    <UCard :ui="{ body: 'p-0' }">
+    <!-- Tabel dari `md` ke atas saja. Lima kolom di layar 375px menyisakan kolom
+         Email dan tombol aksi di luar pandangan — dan tombol aksi itulah yang
+         paling sering dituju dari halaman ini. -->
+    <UCard :ui="{ body: 'p-0' }" class="hidden md:block">
       <UTable
         :data="users"
         :columns="columns"
@@ -215,6 +218,59 @@ const columns = [
         </template>
       </UTable>
     </UCard>
+
+    <!-- Bentuk layar sempit: satu kartu per akun. Emailnya dapat barisnya sendiri
+         dan boleh memotong diri (`truncate`) — di tabel ia memaksa seluruh baris
+         melebar, di kartu ia cukup menyusut. -->
+    <div class="space-y-3 md:hidden">
+      <p v-if="status === 'pending'" class="text-sm text-cc-stone-500">Memuat…</p>
+
+      <p v-else-if="!users.length" class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500">
+        Tidak ada member yang cocok.
+      </p>
+
+      <div
+        v-for="u in users"
+        :key="u.id"
+        class="rounded-lg border border-cc-stone-200 bg-white p-4"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-semibold break-words text-cc-green-800">{{ u.fullName }}</p>
+            <p v-if="u.email" class="mt-0.5 truncate text-sm text-cc-stone-500">{{ u.email }}</p>
+          </div>
+
+          <!-- Tombolnya tetap di kanan atas, sejajar dengan tabel — yang berubah
+               cuma barisnya, bukan tempat orang mencarinya. -->
+          <div class="flex shrink-0 gap-1">
+            <UButton
+              :to="`/profil?id=${u.id}`"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-eye"
+              :aria-label="`Lihat profil ${u.fullName}`"
+            />
+            <UButton
+              :to="`/admin/member/${u.id}`"
+              color="secondary"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-pencil"
+              :aria-label="`Ubah akun ${u.fullName}`"
+            />
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-cc-stone-100 pt-3">
+          <UBadge :color="warnaLevel(u.level)" variant="subtle" size="sm">{{ u.roleLabel }}</UBadge>
+          <UBadge v-if="!u.isActive" color="neutral" variant="outline" size="sm">nonaktif</UBadge>
+          <span class="ml-auto text-xs text-cc-stone-500">
+            {{ u.jumlahKegiatan }} event diikuti
+          </span>
+        </div>
+      </div>
+    </div>
 
     <p v-if="data" class="mt-3 text-xs text-cc-stone-500">
       {{ users.length }} dari {{ data.meta.total }} akun.

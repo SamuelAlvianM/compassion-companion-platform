@@ -237,6 +237,19 @@ const kolomEvent = [
   { accessorKey: 'konfirmasi', header: 'Terkonfirmasi' },
 ]
 
+/**
+ * Tiga kolom angka, untuk kartu versi ponsel.
+ *
+ * Disaring DARI `kolomEvent`, bukan ditulis ulang. Labelnya sudah pernah berubah
+ * sekali ("Pendaftar Baru" jadi "Perlu Diproses"), dan daftar kedua yang berdiri
+ * sendiri berarti perubahan berikutnya hanya mendarat di salah satu bentuk — kepala
+ * tabel di layar lebar berkata lain daripada kartu di layar sempit, untuk angka
+ * yang sama persis.
+ */
+const ANGKA_EVENT = kolomEvent
+  .filter(k => k.accessorKey !== 'judul' && k.accessorKey !== 'tanggalMulai')
+  .map(k => ({ kolom: k.accessorKey as 'baru' | 'proses' | 'konfirmasi', label: k.header }))
+
 /** Tanggal dalam WIB. Timestamp disimpan UTC; tanpa zona waktu, acara pukul 07.00
     pagi tampil sebagai tanggal sebelumnya bagi pembaca di Indonesia. */
 const tanggal = (nilai: string | null) =>
@@ -348,7 +361,11 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
         <h2 class="font-serif text-2xl text-cc-green-800">Event Berlangsung dan Mendatang</h2>
       </div>
 
-      <UCard :ui="{ body: 'p-0' }">
+      <!-- Tabel hanya dari `md` ke atas. Lima kolom pada layar 375px berarti
+           membaca sambil menggeser ke samping, dan kolom yang paling sering
+           dibutuhkan — tiga angka antrean — justru yang paling kanan, yaitu yang
+           paling dulu hilang dari pandangan. Penggantinya kartu per baris di bawah. -->
+      <UCard :ui="{ body: 'p-0' }" class="hidden md:block">
         <UTable
           :data="eventAktif"
           :columns="kolomEvent"
@@ -415,6 +432,51 @@ const memuatAwal = computed(() => status.value === 'pending' && !data.value)
           </template>
         </UTable>
       </UCard>
+
+      <!-- Bentuk layar sempit: satu kartu per event, bukan tabel yang dipersempit.
+           Ketiga angkanya berdiri sebagai kolom sejajar dengan labelnya sendiri —
+           di tabel, label itu ada di kepala tabel yang tergulir keluar layar
+           bersama angkanya. -->
+      <div class="space-y-3 md:hidden">
+        <p v-if="memuatAwal" class="text-sm text-cc-stone-500">Memuat…</p>
+
+        <p v-else-if="!eventAktif.length" class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500">
+          Tidak ada event yang sedang berlangsung atau mendatang.
+        </p>
+
+        <div
+          v-for="e in eventAktif"
+          :key="e.id"
+          class="rounded-lg border border-cc-stone-200 bg-white p-4"
+        >
+          <NuxtLink
+            :to="`/admin/event/${e.id}`"
+            class="flex items-start gap-1.5 font-semibold break-words text-cc-green-800"
+          >
+            {{ e.judul }}
+            <UIcon name="i-lucide-arrow-right" class="mt-1 size-3.5 shrink-0 text-cc-stone-400" />
+          </NuxtLink>
+
+          <p class="mt-1 text-sm text-cc-stone-600">{{ tanggal(e.tanggalMulai) }}</p>
+
+          <dl class="mt-3 grid grid-cols-3 gap-2 border-t border-cc-stone-100 pt-3 text-center">
+            <div v-for="k in ANGKA_EVENT" :key="k.kolom">
+              <dt class="text-[11px] leading-tight text-cc-stone-500">{{ k.label }}</dt>
+              <dd class="mt-0.5">
+                <NuxtLink
+                  v-if="e[k.kolom]"
+                  :to="keTabPeserta(e.id, k.kolom)"
+                  class="font-semibold tabular-nums underline-offset-4"
+                  :class="k.kolom === 'konfirmasi' ? 'text-cc-green-800' : 'text-cc-brown-500'"
+                >
+                  {{ e[k.kolom] }}
+                </NuxtLink>
+                <span v-else class="tabular-nums text-cc-stone-400">0</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
     </section>
 
     <!-- Panel antrian. Judul, keterangan, dan isinya ditentukan kartu yang diklik. -->

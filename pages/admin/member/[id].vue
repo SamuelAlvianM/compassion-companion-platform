@@ -335,7 +335,6 @@ const acakPassword = () => {
           <USwitch
             v-model="form.bolehTulisJurnal"
             label="Boleh menulis jurnal"
-            
           />
         </UFormField>
 

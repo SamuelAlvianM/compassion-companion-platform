@@ -241,7 +241,8 @@ const columns = [
       > -->
     </div>
 
-    <UCard :ui="{ body: 'p-0' }">
+    <!-- Tabel dari `md` ke atas; kartu per baris di bawahnya. -->
+    <UCard :ui="{ body: 'p-0' }" class="hidden md:block">
       <UTable
         :data="events"
         :columns="columns"
@@ -356,6 +357,70 @@ const columns = [
         </template>
       </UTable>
     </UCard>
+
+    <!-- Layar sempit: satu kartu per event.
+         Penanda "masih ada peserta yang perlu diproses" di sini ditulis sebagai
+         teks berangka, bukan ikon yang melebar saat disentuh — di ponsel tidak ada
+         tetikus yang bisa mengarah, dan tooltip yang hanya terbuka lewat hover
+         berarti angkanya tidak pernah terbaca sama sekali. -->
+    <div class="space-y-3 md:hidden">
+      <p v-if="muat === 'pending'" class="text-sm text-cc-stone-500">Memuat…</p>
+
+      <p
+        v-else-if="!events.length"
+        class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500"
+      >
+        Belum ada event.
+      </p>
+
+      <div
+        v-for="e in events"
+        :key="e.id"
+        class="rounded-lg border border-cc-stone-200 bg-white p-4"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <NuxtLink
+            :to="`/admin/event/${e.id}`"
+            class="min-w-0 font-semibold break-words text-cc-green-800"
+          >
+            {{ e.judul }}
+          </NuxtLink>
+
+          <div class="flex shrink-0 gap-1">
+            <UButton
+              :to="`/admin/event/${e.id}`"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-pencil"
+              :aria-label="`Ubah ${e.judul}`"
+            />
+            <UButton
+              color="error"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-trash-2"
+              :aria-label="`Hapus ${e.judul}`"
+              @click="hapusTarget = { id: e.id, judul: e.judul }; galat = ''"
+            />
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-cc-stone-100 pt-3">
+          <UBadge :color="warnaFase(e.fase)" variant="subtle" size="sm" class="rounded-full">
+            {{ e.fase }}
+          </UBadge>
+          <span class="text-sm text-cc-stone-600">{{ tanggal(e.tanggalMulai) }}</span>
+          <span
+            v-if="e.belumKonfirmasi"
+            class="ml-auto inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700"
+          >
+            <UIcon name="i-lucide-user-round-x" class="size-3.5 shrink-0" />
+            {{ e.belumKonfirmasi }} perlu diproses
+          </span>
+        </div>
+      </div>
+    </div>
 
     <UModal
       :open="Boolean(hapusTarget)"

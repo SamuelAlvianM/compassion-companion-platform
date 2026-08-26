@@ -18,6 +18,29 @@ const selectedEvent = ref('all')
 const search = ref('')
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 
+/** Penyaring ponsel tinggal di bilah bawah; lihat catatan di halaman event. */
+const lembarFilter = ref(false)
+/**
+ * Menandai <body> selama halaman ini terbuka, supaya CSS bisa memberi ruang di
+ * UJUNG halaman untuk bilah penyaring yang `fixed`.
+ *
+ * Ruang itu tidak bisa lagi berupa elemen kosong di dalam <main>: footer berdiri
+ * SESUDAH <main>, dan bilah yang melayang menutupi baris terakhirnya. Nuxt melepas
+ * kelas ini sendiri saat berpindah halaman, jadi halaman lain tidak ikut berpadding.
+ */
+useHead({ bodyAttrs: { class: 'ada-filter-bar' } })
+
+
+/** Berapa penyaring yang menyala — angka kecil di tombol filter, supaya keadaan
+    tersaring terbaca tanpa membuka lembarnya. Pencarian tidak dihitung: kata yang
+    sedang diketik sudah terlihat di kotaknya sendiri. */
+const jumlahFilterAktif = computed(
+  () =>
+    (selectedType.value !== 'all' ? 1 : 0)
+    + (selectedEvent.value !== 'all' ? 1 : 0)
+    + (sortOrder.value !== 'newest' ? 1 : 0),
+)
+
 // Label antarmuka mengikuti locale; isi jurnal tetap dalam bahasa aslinya.
 const types = computed<{ value: 'all' | JournalType, label: string }[]>(() => [
   { value: 'all', label: isEn.value ? 'All types' : 'Semua tipe' },
@@ -151,7 +174,10 @@ watch(kartuSorot, (el) => {
         <h1>{{ teks.judul }}</h1>
         <p>{{ teks.intro }}</p>
 
-        <div class="journal-controls" role="group" :aria-label="teks.tipe">
+        <!-- Baris kontrol atas: `sm` ke atas saja. Di ponsel ketiganya pindah ke
+             bilah bawah, sama seperti halaman event — di kepala halaman mereka
+             memakan sepertiga layar pertama sebelum satu jurnal pun terlihat. -->
+        <div class="journal-controls hidden sm:grid" role="group" :aria-label="teks.tipe">
           <div class="control-field control-type">
             <span>{{ teks.tipe }}</span>
             <USelect v-model="selectedType" :items="types" class="w-full" />
@@ -160,13 +186,27 @@ watch(kartuSorot, (el) => {
             <span>{{ teks.event }}</span>
             <USelect v-model="selectedEvent" :items="eventOptions" class="w-full" />
           </div>
+          <!-- `type="search"` dicabut: silang bawaannya digambar WebKit dengan warna
+               sistem (biru) yang tidak bisa disetel, dan tidak ada di sebagian
+               peramban lain. Diganti tombol sendiri, sewarna aksen situs. -->
           <UInput
             v-model="search"
-            type="search"
             icon="i-lucide-search"
             :placeholder="teks.cari"
             class="search-field"
-          />
+          >
+            <template v-if="search" #trailing>
+              <UButton
+                color="secondary"
+                variant="link"
+                size="sm"
+                icon="i-lucide-x"
+                class="text-cc-brown-500 hover:text-cc-brown-600"
+                :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+                @click="search = ''"
+              />
+            </template>
+          </UInput>
           <div class="sort-field">
             <span>{{ teks.urutkan }}</span>
             <USelect v-model="sortOrder" :items="sortOptions" class="w-full" />
@@ -225,5 +265,92 @@ watch(kartuSorot, (el) => {
         <p v-if="!filteredJournals.length && !memuatAwal" class="journal-empty">{{ teks.kosong }}</p>
       </div>
     </section>
+
+    <!-- Bilah penyaring bawah (ponsel). Bentuk, warna, dan perilakunya sama persis
+         dengan halaman event — dua daftar yang disaring dengan cara yang sama
+         sebaiknya juga disaring lewat kendali yang sama. -->
+    <div class="filter-bar fixed inset-x-0 bottom-0 z-40 px-4 py-2.5 sm:hidden">
+      <div class="flex items-center gap-2">
+        <UInput
+          v-model="search"
+          icon="i-lucide-search"
+          :placeholder="teks.cari"
+          class="min-w-0 flex-1"
+          :ui="{ base: 'rounded-full' }"
+        >
+          <template v-if="search" #trailing>
+            <UButton
+              color="secondary"
+              variant="link"
+              size="sm"
+              icon="i-lucide-x"
+              class="text-cc-brown-500 hover:text-cc-brown-600"
+              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+              @click="search = ''"
+            />
+          </template>
+        </UInput>
+        <UButton
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-sliders-horizontal"
+          size="lg"
+          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
+          :aria-label="teks.tipe"
+          @click="lembarFilter = true"
+        >
+          <span
+            v-if="jumlahFilterAktif"
+            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+          >
+            {{ jumlahFilterAktif }}
+          </span>
+        </UButton>
+      </div>
+    </div>
+
+    <!-- Lembar penyaring. Tanpa tombol terapkan: tiap pilihan berlaku seketika dan
+         lembarnya menutup sendiri. -->
+    <USlideover
+      v-model:open="lembarFilter"
+      side="bottom"
+      :title="isEn ? 'Filter & sort' : 'Saring & urutkan'"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <div>
+            <p class="mb-1.5 text-xs font-semibold text-cc-stone-500">{{ teks.tipe }}</p>
+            <USelect
+              v-model="selectedType"
+              :items="types"
+              class="w-full"
+              @update:model-value="lembarFilter = false"
+            />
+          </div>
+
+          <!-- Pemilih event hanya berarti saat kategorinya refleksi event; di luar
+               itu ia menawarkan penyaringan yang tidak menyaring apa pun. -->
+          <div v-if="selectedType === 'event-reflection'">
+            <p class="mb-1.5 text-xs font-semibold text-cc-stone-500">{{ teks.event }}</p>
+            <USelect
+              v-model="selectedEvent"
+              :items="eventOptions"
+              class="w-full"
+              @update:model-value="lembarFilter = false"
+            />
+          </div>
+
+          <div>
+            <p class="mb-1.5 text-xs font-semibold text-cc-stone-500">{{ teks.urutkan }}</p>
+            <USelect
+              v-model="sortOrder"
+              :items="sortOptions"
+              class="w-full"
+              @update:model-value="lembarFilter = false"
+            />
+          </div>
+        </div>
+      </template>
+    </USlideover>
   </main>
 </template>

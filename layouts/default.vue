@@ -27,6 +27,38 @@ const menuAkun = computed(() => [
     { label: isEn.value ? 'Sign out' : 'Keluar', icon: 'i-lucide-log-out', onSelect: async () => { await keluar(); await navigateTo(localized('/')) } },
   ],
 ])
+
+/**
+ * Tautan navigasi, ditulis sekali.
+ *
+ * Sebelumnya ketiganya ditulis langsung di dalam <nav class="links">, dan di layar
+ * sempit seluruh <nav> itu di-`display:none` TANPA pengganti — bersama tombol
+ * Masuk, yang juga disembunyikan CSS. Akibatnya di ponsel situs ini tidak punya
+ * satu pun jalan ke Tentang, Event, Jurnal, atau halaman masuk: yang tersisa di
+ * kepala halaman cuma logo dan pengalih bahasa.
+ *
+ * Sekarang daftarnya jadi data supaya bilah desktop dan laci ponsel membaca sumber
+ * yang sama. Dua salinan tautan navigasi adalah cara salah satunya nanti tertinggal
+ * saat menu keempat ditambahkan.
+ */
+const tautanNav = computed(() => [
+  { to: `${localized('/')}#about`, label: isEn.value ? 'About' : 'Tentang' },
+  { to: localized('/events'), label: isEn.value ? 'Events' : 'Event' },
+  { to: localized('/jurnal'), label: isEn.value ? 'Journal' : 'Jurnal' },
+])
+
+const menuMobile = ref(false)
+
+// Ditutup saat berpindah halaman. Tanpa ini laci tetap menutupi halaman yang
+// barusan dituju — dan tautan "#about" bahkan tidak mengubah komponennya, jadi
+// tidak ada apa pun yang menutupnya dengan sendirinya.
+watch(() => route.fullPath, () => { menuMobile.value = false })
+
+const keluarDariLaci = async () => {
+  menuMobile.value = false
+  await keluar()
+  await navigateTo(localized('/'))
+}
 </script>
 <template>
     <div>
@@ -35,9 +67,7 @@ const menuAkun = computed(() => [
                 <NuxtLink :to="localized('/')" class="brand"><span class="mark">CC</span>Compassionate<br>Companion
                 </NuxtLink>
                 <nav class="links">
-                    <NuxtLink :to="localized('/') + '#about'">{{ isEn ? 'About' : 'Tentang' }}</NuxtLink>
-                    <NuxtLink :to="localized('/events')">{{ isEn ? 'Events' : 'Event' }}</NuxtLink>
-                    <NuxtLink :to="localized('/jurnal')">{{ isEn ? 'Journal' : 'Jurnal' }}</NuxtLink>
+                    <NuxtLink v-for="t in tautanNav" :key="t.to" :to="t.to">{{ t.label }}</NuxtLink>
                 </nav>
                 <div class="nav-actions">
                     <NuxtLink class="lang" :to="switchPath">{{ isEn ? 'ID' : 'EN' }}</NuxtLink>
@@ -49,9 +79,83 @@ const menuAkun = computed(() => [
                         </button>
                     </UDropdownMenu>
                     <NuxtLink v-else class="btn" :to="localized('/login')">{{ isEn ? 'Login' : 'Masuk' }}</NuxtLink>
+
+                    <!-- Tombol laci: hanya di layar sempit, tepat pada lebar yang
+                         sama dengan tempat .links dan .btn disembunyikan CSS. -->
+                    <UButton
+                        class="nav-burger text-white hover:bg-white/10"
+                        color="neutral"
+                        variant="ghost"
+                        icon="i-lucide-menu"
+                        size="lg"
+                        :aria-label="isEn ? 'Open menu' : 'Buka menu'"
+                        @click="menuMobile = true"
+                    />
                 </div>
             </div>
         </header>
+
+        <!-- Laci navigasi ponsel. Isinya SAMA dengan bilah desktop — tautan yang
+             sama dari `tautanNav`, plus dua hal yang di layar lebar duduk di
+             kanan: pengalih bahasa dan pintu masuk akun. -->
+        <USlideover
+            v-model:open="menuMobile"
+            :title="isEn ? 'Menu' : 'Menu'"
+            side="right"
+        >
+            <template #body>
+                <nav class="flex flex-col gap-1" :aria-label="isEn ? 'Site menu' : 'Menu situs'">
+                    <NuxtLink
+                        v-for="t in tautanNav"
+                        :key="t.to"
+                        :to="t.to"
+                        class="rounded-md px-3 py-3 text-base font-medium text-cc-green-800 hover:bg-cc-stone-100"
+                        @click="menuMobile = false"
+                    >
+                        {{ t.label }}
+                    </NuxtLink>
+                </nav>
+
+                <!-- Pengalih bahasa TIDAK diulang di sini. Ia tetap tergambar di
+                     kepala halaman, tepat di kiri tombol menu, pada semua lebar
+                     layar — jadi menyalinnya ke dalam laci berarti dua tombol untuk
+                     satu tindakan, dan yang di laci justru lebih jauh dijangkau. -->
+                <div class="mt-4 space-y-1 border-t border-cc-stone-200 pt-4">
+                    <template v-if="user">
+                        <NuxtLink
+                            :to="bolehKeAdmin ? '/admin' : localized('/profil')"
+                            class="flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-cc-stone-700 hover:bg-cc-stone-100"
+                            @click="menuMobile = false"
+                        >
+                            <UIcon
+                                :name="bolehKeAdmin ? 'i-lucide-layout-dashboard' : 'i-lucide-user-round'"
+                                class="size-[18px] shrink-0"
+                            />
+                            {{ bolehKeAdmin ? 'Dashboard' : (isEn ? 'My profile' : 'Profil saya') }}
+                        </NuxtLink>
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-cc-brown-600 hover:bg-cc-stone-100"
+                            @click="keluarDariLaci"
+                        >
+                            <UIcon name="i-lucide-log-out" class="size-[18px] shrink-0" />
+                            {{ isEn ? 'Sign out' : 'Keluar' }}
+                        </button>
+                    </template>
+
+                    <NuxtLink
+                        v-else
+                        :to="localized('/login')"
+                        class="flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-cc-stone-700 hover:bg-cc-stone-100"
+                        @click="menuMobile = false"
+                    >
+                        <UIcon name="i-lucide-log-in" class="size-[18px] shrink-0" />
+                        {{ isEn ? 'Login' : 'Masuk' }}
+                    </NuxtLink>
+                </div>
+            </template>
+        </USlideover>
+
         <slot />
         <footer class="footer">
             <div class="container footer-contact">

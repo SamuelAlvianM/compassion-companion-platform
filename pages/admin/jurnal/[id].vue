@@ -232,13 +232,27 @@ const { data: dataEditor } = useFetch("/api/admin/editors", {
 const LEPAS_EDITOR = "__lepas";
 const TANPA_AKUN = "__tanpa-akun";
 
-const editorOptions = computed(() => [
-  { value: LEPAS_EDITOR, label: "Belum ditugaskan" },
-  ...(dataEditor.value?.data ?? []).map((e: any) => ({
+const editorOptions = computed(() => {
+  const daftar = (dataEditor.value?.data ?? []).map((e: any) => ({
     value: e.id,
     label: e.nama,
-  })),
-]);
+  }));
+
+  // Yang SEDANG ditugaskan selalu ikut tergambar, walau ia tidak ada di daftar
+  // calon. /api/admin/editors kini hanya mengirim yang berperan editor, sementara
+  // jurnal lama bisa saja tertugas ke admin — dan pilihan yang tidak ada di
+  // `items` membuat USelectMenu menampilkan placeholder "Belum ditugaskan" pada
+  // jurnal yang justru ADA penanggung jawabnya. Kotaknya akan berbohong tepat di
+  // tempat yang paling perlu jujur.
+  if (editorId.value && !daftar.some((o) => o.value === editorId.value)) {
+    daftar.unshift({
+      value: editorId.value,
+      label: editorNama.value ?? "Ditugaskan sebelumnya",
+    });
+  }
+
+  return [{ value: LEPAS_EDITOR, label: "Belum ditugaskan" }, ...daftar];
+});
 
 /** Jembatan antara `editorId` (id sungguhan atau "") dan nilai yang dimengerti
     pemilihnya. Ditulis sebagai computed berpasangan supaya tidak ada dua sumber

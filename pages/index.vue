@@ -14,7 +14,12 @@
         </section>
         <section id="about" class="">
             <div class="intro-grid">
-                <div class="section" style="padding:80px 180px;">
+                <!-- Padding pindah dari `style=""` ke kelas `about-intro`.
+                     Sebagai inline style ia `padding: 80px 180px` pada SEMUA lebar
+                     layar, dan inline style tidak bisa ditimpa CSS tanpa
+                     `!important` — di layar 375px, 180px kiri dan kanan menyisakan
+                     15 piksel untuk teksnya, satu huruf per baris. -->
+                <div class="section about-intro">
                     <div class="eyebrow">{{ isEn ? 'About us' : 'Tentang kami' }}</div>
                     <h2 class="section-title">{{ isEn ? 'A companion for the leadership journey.' : 'Rekan dalam perjalanan kepemimpinan' }}</h2>
                     <div class="about-copy">

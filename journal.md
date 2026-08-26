@@ -5,6 +5,536 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 29: Tampilan ponsel — situs tanpa menu, dan bilah ikon yang lebarnya nol
+
+Desktop sudah dinyatakan rapi, jadi seluruh sesi ini soal layar sempit. Diaudit
+dulu pada 375x812 sebelum menyentuh apa pun, karena "dirapikan" tanpa tahu apa yang
+rusak biasanya berarti menambah aturan di atas aturan yang sudah salah.
+
+### Empat temuan
+
+| Halaman | Temuan |
+|---|---|
+| Utama | **Tidak ada navigasi sama sekali.** `.links { display:none }` di ≤760px tanpa pengganti, dan `.nav-actions .btn` (Masuk/akun) juga disembunyikan. Yang tersisa di kepala halaman: logo dan pengalih bahasa |
+| Utama | Halaman bisa digulir ke samping — `scrollWidth` 594px pada viewport 375px |
+| Utama | Bagian profil masih dua kolom: foto kecil di kiri, teks tergencet dua-tiga kata per baris |
+| Dashboard | Bilah menu atas rusak: tiap itemnya 24x18px, ikonnya tergencet jadi nol |
+
+Yang **tidak** rusak, dan karena itu tidak disentuh: kartu dashboard sudah satu
+kolom, dan tabel event sudah duduk di pembungkus `overflow-x:auto` sehingga
+menggulir di dalam dirinya, bukan menyeret halaman.
+
+### Navigasi ponsel: laci, bukan bilah ikon
+
+Dua tempat, satu masalah yang sama — menu yang hilang atau tidak terbaca — dan satu
+jawaban yang sama: `USlideover` dari Nuxt UI.
+
+**Dashboard.** Sidebar sebelumnya diubah CSS jadi bilah ikon horizontal. Dua hal
+salah dengannya. Yang terlihat: `box-sizing: border-box` membuat padding 12px
+kiri-kanan memakan habis track `max-content` selebar 24px, sehingga ikon 18px-nya
+tersisa nol — itulah sliver yang tergambar. Yang lebih mendasar: bilah itu MEMBUANG
+labelnya (`.admin-menu-item span { display:none }`), jadi seandainya pun tergambar
+benar, yang tersisa enam ikon tanpa nama. "Member" dan "Pengaturan akun" bukan
+pasangan yang bisa ditebak dari gambar.
+
+Sekarang: bilah atas berisi logo + tombol menu, dan lacinya menyimpan label
+lengkapnya. Laci juga tidak memakan tinggi layar saat tertutup — penting di halaman
+yang isinya tabel dan formulir panjang.
+
+**Halaman utama.** Tautannya diangkat jadi data (`tautanNav`) supaya bilah desktop
+dan laci ponsel membaca sumber yang sama; dua salinan tautan navigasi adalah cara
+salah satunya tertinggal saat menu keempat ditambahkan. Lacinya juga memuat dua hal
+yang di layar lebar duduk di kanan: pengalih bahasa dan pintu masuk akun.
+
+Keduanya menutup diri saat berpindah halaman. Untuk halaman utama itu bukan
+kemewahan: tautan `#about` tidak mengubah komponen apa pun, jadi tidak ada yang
+menutup lacinya dengan sendirinya.
+
+### Batas breakpoint dijadikan satu angka
+
+Bilah atas admin digambar dengan `md:hidden` milik Tailwind (batas 768px),
+sementara CSS lamanya memakai 760px. Selisih delapan piksel itu adalah jendela
+tempat sidebar dan bilah atas tergambar berbarengan — cacat yang cuma muncul pada
+satu ukuran layar, jenis yang paling lama tidak ketahuan. Blok admin dipindah ke
+`@media (max-width: 767px)`, tepat di bawah `md`.
+
+Diuji pada batasnya:
+
+| Lebar | `max-width:767px` | `min-width:768px` | Sidebar | Bilah atas |
+|---|---|---|---|---|
+| 767 | cocok | tidak | `none` | `flex` |
+| 768 | tidak | cocok | `flex` | `none` |
+
+Tidak pernah keduanya, tidak pernah tidak satu pun.
+
+### Meluap 219px: tiga sebab bertumpuk, bukan satu
+
+Yang paling banyak memakan waktu, dan menarik karena tiap lapisnya menyembunyikan
+lapis berikutnya.
+
+1. **`aspect-ratio` yang arahnya terbalik.** `.about-image-wrap` setinggi 100% baris
+   grid — yang ditarik tinggi oleh kolom teksnya — lalu `aspect-ratio: 4/3` pada
+   gambarnya menurunkan LEBAR dari tinggi itu: 446px tinggi → 594px lebar.
+2. **`1fr` punya lantai.** Sesudah tingginya dibebaskan, kolomnya TETAP 594px.
+   Minimum otomatis sebuah track `1fr` adalah min-content, dan min-content sebuah
+   `<img>` adalah lebar intrinsik berkasnya — di sini 1152px. `minmax(0, 1fr)` yang
+   mencabut lantai itu; `1fr` yang tampak "sudah satu kolom" tidak cukup.
+3. **Inline style.** Sesudah keduanya beres, teksnya masih 15px lebar. Sebabnya
+   `pages/index.vue` menulis `style="padding:80px 180px"` langsung di markup — pada
+   layar 375px itu menyisakan 15 piksel, satu huruf per baris. Inline style tidak
+   bisa ditimpa CSS tanpa `!important`, jadi ia dicabut jadi kelas `.about-intro`
+   dengan nilai desktop yang sama persis.
+
+Satu pelajaran yang layak dicatat: **media query tidak menambah spesifisitas.**
+Dua override sempat ditulis di blok `@media` yang letaknya di ATAS aturan dasarnya,
+dan keduanya kalah tanpa gejala apa pun selain "perbaikannya tidak berpengaruh".
+Keduanya dipindah ke bawah aturan yang ditimpanya.
+
+### `.profile-grid` yang terlewat dari daftar
+
+Blok mobile lama menyebut `.intro-grid, .cards, .stats` tapi melewatkan
+`.profile-grid`, padahal ia berbagi aturan dasar `1.2fr .8fr` dengan `.intro-grid`.
+Yang sempat ditambal cuma gambarnya (`.profile-grid img { width: 50% }`) — bukan
+kolomnya, sehingga bagian profil tetap dua kolom di ponsel.
+
+### Hasil uji
+
+Diukur di browser pada 375x812, bukan dikira-kira dari kode.
+
+| Ukuran | Sebelum | Sesudah |
+|---|---|---|
+| `scrollWidth` halaman utama | **594px** (viewport 375) | 375 — nol elemen aplikasi meluap |
+| Lebar `.about-copy` | **15px** | 335px |
+| Gambar "Tentang kami" | 594x446 | 375x281 (4:3, benar) |
+| `.profile-grid` | 2 kolom | 1 kolom |
+| Item menu admin | **24x18px** | laci berlabel penuh |
+| Navigasi di ponsel | **tidak ada** | Tentang / Event / Jurnal + bahasa + akun |
+
+Desktop diperiksa ulang dan tidak berubah: sidebar `flex`, bilah atas `none`,
+kolom shell `254px 692px`, tombol lipat tetap ada. `npm run typecheck` bersih,
+konsol tanpa galat.
+
+Sisa 39px `scrollWidth` yang masih terbaca di dev berasal dari
+`#vue-tracer-overlay` milik Nuxt DevTools — tidak ikut ke produksi. Diperiksa
+terpisah: nol elemen di dalam `#__nuxt` yang meluap.
+
+### Putaran kedua: chip, laci yang mengulang diri, dan tabel jadi kartu
+
+Tiga koreksi sesudah tampilannya benar-benar dilihat di ponsel.
+
+**Chip penyaring event jadi gumpalan.** Keempatnya duduk di wadah `rounded-full`
+dengan `flex-wrap`; begitu melipat, wadah bulat itu ikut memanjang ke bawah dan
+yang tergambar bukan deretan chip melainkan satu gumpalan bulat setinggi empat
+baris. Sekarang kisi 2x2 (`rounded-2xl`) di bawah `sm`, kembali jadi pil berjajar
+di atasnya.
+
+Kisi dipilih, bukan gulir horizontal: keempat labelnya berjumlah sekitar 390px —
+cuma lewat sedikit dari 375px — jadi menggulir hanya menyembunyikan satu pilihan
+tanpa menghemat apa pun.
+
+Kisinya sempat berhenti di 248px, tidak sejajar dengan kotak cari di bawahnya.
+Sebabnya tombol Reset di sebelahnya: ia sengaja `invisible` dan bukan `hidden`
+supaya barisnya tidak melompat saat filter menyala — tapi tempat yang dipesannya
+tetap 75px. Diturunkan ke barisnya sendiri di layar sempit, dan tempat itu tidak
+lagi memotong apa pun.
+
+**Kotak cari terpotong jadi "Cari ever".** `flex-nowrap` menahannya sebaris dengan
+kotak urutan yang lebarnya mati 160px, jadi yang tersisa cuma sekitar 175px. Sama
+persis di `/admin/jurnal` ("Cari judul atau penulis…" jadi "Cari judul atau").
+Keduanya kini menumpuk penuh di bawah `sm`.
+
+**Pengalih bahasa dicabut dari laci.** Ia sudah tergambar di kepala halaman, tepat
+di kiri tombol menu, pada semua lebar layar — menyalinnya ke laci berarti dua
+tombol untuk satu tindakan, dan yang di laci justru lebih jauh dijangkau.
+
+**Tabel jadi kartu di bawah `md`.** Item yang sesi ini sendiri catat sebagai belum
+dikerjakan, dan diminta langsung sesudahnya. Empat tabel: dashboard, member, event,
+jurnal. Semuanya `hidden md:block`, dengan daftar kartu `md:hidden` di sebelahnya.
+
+Dua hal yang tidak sekadar "tabel dipersempit":
+
+- Di dashboard, ketiga angka antrean mendapat labelnya sendiri di dalam kartu. Di
+  tabel, label itu ada di kepala tabel — yang tergulir keluar layar bersama
+  angkanya, sehingga yang terlihat cuma tiga angka tanpa keterangan.
+- Di daftar event, penanda "masih ada peserta yang perlu diproses" ditulis sebagai
+  teks berangka, bukan ikon yang melebar saat disentuh. Di ponsel tidak ada tetikus
+  yang bisa mengarah, jadi tooltip yang hanya terbuka lewat hover berarti angkanya
+  tidak pernah terbaca sama sekali.
+
+Label ketiga angka di dashboard **disaring dari `kolomEvent`**, tidak ditulis ulang.
+Labelnya sudah pernah berubah sekali ("Pendaftar Baru" jadi "Perlu Diproses"), dan
+daftar kedua yang berdiri sendiri berarti perubahan berikutnya hanya mendarat di
+salah satu bentuk.
+
+### Hasil uji putaran kedua
+
+| Halaman (375px) | Elemen meluap |
+|---|---|
+| `/admin` · `/admin/members` · `/admin/events` · `/admin/jurnal` | **0** |
+| `/id/events` | **0** |
+
+Desktop diperiksa ulang pada 1280px: tabel kembali tergambar (member 8 baris,
+jurnal 11, dashboard 2), sidebar `flex`, bilah atas `none`, kolom shell
+`254px 1011px`, grup chip kembali jadi pil `flex` ber-`rounded-full`, menu desktop
+tampil dan burger hilang. `npm run typecheck` bersih.
+
+### Putaran ketiga: penyaring pindah ke bilah bawah
+
+Kisi 2x2 sempat diperbaiki dulu — radiusnya dibuat KONSENTRIS (wadah `rounded-2xl`
+16px, padding 4px, jadi chipnya `rounded-xl` = 16 − 4), karena pil di dalam kotak
+bersudut tumpul tidak pernah sejajar di pojok dan selisih itu persis yang terbaca
+sebagai "tidak sinkron". Jarak antar-chip juga disamakan dengan padding wadahnya
+(`gap-1` = `p-1`) supaya natnya selebar bingkainya.
+
+Lalu pemilik produk mengusulkan bentuk yang lebih baik, dan usulannya benar:
+**seluruh penyaring pindah ke bilah bawah**, seperti bilah alamat Safari dan Chrome
+ponsel sekarang.
+
+Alasannya bukan sekadar selera. Di kepala halaman, chip + kotak cari + kotak urutan
+memakan sekitar sepertiga layar pertama — sehingga yang dilihat orang saat halaman
+terbuka adalah alat untuk menyaring, bukan hal yang mau disaringnya. Di bawah, layar
+pertama langsung berisi eventnya, dan penyaringnya justru lebih dekat ke jempol.
+
+Bentuk akhirnya:
+
+- **Bilah bawah** berisi kotak cari (yang paling sering dipakai, jadi tidak
+  disembunyikan di balik ketukan) dan satu tombol filter dengan angka kecil yang
+  memberi tahu ada berapa penyaring menyala.
+- **Lembar dari bawah** berisi fase dan urutan. **Tanpa tombol terapkan dan tanpa
+  reset** — tiap pilihan berlaku seketika dan lembarnya menutup sendiri. Tombol
+  terapkan hanya masuk akal kalau sebuah lembar mengumpulkan beberapa isian yang
+  baru berarti bersama-sama; di sini tiap pilihan berdiri sendiri dan hasilnya
+  langsung terlihat di daftar di belakangnya.
+- `sticky bottom-0`, bukan `fixed`: ia ikut arus halaman, jadi tidak perlu
+  menghitung ulang tinggi layar yang berubah-ubah saat papan ketik ponsel terbuka.
+
+Dua koreksi sesudah dicoba di peramban sungguhan:
+
+- **Warnanya disamakan dengan header.** Versi pertama berlatar krem seperti badan
+  halaman, dan akibatnya tidak terbaca sebagai bilah sama sekali — kotak carinya
+  tampak mengambang di atas kartu terakhir. Kelasnya `.filter-bar` **meminjam
+  deklarasi** `.site-header` (`rgba(var(--color-primary-rgb), .95)`), bukan menyalin
+  nilainya: keduanya memang harus selalu sama, satu di kepala dan satu di kaki.
+- **Tingginya dipangkas** dari ~86px jadi **56px**, dengan mencabut baris ringkasan
+  di bawah kotak cari. Bilah dua tingkat terasa berat untuk sesuatu yang menempel
+  permanen; keadaan tersaring tetap terbaca dari angka di tombol filter.
+
+`env(safe-area-inset-bottom)` ditambahkan supaya bilahnya tidak berakhir persis di
+bawah garis home iPhone.
+
+Halaman jurnal mendapat bentuk yang sama persis. Satu jebakan di sana:
+`.journal-controls` diberi `display: grid` oleh aturan **tanpa layer** di
+`main.css`, dan aturan tanpa layer menang atas utility Tailwind yang ber-layer —
+jadi `hidden` di markup tidak pernah menyembunyikannya. Ditegakkan lewat media query
+di **akhir** berkas; percobaan pertama menaruhnya di baris ~730 sementara aturan
+dasarnya ada di ~1236, dan kalah lagi oleh urutan sumber. **Kesalahan yang sama
+sudah empat kali muncul di sesi ini.**
+
+| Pemeriksaan | 375px | 1280px |
+|---|---|---|
+| Baris penyaring atas (event) | `none` | `flex` |
+| Kontrol atas (jurnal) | `none` | `grid` |
+| Bilah bawah | `block` | `none` |
+| Warna bilah | `rgba(43, 64, 40, .95)` — identik header | — |
+| Tinggi bilah | 56px | — |
+| Elemen meluap | **0** | — |
+
+### `sticky` ternyata salah — harus `fixed`
+
+Digulir sampai habis, bilahnya berhenti dan footer lewat di atasnya. Itu memang
+sifat `sticky`: ia hanya menempel **di dalam induknya**, dan induknya `<main>` —
+yang berakhir tepat sebelum footer. Yang diminta adalah bilah menu yang benar-benar
+tetap, jadi diganti `fixed`.
+
+Konsekuensinya ruang cadangan harus pindah tempat, dan tempatnya salah dua kali:
+
+1. Elemen kosong setinggi bilah **di dalam `<main>`** — tidak cukup, karena bilah
+   yang `fixed` melayang di atas SELURUH halaman dan yang tertutup justru baris
+   terakhir footer.
+2. `padding-bottom` pada **`<body>`** — ruangnya ada, tapi yang tergambar di situ
+   adalah latar body: sepotong **pita krem** di antara ujung footer dan bilah
+   gelapnya. Ruang yang benar bukan cuma soal jumlah piksel, tapi soal warna apa
+   yang mengisinya.
+
+Yang benar: `padding-bottom` **pada footer itu sendiri** (46px bawaannya + 72px
+untuk bilah), sehingga hijau footer memanjang sampai ke bawah bilah dan sambungannya
+tidak terlihat sama sekali.
+
+Halaman menandai dirinya dengan
+`useHead({ bodyAttrs: { class: 'ada-filter-bar' } })`; Nuxt melepasnya saat
+berpindah, jadi halaman tanpa bilah tidak ikut memanjangkan footernya. Diperiksa di
+`/id`: kelasnya hilang dan padding footer kembali ke `46px`.
+
+### Tombol kosongkan pencarian
+
+Halaman jurnal punya silang di kotak carinya, halaman event tidak — karena yang di
+jurnal itu bukan tombol buatan sendiri melainkan bawaan `type="search"`. Silang itu
+digambar WebKit dengan warna sistem yang tidak bisa disetel (biru, di tengah situs
+yang tidak punya biru sama sekali), dan tidak muncul di sebagian peramban lain —
+jadi ada-tidaknya tombol itu ditentukan oleh peramban yang membuka, bukan oleh
+rancangan.
+
+`type="search"` dicabut di kedua halaman, diganti tombol pada slot `#trailing` yang
+hanya digambar saat kotaknya berisi, sewarna aksen coklat situs. Dipasang di keempat
+kotak cari — bilah bawah dan baris atas, di halaman event maupun jurnal.
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Posisi bilah | `fixed`, tepi bawahnya = tinggi viewport (menempel) |
+| `padding-bottom` body | 72px di halaman berbilah, `0px` di `/id` dan di desktop |
+| `type` kotak cari jurnal | `text` — silang bawaan peramban hilang |
+
+### Paragraf "Tentang kami" jadi rata kanan-kiri
+
+`text-align: justify` pada `.about-copy p`, atas permintaan. Disertai
+`hyphens: auto` — bukan hiasan: tanpa pemenggalan, teks rata kanan-kiri melebarkan
+jarak antar-kata untuk menutup sisa baris, dan pada kolom sempit dengan kata panjang
+("mengintegrasikan", "pendampingan") celahnya cukup lebar untuk membentuk "sungai"
+putih yang menarik mata turun alih-alih ke samping. Peramban yang tidak bisa
+memenggal bahasa Indonesia mengabaikannya tanpa efek samping.
+
+Di kolom 509px hasilnya rapi. Di 335px (ponsel) beberapa baris masih memperlihatkan
+celah antar-kata yang lebih lebar dari biasanya — wajar untuk justify pada kolom
+sesempit itu, dan bisa dibatasi ke `sm` ke atas kalau nanti dirasa mengganggu.
+
+`npm run typecheck` bersih.
+
+### Belum dikerjakan
+
+- [ ] Halaman admin selain dashboard, member, event, dan jurnal belum diaudit di
+      ponsel — mis. `/admin/log`, `/admin/akun`, dan halaman ubah event/jurnal yang
+      isinya formulir panjang.
+- [ ] Chip penyaring di `/admin/jurnal` ada enam dan melipat jadi tiga baris.
+      Halaman admin belum ikut memakai pola bilah bawah — di sana penyaringnya masih
+      di atas daftar.
+- [ ] Kisi chip 2x2 di halaman event kini hanya terpakai dari `sm` ke atas
+      (barisan pil); versi ponselnya sudah digantikan lembar. Kalau bentuk lembar
+      dipertahankan, aturan `sm:` pada chip itu bisa disederhanakan.
+
+---
+
+## 2026-08-26 — Sesi 28: Autosave yang menolak tanpa bersuara, gambar event jadi wajib, dan daftar penulis yang memotong diri di nama keenam
+
+Koreksi atas kesimpulan Sesi 26. Di sana "event Berlangsung tidak bisa diedit"
+disimpulkan **sengaja** — fase turunan tanggal, jadi yang tidak bisa diubah memang
+fasenya. Kesimpulan itu menjawab pertanyaan yang salah. Yang dilaporkan bukan
+"fasenya tidak bisa diubah" melainkan **"tidak keluar toast dan perubahannya tidak
+tersimpan"** — dan itu memang bug.
+
+### Yang bukan penyebabnya
+
+Diperiksa lebih dulu supaya tidak menambal di tempat yang salah:
+
+| Dugaan | Kenyataan |
+|---|---|
+| Server menolak PATCH event berlangsung | **Tidak.** Dibuat event yang benar-benar berfase `berlangsung` hari ini, PATCH → 200 |
+| Ada gerbang berbasis fase di endpoint admin | **Tidak ada** |
+| Data event tertentu ditolak validator | **Tidak.** Keenam event dikirimi payload IDENTIK dengan isinya sendiri — semuanya 200 |
+| Formulirnya dimatikan | **Tidak** |
+
+Payload ujinya bukan karangan: `muat()` dan `payload()` ditiru persis, termasuk
+penyusunan `tutupPendaftaran` dari `tutupTanggal` + `tutupJam`. Server bersih.
+
+### Penyebabnya: penolakan yang tidak berbunyi
+
+`simpanSekarang()` berisi baris ini:
+
+```js
+if (peringatan.value) { keadaanSimpan.value = 'diam'; return }
+```
+
+Komentarnya beralasan: *"pesannya sudah tergambar di `peringatan`"*. Alasan itu
+benar secara kode dan keliru di layar — karena **peringatannya digambar di ujung
+BAWAH kartu, sesudah kotak unggah gambar**, sementara isian yang memicunya
+(tanggal, jam, batas pendaftaran) ada jauh di atasnya.
+
+Jadi urutan yang dialami orangnya: ubah tanggal → peringatan menyala di luar
+pandangan → tiap ketikan berikutnya, di kolom mana pun, memanggil autosave yang
+langsung keluar → indikator kembali ke "diam" → tidak ada toast, tidak ada galat.
+Formulir yang menerima ketikan tapi tidak pernah menyimpannya, dan tidak
+mengatakan apa-apa.
+
+Ini kelas bug yang sama dengan cacat smoke test `deploy.sh` di Sesi 26:
+**kegagalan yang menyamar sebagai keadaan normal.**
+
+Dua perbaikan:
+
+1. Penolakan mendarat di tempat kegagalan lain sudah mendarat — `UAlert` di kepala
+   halaman — dan indikatornya jadi `gagal`, bukan `diam`.
+2. Peringatannya dipindah ke ATAS isian, bukan di ujung bawah kartu. Peringatan
+   yang harus digulir untuk ditemukan tidak memperingatkan siapa pun.
+
+### Gambar event jadi wajib, juga saat mengubah
+
+`GambarField` tadinya `:wajib="baru"` — wajib hanya saat event lahir. Sekarang
+wajib selalu, dan penanda galatnya menyala segera pada mode ubah (tanpa menunggu
+`dicoba`, yang memang tidak pernah menyala di luar tombol "Buat event").
+
+Penegakannya lewat `penghalangSimpan`, computed baru yang memisahkan dua
+pertanyaan yang selama ini bercampur: `peringatan` menjawab *"isian ini saling
+bertentangan"*, `penghalangSimpan` menjawab *"karena itu tidak ada yang
+tersimpan"*. Yang kedua wajib terbaca.
+
+**Keberatan lama terhadap aturan ini masih berlaku, dan sekarang terjawab
+sebagian.** Komentar `bisaDilahirkan` dulu menolak mewajibkan gambar pada mode
+ubah karena "event lama yang belum bergambar akan membuat autosave menolak SETIAP
+perubahan". Itu memang yang terjadi sekarang — bedanya penolakannya berbunyi dan
+menyebutkan apa yang harus dikerjakan, bukan membuat formulirnya tampak mogok.
+
+**Empat dari enam event yang ada belum bergambar, jadi keempatnya terkunci sampai
+digambari:** Leading Through Change (mendatang), Leadership with Compassion,
+Compassion in Practice, Listening as Leadership (ketiganya selesai). Perlu
+keputusan: biarkan begitu (memaksa gambarnya dilengkapi), atau turunkan jadi
+penanda wajib saja tanpa menghalangi simpanan.
+
+### Hasil uji
+
+Dijalankan di browser sungguhan dengan sesi admin, bukan lewat API saja.
+
+| Keadaan | Hasil |
+|---|---|
+| Event berlangsung, **tanpa** gambar, ubah lokasi | **Tidak ada PATCH**, dan alert merah di kepala halaman: "Gambar event wajib diisi…" |
+| Event yang sama sesudah gambar dipasang, ubah lokasi | **PATCH 200**, pesan penghalang hilang, nilainya benar-benar mendarat di database |
+| Event berlangsung dibuat baru (kontrol) | PATCH 200 |
+| Keenam event nyata, payload identik (kontrol) | 200 semua |
+
+`npm run typecheck` bersih. Event uji `ZZ Uji Berlangsung` sudah dihapus.
+
+### Daftar pilihan penulis: bisa digulir, tapi cuma enam yang terlihat
+
+Diperiksa atas permintaan: kalau daftar penulisnya panjang, berapa yang tampak dan
+apakah bisa digulir?
+
+Diukur langsung di browser, bukan dikira-kira. Strukturnya ternyata dua lapis, dan
+itu yang membuat angkanya menyesatkan kalau hanya melihat satu lapis:
+
+| Lapis | Nilai |
+|---|---|
+| `content` (pembungkus) | `max-height: 240px`, `overflow: hidden` |
+| viewport di dalamnya | `overflow-y: auto`, tinggi **207px** |
+| tinggi satu baris | 32px |
+
+Jadi `overflow: hidden` di lapis luar bukan berarti tidak bisa digulir — yang
+menggulir lapis dalamnya. **Bisa digulir**, dibuktikan dengan `scrollTop` yang
+bergerak 0 → 57 pada daftar 8 nama.
+
+Yang jadi masalah bukan gulirannya melainkan jumlahnya: 207px ÷ 32px = **enam
+nama**. Kotak carinya duduk DI LUAR area yang menggulir dan memakan 33px sisanya.
+
+Enam terlalu sedikit untuk pemilih yang daftarnya seluruh akun aktif dan hanya akan
+bertambah panjang. Daftar yang memotong dirinya pada nama keenam membuat orang
+mengira itulah seluruh isinya — gulirannya ada, tapi tidak ada yang memberi tahu
+bahwa masih ada sisanya.
+
+Dinaikkan jadi `max-h-80` (320px) → viewport 287px → **delapan nama penuh**, dan
+yang kesembilan terpotong di tepi bawah. Potongan itu disengaja: baris yang
+terpenggal adalah satu-satunya isyarat bahwa daftarnya berlanjut.
+
+Tidak dinaikkan lebih jauh karena pemilih ini duduk di tengah formulir; daftar yang
+lebih tinggi mulai menabrak tepi layar laptop dan dibalik posisinya oleh Reka UI,
+yang justru memindahkannya menjauh dari kotak yang barusan diklik.
+
+Diatur di `app.config.ts`, bukan lewat `:ui` di tiap USelectMenu — komponennya
+dipakai di empat tempat (event, penulis, editor, peserta), dan kelas yang sama
+disalin empat kali adalah cara yang kelima nanti terlewat. Diperiksa juga bahwa
+override slot **menimpa** `max-h-60` tanpa membuang kelas bawaan lain (`bg-default`,
+`ring` dsb. tetap ada) — tailwind-variants menggabungkan, bukan mengganti.
+
+Diuji dengan daftar yang benar-benar panjang: 15 akun uji dibuat sementara sehingga
+kandidatnya jadi 23.
+
+| Ukuran | Hasil |
+|---|---|
+| Total opsi | 23 |
+| Tinggi viewport / konten | 287px / 744px |
+| Terlihat penuh | **8** |
+| Bisa digulir | ya, jarak gulir 457px, sampai nama terakhir |
+
+Kelima belas akun uji beserta 15 baris `cc_log`-nya **sudah dihapus** — dihapus
+berdasarkan id yang dicatat saat pembuatan, bukan berdasarkan pola username, karena
+pola bisa saja cocok dengan akun yang bukan buatan pengujian ini. Kandidat penulis
+kembali ke 8.
+
+### Belum dikerjakan
+
+- [ ] Keputusan soal empat event tanpa gambar — lihat di atas.
+- [ ] `peringatan` masih bisa membekukan simpanan sampai isiannya diperbaiki. Itu
+      benar, tapi belum ada yang menawarkan jalan keluar cepat (mis. tombol
+      "samakan batas pendaftaran dengan tanggal mulai").
+
+---
+
+## 2026-08-20 — Sesi 27: Template bawaan diganti, dan kartu kedua yang diam-diam kehilangan `cover`
+
+### Template sampul: dari SVG buatan sendiri ke ilustrasi cat air
+
+Event yang pengelolanya tidak mengunggah gambar apa pun sekarang memakai ilustrasi
+cat air: gelombang hijau-krem, ranting zaitun di kanan, lambang CC kecil di
+kiri-atas. Masternya `assets/images/event-template.webp` (1678x937, quality 95),
+dan berkas yang dikirim ke browser dirender darinya — 1600x900, quality 76, **27
+KB**. Perintah sharp-nya ditulis lengkap di komentar `TEMPLATE_EVENT`
+(`utils/mediaHelper.ts`) supaya render berikutnya tidak jadi tebak-tebakan.
+
+`assets/images/event-template.svg` dihapus. Menyimpannya berarti menyimpan dua
+"sumber" untuk satu berkas keluaran, dan yang satu sudah tidak pernah dipakai —
+salinan seperti itu bukan cadangan, melainkan petunjuk yang salah bagi orang
+berikutnya yang ingin menyuntingnya.
+
+### Kartu kedua kehilangan `background-size: cover` — dan tidak ada yang error
+
+Gejalanya: pada kartu daftar event, template tampil sebagai **lambang raksasa di
+atas bidang krem**. Bukan gambar gagal muat, bukan gambar yang salah — gambar yang
+benar, digambar 1:1 dari pojok kiri-atasnya, sehingga yang terlihat cuma sudut
+kirinya saja.
+
+Penyebabnya bukan berkas gambarnya, melainkan satu baris CSS dari kartu beranda:
+
+```css
+.card:nth-child(2) .card-image { background: linear-gradient(...) }
+```
+
+Spesifisitasnya 0,3,0 — lebih tinggi dari `.event-card .card-image` yang 0,2,0.
+Dan karena itu properti **shorthand**, ia tidak sekadar mengganti gambarnya: ia
+mengembalikan `background-size` dan `background-position` ke nilai awal (`auto`,
+`0% 0%`). Jadi yang rusak selalu **kartu kedua** di halaman event, dan cuma kartu
+kedua — kebetulan itulah satu-satunya kartu yang jatuh ke template.
+
+Aturan kartu event diangkat jadi `.event-page .event-card .card-image` (0,3,0,
+menang lewat urutan sumber). Perang spesifisitas dengan aturan gradien yang sama
+sudah pernah ditambal untuk `.listening-image`/`.leadership-image` di Sesi 2; kali
+ini penyebabnya sama persis, hanya korbannya berbeda.
+
+### Bingkai 16:9: yang ditampilkan gambarnya, bukan pita tengahnya
+
+Sebelumnya kartu memaksa tinggi 176px (bingkai ~2,1:1) dan sampul halaman detail
+memaksa 290px (~1,4:1). Keduanya memotong gambar 16:9 dari dua arah yang berbeda —
+kartu membuang atas-bawah, detail membuang kiri-kanan. Sekarang keduanya
+`aspect-ratio: 16 / 9`, rasio yang sama dengan yang dikunci saat mengunggah sampul
+dan dengan template bawaan. Selama bingkai dan gambar serasio, `cover` tidak
+membuang apa pun: yang dilihat pembaca adalah gambarnya, utuh.
+
+Rangka pemuatannya ikut diubah (`SkeletonKartuEvent.vue`: `h-[176px]` →
+`aspect-[16/9]`). Rangka yang ukurannya meleset justru menghasilkan lompatan yang
+seharusnya dicegahnya — alasan yang sudah tertulis di komponen itu sendiri.
+
+### Peta sampul statis pindah ke satu tempat
+
+`SAMPUL` disalin di `pages/events/index.vue` dan `pages/events/[slug].vue`, dan
+salinannya **sudah berbeda**: hanya berkas detail yang punya
+`compassion-in-practice`. Akibatnya acara itu tampil dengan template di kartu dan
+dengan fotonya sendiri di halaman detail — persis "satu acara, dua wajah" yang
+ditakutkan komentar `TEMPLATE_EVENT`. Keduanya kini memanggil `sampulEvent(slug,
+cover)` dari `utils/mediaHelper.ts`.
+
+### Yang ketahuan tapi belum ditambal
+
+- Galeri di halaman detail menunjuk `/images/event-gallery-placeholder.png`,
+  sementara yang ada di `public/images/` hanya versi `.webp`. Permintaannya
+  dijawab 302 ke `/id/images/...` oleh i18n, lalu gagal. Nilainya datang dari
+  data, bukan dari kode.
+
+---
+
 ## 2026-08-19 — Sesi 26: Kartu yang hilang di balik catatan, dan lokasi yang berhenti opsional
 
 Empat permintaan dari catatan tinjauan. Tiga jadi perubahan, satu ternyata jawaban.
@@ -157,15 +687,12 @@ server — kelima string barunya ada di `/root/ccwebsite/.output`: "Perlu Dipros
 
 ### Belum dikerjakan
 
-- [ ] Jalan masuk untuk membatalkan / menutup event lebih awal — lihat di atas.
-      Kalau tidak akan pernah ada, pilihan "Dibatalkan" di penyaring daftar event
-      sebaiknya ikut dicabut supaya tidak menjanjikan pembedaan yang tidak bisa
-      dibuat siapa pun.
-- [ ] Kartu dashboard sekarang 9 pada kisi 4 kolom (4 + 4 + 1).
-- [ ] Smoke test `deploy/deploy.sh` — lihat di atas. Perbaikannya kecil (buang
-      `|| echo 000`, atau bandingkan dengan pola `2xx/3xx` alih-alih dengan `000`),
-      tapi selama belum diperbaiki, "Deploy selesai" tidak boleh dibaca sebagai
-      bukti bahwa aplikasinya benar-benar menjawab.
+- [x] ~~Jalan masuk untuk membatalkan / menutup event lebih awal.~~ **Selesai** —
+      tombol "Batalkan event" dua arah di halaman ubah (`ubahStatusEvent`).
+- [x] ~~Kartu dashboard sekarang 9 pada kisi 4 kolom (4 + 4 + 1).~~ **Selesai** —
+      dipecah jadi `kartuOperasional` (4) dan `kartuJurnal` (5), dua baris.
+- [x] ~~Smoke test `deploy/deploy.sh`.~~ **Selesai** — `|| echo 000` dibuang, dan
+      yang diterima sekarang hanya pola `2xx/3xx`.
 
 ### Task berikutnya: riwayat versi naskah
 

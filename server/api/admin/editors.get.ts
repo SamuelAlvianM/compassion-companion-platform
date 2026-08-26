@@ -1,14 +1,15 @@
 // server/api/admin/editors.get.ts
-// Daftar orang yang bisa ditugaskan mengurus sebuah jurnal: editor ke atas.
+// Daftar orang yang bisa ditugaskan memeriksa sebuah jurnal: HANYA yang berperan
+// editor.
 //
 // Endpoint kecil sendiri, bukan menumpang /api/users: yang dibutuhkan pemilih di
 // halaman jurnal cuma id + nama, sementara daftar member membawa email, nomor
 // WhatsApp, dan hitungan kegiatan tiap orang — data pribadi yang tidak ada
 // urusannya dengan memilih editor.
 
-import { asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '../../db'
-import { ccUser, ROLE_LEVELS, USER_ROLES } from '../../db/schema'
+import { ccUser } from '../../db/schema'
 import { wajibRole } from '../../utils/session'
 
 export default defineEventHandler(async (event) => {
@@ -17,20 +18,20 @@ export default defineEventHandler(async (event) => {
   // admin adalah menugaskan, bukan melihat.
   await wajibRole(event, 'editor')
 
-  // Yang levelnya <= 3: master, admin, editor. Admin ikut karena pada praktiknya
-  // ia juga mengerjakan review saat editor sedang tidak ada.
-  const peran = USER_ROLES.filter(r => ROLE_LEVELS[r] <= 3)
-
+  // Sebelumnya daftar ini berisi level <= 3 — master, admin, dan editor — dengan
+  // alasan admin kadang ikut memeriksa saat editor tidak ada. Praktiknya kotak
+  // "Pilih editor" jadi berisi nama-nama yang bukan editor, termasuk admin yang
+  // sedang menulis jurnal itu sendiri, sehingga sebuah tulisan bisa ditugaskan
+  // kepada penulisnya sendiri. Menugaskan pemeriksaan adalah menyerahkannya ke
+  // orang lain; yang ditawarkan karena itu hanya mereka yang perannya memang
+  // memeriksa.
   const rows = await db
     .select({ id: ccUser.id, nama: ccUser.fullName, role: ccUser.role })
     .from(ccUser)
-    .where(inArray(ccUser.role, peran))
+    // Akun nonaktif tidak ikut: menugaskan kepada akun yang tidak bisa masuk
+    // sama saja dengan tidak menugaskan siapa-siapa.
+    .where(and(eq(ccUser.role, 'editor'), eq(ccUser.isActive, true)))
     .orderBy(asc(ccUser.fullName))
 
-  // Akun nonaktif disaring di JS, bukan di WHERE, supaya satu query cukup dan
-  // syaratnya terbaca berdampingan dengan alasannya.
-  const aktif = await db.select({ id: ccUser.id }).from(ccUser).where(eq(ccUser.isActive, true))
-  const idAktif = new Set(aktif.map(a => a.id))
-
-  return { data: rows.filter(r => idAktif.has(r.id)) }
+  return { data: rows }
 })

@@ -135,18 +135,9 @@ const eyebrow = computed(() => {
 const testimoni = computed(() => e.value?.testimoni ?? [])
 
 /** Sampul: dari DB bila ada, kalau tidak gambar statis milik event itu, dan kalau
-    keduanya tidak ada — template. Pola yang sama dipakai pages/events.vue supaya
-    kartu dan halaman detail tidak pernah menampilkan gambar yang berbeda.
-
-    Ketiga slug di bawah lahir sebelum ada unggahan sampul; gambarnya benar-benar
-    milik acara itu, jadi ia tetap didahulukan atas template yang generik. */
-const SAMPUL: Record<string, string> = {
-  'listening-as-leadership': '/images/listening-as-leadership.webp',
-  'leadership-with-compassion': '/images/leadership-with-compassion.webp',
-  'compassion-in-practice': '/images/listening-as-leadership.webp',
-}
-const sampul = computed(() =>
-  e.value?.cover || SAMPUL[e.value?.slug ?? ''] || TEMPLATE_EVENT)
+    keduanya tidak ada — template. Aturannya tinggal di utils/mediaHelper.ts, satu
+    tempat untuk kartu daftar dan halaman ini. */
+const sampul = computed(() => sampulEvent(e.value?.slug, e.value?.cover))
 
 // Label pendaftaran (biaya, kuota, keadaan tombol) tinggal di EventRegisterPanel
 // bersama markup-nya, dan label testimoni di EventTestimoni — supaya tidak ada dua

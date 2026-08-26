@@ -37,6 +37,39 @@ export const formatFileSize = (bytes?: number | null) => {
  *
  * Berkasnya 1600x900, rasio yang sama dengan yang dikunci saat mengunggah, jadi
  * event yang bergambar dan yang tidak menempati bingkai yang persis sama.
- * Sumbernya di assets/images/event-template.svg — sunting di sana lalu render ulang.
+ *
+ * Sumbernya sekarang raster, bukan SVG: assets/images/event-template.webp
+ * (1678x937, quality 95 — ilustrasi cat air dengan lambang di kiri-atas). Berkas
+ * di public/ dirender ulang darinya dengan sharp:
+ *
+ *   sharp('assets/images/event-template.webp')
+ *     .resize(1600, 900, { fit: 'cover', position: 'center' })
+ *     .webp({ quality: 76, effort: 6 })
+ *     .toFile('public/images/event-template.webp')   // ~27 KB
+ *
+ * Rasio 16:9-nya bukan hiasan: bingkai kartu daftar event dan sampul halaman
+ * detail sama-sama 16:9 (main.css `.event-page .event-card .card-image` dan
+ * `.event-overview>img`), jadi `cover` tidak membuang apa pun — lambang di
+ * kiri-atas dan ranting di kanan ikut terbaca di kartu, bukan cuma di detail.
  */
 export const TEMPLATE_EVENT = '/images/event-template.webp'
+
+/**
+ * Sampul statis untuk event yang lahir sebelum ada unggahan gambar. Gambarnya
+ * benar-benar milik acara itu, jadi tetap didahulukan atas template yang generik.
+ *
+ * Peta ini dan `sampulEvent()` di bawahnya duduk di satu berkas karena alasan yang
+ * sama dengan TEMPLATE_EVENT: sebelum ini petanya disalin di pages/events/index.vue
+ * dan pages/events/[slug].vue, dan salinannya sudah sempat berbeda — hanya berkas
+ * detail yang punya `compassion-in-practice`, sehingga acara itu tampil dengan
+ * template di kartu dan dengan foto di halaman detailnya.
+ */
+const SAMPUL_STATIS: Record<string, string> = {
+  'listening-as-leadership': '/images/listening-as-leadership.webp',
+  'leadership-with-compassion': '/images/leadership-with-compassion.webp',
+  'compassion-in-practice': '/images/listening-as-leadership.webp',
+}
+
+/** Sampul event: unggahan dari DB, lalu gambar statis milik event itu, lalu template. */
+export const sampulEvent = (slug?: string | null, cover?: string | null) =>
+  cover || SAMPUL_STATIS[slug ?? ''] || TEMPLATE_EVENT

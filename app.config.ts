@@ -49,5 +49,36 @@ export default defineAppConfig({
         title: 'font-serif text-2xl font-normal text-cc-green-800',
       },
     },
+
+    /**
+     * Tinggi daftar pilihan pada USelectMenu.
+     *
+     * Bawaan Nuxt UI mengunci `content` di `max-h-60` (240px). Kotak carinya duduk
+     * DI LUAR area yang menggulir, jadi yang tersisa untuk daftarnya cuma 207px —
+     * dan dengan baris setinggi 32px itu berarti **enam nama** yang terlihat.
+     *
+     * Enam terlalu sedikit untuk pemilih penulis dan peserta, yang daftarnya
+     * seluruh akun aktif dan hanya akan bertambah panjang. Daftar yang memotong
+     * dirinya pada nama keenam membuat orang mengira itulah seluruh isinya —
+     * gulirannya ada, tapi tidak ada yang memberi tahu bahwa masih ada sisanya.
+     *
+     * `max-h-80` (320px) menyisakan 287px, yaitu **delapan** nama penuh dan
+     * potongan yang kesembilan. Potongan itu disengaja: baris yang terpenggal di
+     * tepi bawah adalah satu-satunya isyarat bahwa daftarnya masih berlanjut.
+     *
+     * Tidak dinaikkan lebih jauh karena pemilih ini duduk di tengah formulir;
+     * daftar yang lebih tinggi dari itu mulai menabrak tepi layar laptop dan
+     * dibalik posisinya oleh Reka UI, yang justru memindahkannya menjauh dari
+     * kotak yang barusan diklik.
+     *
+     * Diatur di sini, bukan lewat `:ui` di tiap USelectMenu: komponennya dipakai di
+     * empat tempat (event, penulis, editor, peserta), dan kelas yang sama disalin
+     * empat kali adalah cara yang kelima nanti terlewat.
+     */
+    selectMenu: {
+      slots: {
+        content: 'max-h-80',
+      },
+    },
   },
 })

@@ -236,6 +236,45 @@ const resetFilter = () => {
   urutan.value = "terbaru";
 };
 
+/**
+ * Penyaring di layar sempit tinggal di BILAH BAWAH, bukan di atas daftar.
+ *
+ * Ditaruh di atas, ia memakan sekitar sepertiga layar pertama: chip, kotak cari,
+ * dan kotak urutan berdiri di antara judul halaman dan kartu event pertama —
+ * sehingga yang dilihat orang saat halaman terbuka adalah alat untuk menyaring,
+ * bukan hal yang mau disaringnya. Di bawah, layar pertama langsung berisi
+ * eventnya, dan penyaringnya justru lebih dekat ke jempol.
+ *
+ * Polanya sama dengan bilah alamat Safari dan Chrome ponsel sekarang: satu bilah
+ * tipis yang menempel di bawah, dan yang lebih rinci terbuka sebagai lembar.
+ *
+ * Hanya `sm` ke bawah. Di layar lebar barisnya kembali ke atas daftar, tempat ia
+ * tidak menutupi apa pun dan tetikus tidak punya "jempol" yang perlu didekati.
+ */
+const lembarFilter = ref(false);
+/**
+ * Menandai <body> selama halaman ini terbuka, supaya CSS bisa memberi ruang di
+ * UJUNG halaman untuk bilah penyaring yang `fixed`.
+ *
+ * Ruang itu tidak bisa lagi berupa elemen kosong di dalam <main>: footer berdiri
+ * SESUDAH <main>, dan bilah yang melayang menutupi baris terakhirnya. Nuxt melepas
+ * kelas ini sendiri saat berpindah halaman, jadi halaman lain tidak ikut berpadding.
+ */
+useHead({ bodyAttrs: { class: 'ada-filter-bar' } })
+
+
+/** Label fase yang sedang aktif, untuk dibaca di bilah bawah tanpa membukanya. */
+const labelFaseAktif = computed(
+  () => FASE_TAB.value.find(f => f.key === fase.value)?.label ?? "",
+);
+
+/** Berapa penyaring yang sedang menyala — digambar sebagai angka kecil di tombol
+    filter, supaya keadaan tersaring terbaca tanpa membuka lembarnya. */
+const jumlahFilterAktif = computed(
+  () =>
+    (fase.value !== "semua" ? 1 : 0) + (urutan.value !== "terbaru" ? 1 : 0),
+);
+
 // ── Tampilan ─────────────────────────────────────────────────────────────────
 // Semua badge dibuat `solid` karena kini duduk di atas gambar sampul — varian
 // `subtle` yang transparan jadi tidak terbaca di sana.
@@ -272,13 +311,11 @@ const badge = (f: string) =>
     label: f,
   };
 
-/** Sampul: dari DB bila ada, kalau tidak jatuh ke gambar statis milik event itu. */
-const SAMPUL: Record<string, string> = {
-  "listening-as-leadership": "/images/listening-as-leadership.webp",
-  "leadership-with-compassion": "/images/leadership-with-compassion.webp",
-};
+/** Sampul: dari DB bila ada, kalau tidak gambar statis milik event itu, kalau tidak
+    template. Aturannya tinggal di utils/mediaHelper.ts supaya kartu di sini dan
+    halaman detail tidak pernah menampilkan gambar yang berbeda. */
 const sampul = (e: { slug: string; cover?: string | null }) =>
-  e.cover || SAMPUL[e.slug] || TEMPLATE_EVENT;
+  sampulEvent(e.slug, e.cover);
 
 // Tanggal disimpan sebagai timestamp UTC; tampilkan dalam WIB supaya tidak
 // bergeser sehari bagi pembaca di Indonesia.
@@ -389,27 +426,79 @@ const t = computed(() =>
                kartu — jadi warnanya ikut jadi penanda, bukan hiasan.
            `justify-between` baru berlaku saat muat; pada layar sempit keduanya
            menumpuk dan masing-masing memakai lebar penuh. -->
+      <!-- Baris penyaring atas: `sm` ke atas saja. Di ponsel ia pindah ke bilah
+           bawah — lihat blok di bawah daftar. -->
       <div
-        class="event-filter mb-7 flex flex-wrap items-center justify-between gap-3"
+        class="event-filter mb-7 hidden flex-wrap items-center justify-between gap-3 sm:flex"
       >
-        <div class="flex min-w-0 items-center gap-1">
+        <!-- `w-full` di layar sempit supaya kisi chipnya berakhir di tepi yang sama
+             dengan kotak cari di bawahnya.
+
+             Reset dicabut sama sekali di bawah `sm` (lihat tombolnya di bawah), jadi
+             tidak ada lagi yang perlu dilipat ke baris kedua di sini. Di layar sempit
+             ia memang tidak punya tempat yang enak: `invisible` menyisakan lubang
+             75px, sementara `hidden` yang muncul-hilang menggeser kisinya tiap kali
+             filter menyala. Yang hilang bukan kemampuannya — menekan "Semua" dan
+             mengosongkan kotak cari melakukan hal yang sama. -->
+        <div class="flex w-full min-w-0 items-center gap-1 sm:w-auto">
           <!-- `role=group` + labelnya: empat tombol berjajar tanpa itu terbaca satu
                per satu oleh pembaca layar, tanpa keterangan bahwa keempatnya satu
                pilihan yang sama. -->
+          <!-- Di layar sempit keempatnya jadi kisi 2x2, bukan barisan yang
+               melipat. `flex-wrap` di dalam wadah `rounded-full` membuat wadahnya
+               ikut memanjang ke bawah, dan yang tergambar bukan deretan chip
+               melainkan satu gumpalan bulat besar setinggi empat baris dengan chip
+               menempel di kirinya.
+
+               Kisi dipilih, bukan gulir horizontal: keempat labelnya berjumlah
+               sekitar 390px, cukup lewat sedikit dari lebar layar 375px — jadi
+               menggulirnya cuma menyembunyikan satu pilihan tanpa menghemat apa
+               pun, sementara kisi memperlihatkan semuanya sekaligus.
+
+               UKURANNYA DIKUNCI SATU SAMA LAIN, dan itu yang membuat versi
+               sebelumnya terlihat asal:
+
+               · `gap-1` = `p-1`. Jarak antar-chip sama dengan jarak chip ke tepi
+                 wadahnya, jadi "nat" di antara keempatnya selebar bingkai yang
+                 mengelilinginya — bukan dua ukuran berbeda yang kebetulan
+                 berdekatan.
+               · radius KONSENTRIS: wadah `rounded-2xl` (16px), padding 4px, jadi
+                 chipnya `rounded-xl` (12px) = 16 − 4. Sebelumnya chipnya
+                 `rounded-full`, dan pil di dalam kotak bersudut tumpul tidak pernah
+                 sejajar di pojok — lengkung chip memotong lengkung wadahnya, dan
+                 selisih itu persis yang terbaca sebagai "tidak sinkron".
+
+               Dari `sm` ke atas keduanya kembali ke bentuk pil berjajar, tempat
+               `rounded-full` justru yang benar karena chipnya tidak lagi menempati
+               pojok wadah. -->
           <div
             role="group"
             :aria-label="t.filterKategori"
-            class="flex flex-wrap items-center gap-1.5 rounded-full bg-cc-stone-100 p-1"
+            class="grid w-full grid-cols-2 gap-1 rounded-2xl bg-cc-stone-100 p-1 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1.5 sm:rounded-full"
           >
+            <!-- Yang TIDAK aktif pun punya bidangnya sendiri di layar sempit
+                 (`bg-white`). Sebelumnya hanya chip aktif yang berlatar dan tiga
+                 sisanya mengambang sebagai teks di atas beige — sebuah kisi 2x2
+                 yang isinya satu kotak dan tiga label, bukan empat pilihan setara.
+                 Dengan ubin, keempatnya terbaca sebagai satu kendali bersegmen, dan
+                 yang aktif menonjol karena WARNANYA — bukan karena cuma dia yang
+                 punya bentuk.
+
+                 Di `sm` ke atas dikembalikan transparan: di sana bentuknya deretan
+                 pil, dan empat pil putih berderet justru menghapus kesan satu
+                 kelompok yang dibingkai bersama.
+
+                 Lencana angkanya ikut bertukar (`bg-cc-stone-100` di bawah `sm`):
+                 lencana putih di atas ubin putih hilang sama sekali. -->
             <button
               v-for="f in FASE_TAB"
               :key="f.key"
               type="button"
-              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
+              class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors sm:w-auto sm:rounded-full sm:py-1.5"
               :class="
                 fase === f.key
                   ? warnaChip[f.warna]
-                  : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'
+                  : 'bg-white text-cc-stone-600 hover:text-cc-green-800 sm:bg-transparent sm:hover:bg-white'
               "
               :aria-pressed="fase === f.key"
               @click="fase = f.key"
@@ -421,7 +510,9 @@ const t = computed(() =>
               <span
                 class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
                 :class="
-                  fase === f.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'
+                  fase === f.key
+                    ? 'bg-white/25'
+                    : 'bg-cc-stone-100 text-cc-stone-500 sm:bg-white'
                 "
               >
                 {{ hitungFase[f.key] ?? 0 }}
@@ -451,7 +542,7 @@ const t = computed(() =>
             variant="ghost"
             icon="i-lucide-rotate-ccw"
             :class="adaFilter ? '' : 'invisible pointer-events-none'"
-            :ui="{ base: 'event-reset shrink-0 rounded-full px-2' }"
+            :ui="{ base: 'event-reset hidden shrink-0 rounded-full px-2 sm:inline-flex' }"
             @click="resetFilter"
           >
             {{ t.reset }}
@@ -476,8 +567,13 @@ const t = computed(() =>
                menganga. Batasnya (`lg:max-w-96`) hanya berlaku di layar lebar,
                tempat ia justru kelewat panjang; di bawah itu ia tetap bebas
                memanjang. -->
+        <!-- `flex-nowrap` hanya dari `sm` ke atas. Di bawah itu ia menahan kotak
+             cari dan kotak urutan tetap sebaris pada layar 375px: urutan lebarnya
+             mati 160px, jadi yang tersisa untuk kotak cari cuma sekitar 175px —
+             cukup untuk memotong "Cari event" jadi "Cari ever". Ditumpuk, keduanya
+             dapat lebar penuh. -->
         <div
-          class="flex min-w-0 flex-1 basis-80 flex-nowrap items-center justify-end gap-2"
+          class="flex min-w-0 flex-1 basis-80 flex-wrap items-center justify-end gap-2 sm:flex-nowrap"
         >
           <UInput
             v-model="cari"
@@ -485,7 +581,19 @@ const t = computed(() =>
             :placeholder="t.filterCari"
             class="min-w-0 flex-1 lg:max-w-96"
             :ui="{ base: 'rounded-full' }"
-          />
+          >
+            <template v-if="cari" #trailing>
+              <UButton
+                color="secondary"
+                variant="link"
+                size="sm"
+                icon="i-lucide-x"
+                class="text-cc-brown-500 hover:text-cc-brown-600"
+                :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+                @click="cari = ''"
+              />
+            </template>
+          </UInput>
 
           <USelect
             v-model="urutan"
@@ -493,7 +601,7 @@ const t = computed(() =>
             value-key="value"
             :icon="ikonUrutan"
             :aria-label="t.filterUrutan"
-            class="w-40 shrink-0"
+            class="w-full shrink-0 sm:w-40"
             :ui="{ base: 'rounded-full' }"
           />
         </div>
@@ -513,7 +621,9 @@ const t = computed(() =>
       />
 
       <!-- Kartu memakai .card/.card-image/.card-body dari main.css seperti semula:
-           sampul menempel penuh ke tepi kartu dan tingginya tetap 176px. UCard
+           sampul menempel penuh ke tepi kartu. Bingkainya 16:9 (lihat main.css
+           `.event-page .event-card .card-image`), rasio yang sama dengan sampul
+           unggahan dan template bawaan, jadi gambarnya tampil utuh tanpa terpotong. UCard
            membungkus isinya dengan padding sendiri, sehingga sampul jadi terbingkai
            dan kartunya memanjang. -->
       <div v-else class="cards">
@@ -611,5 +721,128 @@ const t = computed(() =>
         </UButton>
       </div>
     </div>
+
+    <!-- ── Bilah penyaring bawah (ponsel) ───────────────────────────────────────
+         Kotak cari langsung bisa diketik di bilahnya — itu yang paling sering
+         dipakai, dan menyembunyikannya di balik satu ketukan cuma menambah langkah.
+         Fase dan urutan pindah ke lembar, karena keduanya berupa pilihan yang butuh
+         ruang untuk dibaca.
+
+         `sticky bottom-0`, bukan `fixed`: ia ikut arus halaman, jadi tidak menutupi
+         apa pun saat papan ketik terbuka dan tidak perlu menghitung ulang tinggi
+         layar yang berubah-ubah di ponsel. -->
+    <div class="filter-bar fixed inset-x-0 bottom-0 z-40 px-4 py-2.5 sm:hidden">
+      <div class="flex items-center gap-2">
+        <UInput
+          v-model="cari"
+          icon="i-lucide-search"
+          :placeholder="t.filterCari"
+          class="min-w-0 flex-1"
+          :ui="{ base: 'rounded-full' }"
+        >
+          <!-- Tombol kosongkan ditulis sendiri, bukan mengandalkan `type="search"`.
+               Silang bawaan peramban digambar WebKit dengan warnanya sendiri (biru
+               sistem), tidak bisa diwarnai, dan tidak muncul sama sekali di sebagian
+               peramban lain — jadi tombolnya ada atau tidak tergantung yang membuka,
+               bukan tergantung rancangan. -->
+          <template v-if="cari" #trailing>
+            <UButton
+              color="secondary"
+              variant="link"
+              size="sm"
+              icon="i-lucide-x"
+              class="text-cc-brown-500 hover:text-cc-brown-600"
+              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+              @click="cari = ''"
+            />
+          </template>
+        </UInput>
+
+        <!-- Angka kecil di tombolnya memberi tahu ada penyaring yang menyala tanpa
+             perlu membuka lembarnya — tanpa itu, daftar yang tersaring terlihat
+             sama saja dengan daftar yang pendek. -->
+        <UButton
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-sliders-horizontal"
+          size="lg"
+          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
+          :aria-label="t.filterKategori"
+          @click="lembarFilter = true"
+        >
+          <span
+            v-if="jumlahFilterAktif"
+            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+          >
+            {{ jumlahFilterAktif }}
+          </span>
+        </UButton>
+      </div>
+
+      <!-- Baris ringkasan dicabut: bilahnya jadi dua tingkat dan terasa tinggi untuk
+           sesuatu yang menempel permanen di bawah layar. Keadaan tersaring tetap
+           terbaca dari angka kecil pada tombol filter, dan jumlah hasilnya sudah
+           tertulis di atas daftar. -->
+
+    </div>
+
+    <!-- Lembar penyaring. Dari bawah, sejajar dengan bilah yang membukanya.
+
+         TANPA tombol "terapkan". Pilihannya berlaku seketika dan lembarnya menutup
+         sendiri — baik saat sebuah fase ditekan maupun saat urutan diganti. Tombol
+         terapkan hanya masuk akal kalau sebuah lembar mengumpulkan beberapa isian
+         yang baru berarti bersama-sama; di sini tiap pilihan berdiri sendiri dan
+         hasilnya langsung terlihat di daftar yang ada di belakangnya, jadi tombol
+         itu cuma satu ketukan tambahan untuk sesuatu yang sudah terjadi. -->
+    <USlideover
+      v-model:open="lembarFilter"
+      side="bottom"
+      :title="isEn ? 'Filter & sort' : 'Saring & urutkan'"
+    >
+      <template #body>
+        <div
+          role="group"
+          :aria-label="t.filterKategori"
+          class="grid grid-cols-2 gap-2"
+        >
+          <button
+            v-for="f in FASE_TAB"
+            :key="f.key"
+            type="button"
+            class="flex items-center justify-between gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors"
+            :class="
+              fase === f.key
+                ? 'border-cc-green-800 bg-cc-green-800 text-white'
+                : 'border-cc-stone-200 bg-white text-cc-stone-600'
+            "
+            :aria-pressed="fase === f.key"
+            @click="fase = f.key; lembarFilter = false"
+          >
+            {{ f.label }}
+            <span
+              class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
+              :class="fase === f.key ? 'bg-white/25' : 'bg-cc-stone-100 text-cc-stone-500'"
+            >
+              {{ hitungFase[f.key] ?? 0 }}
+            </span>
+          </button>
+        </div>
+
+        <div class="mt-4">
+          <p class="mb-1.5 text-xs font-semibold text-cc-stone-500">
+            {{ t.filterUrutan }}
+          </p>
+          <USelect
+            v-model="urutan"
+            :items="urutanOptions"
+            value-key="value"
+            :icon="ikonUrutan"
+            :aria-label="t.filterUrutan"
+            class="w-full"
+            @update:model-value="lembarFilter = false"
+          />
+        </div>
+      </template>
+    </USlideover>
   </main>
 </template>
