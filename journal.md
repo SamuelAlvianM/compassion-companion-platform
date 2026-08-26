@@ -5,6 +5,96 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 31: Penyaring pindah ke bawah navbar, dan ruang ponsel dirapatkan
+
+### Diukur dulu, baru diubah
+
+Keluhannya: "di mobile tampilan judulnya aja udah makan setengah". Diukur di
+375x812 pada halaman event, sebelum menyentuh apa pun:
+
+| Bagian | Tinggi |
+|---|---|
+| Header | 85px |
+| Padding atas hero | 40px |
+| Kepala halaman (eyebrow + h1 + pengantar) | 153px |
+| **Kartu event pertama mulai di** | **piksel ke-384** |
+
+384 dari 812 — **47% layar pertama** habis sebelum satu pun isinya terlihat.
+Keluhannya bukan perasaan; itu angka.
+
+### Bilah penyaring pindah dari kaki layar ke bawah navbar
+
+Di Sesi 29 ia `fixed bottom-0`, mengikuti pola bilah alamat peramban ponsel. Enak
+dijangkau jempol, tapi dua hal menggantung: ia selalu menutupi baris terakhir apa
+pun yang sedang dibaca, dan footer harus diberi padding tambahan supaya isinya
+tidak tertutup — tambalan yang sendirinya sudah dua kali salah tempat.
+
+Sekarang `sticky` tepat di bawah navbar. Ia ikut mengalir bersama halaman dan tidak
+menutupi apa pun; padding footer tambahan dicabut seluruhnya.
+
+Jarak berhentinya dibaca dari `--tinggi-header`, variabel yang dipakai bersama oleh
+header dan bilahnya. Satu angka, satu tempat — kalau tinggi header berubah, jarak
+berhenti bilahnya ikut tanpa ada angka kedua yang harus diingat.
+
+`margin-inline` negatif menembus padding `.container` supaya bilahnya selebar layar
+seperti navbar di atasnya. Kotak yang menyisakan celah kiri-kanan tidak terbaca
+sebagai satu kesatuan dengan header — ia terbaca sebagai kartu yang kebetulan
+lengket.
+
+### Ruang dirapatkan, menyeluruh
+
+Satu blok di **akhir** main.css. Ditaruh di akhir dengan sengaja: sebagian aturan
+yang ditimpa di sini didefinisikan jauh di bawah blok media 760px yang sudah ada
+(`.journal-hero` di baris ~1290), dan media query tidak menambah spesifisitas.
+Kesalahan itu sudah berulang beberapa kali di berkas ini; menaruhnya di akhir
+menutup seluruh kelasnya sekaligus.
+
+| Yang diubah | Dari | Jadi |
+|---|---|---|
+| Header (padding, brand, lingkaran CC) | 85px | **63px** |
+| Selokan `.container` | 44px | 32px |
+| `.event-page` padding | 74/80 | 20/48 |
+| `.event-page h1` | 45px | 30px |
+| `.journal-hero` padding | 40/40 | 18/16 |
+| `.section` | 84px | 40px |
+| `.section-title` | 40px | 28px |
+| `.hero` min-height | 620px | 460px |
+| `.admin-main` padding | 22/16 | 16/14 |
+| Judul halaman admin | 36–48px | 26px |
+
+Judul admin dijadikan **satu aturan CSS**, bukan delapan suntingan
+`sm:text-4xl` di delapan berkas. `.admin-main h1` menang atas utility Tailwind
+karena aturan tanpa layer memang mengalahkan yang ber-layer — dan yang penting,
+halaman admin berikutnya ikut benar tanpa ada yang perlu mengingat apa pun. Dua
+halaman ternyata bahkan memakai `text-5xl` (48px); keduanya ikut tertimpa.
+
+### Hasil
+
+| Halaman (375x812) | Isi pertama | Sebelumnya |
+|---|---|---|
+| `/id/events` | 323px (**40%**) | 384px (47%) |
+| `/id/jurnal` | 364px (45%) | — |
+| Elemen meluap | **0** | — |
+| Lebar bilah | 375px (penuh) | — |
+
+Desktop 1280px diperiksa ulang dan **tidak berubah sama sekali**: header 85px,
+brand 21px, lingkaran 38px, container 1160px, h1 58px, `.event-page` 40/80,
+`.journal-hero` 40, bilah `none`, baris penyaring atas tampil, menu desktop tampil
+dan burger hilang.
+
+`npm run typecheck` bersih.
+
+### Belum dikerjakan
+
+- [ ] Halaman admin belum bisa diukur langsung di sesi ini — cookie sesi tidak bisa
+      dipasang di pane peramban, jadi yang diverifikasi baru bahwa selektornya
+      (`.admin-main h1`, `.admin-main`) memang mengenai elemen yang benar di HTML
+      keempat halaman admin. Angkanya sendiri belum dilihat di layar.
+- [ ] Tabel di tab "Daftar peserta" masih menggeser ke samping di ponsel (dari
+      Sesi 30).
+
+---
+
 ## 2026-08-26 — Sesi 30: Gambar wajib dicabut lagi, tanggal yang membuntu, dan chip peserta
 
 ### "Event mendatang tidak bisa disimpan" — dan jawabannya bukan yang saya duga

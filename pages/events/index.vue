@@ -252,15 +252,6 @@ const resetFilter = () => {
  * tidak menutupi apa pun dan tetikus tidak punya "jempol" yang perlu didekati.
  */
 const lembarFilter = ref(false);
-/**
- * Menandai <body> selama halaman ini terbuka, supaya CSS bisa memberi ruang di
- * UJUNG halaman untuk bilah penyaring yang `fixed`.
- *
- * Ruang itu tidak bisa lagi berupa elemen kosong di dalam <main>: footer berdiri
- * SESUDAH <main>, dan bilah yang melayang menutupi baris terakhirnya. Nuxt melepas
- * kelas ini sendiri saat berpindah halaman, jadi halaman lain tidak ikut berpadding.
- */
-useHead({ bodyAttrs: { class: 'ada-filter-bar' } })
 
 
 /** Label fase yang sedang aktif, untuk dibaca di bilah bawah tanpa membukanya. */
@@ -415,6 +406,77 @@ const t = computed(() =>
         <h1>{{ t.judul }}</h1>
         <p>{{ t.intro }}</p>
       </div>
+
+      <!-- ── Bilah penyaring (ponsel) ──────────────────────────────────
+           Menempel tepat DI BAWAH navbar, bukan melayang di kaki layar.
+
+           Versi sebelumnya `fixed bottom-0`: enak dijangkau jempol, tapi ia selalu
+           menutupi baris terakhir apa pun yang sedang dibaca, dan menuntut footer
+           diberi padding tambahan supaya isinya tidak tertutup. Di bawah navbar ia
+           ikut mengalir bersama halaman dan tidak menutupi apa pun.
+
+           `sticky` dengan `top` sebesar tinggi header, jadi begitu digulir ia
+           berhenti persis menempel di bawahnya. Nilainya dibaca dari
+           `--tinggi-header`, yang didefinisikan bersama headernya sendiri di
+           main.css — satu angka, satu tempat.
+
+           Lebarnya menembus padding `.container` lewat `.filter-bar` di main.css,
+           supaya ia selebar layar seperti navbar di atasnya; kotak yang menyisakan
+           celah kiri-kanan tidak terbaca sebagai satu kesatuan dengan header. -->
+      <div class="filter-bar sticky z-30 mb-3 px-4 py-2 sm:hidden">
+      <div class="flex items-center gap-2">
+        <UInput
+          v-model="cari"
+          icon="i-lucide-search"
+          :placeholder="t.filterCari"
+          class="min-w-0 flex-1"
+          :ui="{ base: 'rounded-full' }"
+        >
+          <!-- Tombol kosongkan ditulis sendiri, bukan mengandalkan `type="search"`.
+               Silang bawaan peramban digambar WebKit dengan warnanya sendiri (biru
+               sistem), tidak bisa diwarnai, dan tidak muncul sama sekali di sebagian
+               peramban lain — jadi tombolnya ada atau tidak tergantung yang membuka,
+               bukan tergantung rancangan. -->
+          <template v-if="cari" #trailing>
+            <UButton
+              color="secondary"
+              variant="link"
+              size="sm"
+              icon="i-lucide-x"
+              class="text-cc-brown-500 hover:text-cc-brown-600"
+              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+              @click="cari = ''"
+            />
+          </template>
+        </UInput>
+
+        <!-- Angka kecil di tombolnya memberi tahu ada penyaring yang menyala tanpa
+             perlu membuka lembarnya — tanpa itu, daftar yang tersaring terlihat
+             sama saja dengan daftar yang pendek. -->
+        <UButton
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-sliders-horizontal"
+          size="lg"
+          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
+          :aria-label="t.filterKategori"
+          @click="lembarFilter = true"
+        >
+          <span
+            v-if="jumlahFilterAktif"
+            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+          >
+            {{ jumlahFilterAktif }}
+          </span>
+        </UButton>
+      </div>
+
+      <!-- Baris ringkasan dicabut: bilahnya jadi dua tingkat dan terasa tinggi untuk
+           sesuatu yang menempel permanen di bawah layar. Keadaan tersaring tetap
+           terbaca dari angka kecil pada tombol filter, dan jumlah hasilnya sudah
+           tertulis di atas daftar. -->
+
+    </div>
 
       <!-- Filter: chip kategori (+ tombol reset) di kiri, cari + urutan di kanan.
            Bentuk chipnya mengikuti penyaring status di dashboard:
@@ -722,69 +784,6 @@ const t = computed(() =>
       </div>
     </div>
 
-    <!-- ── Bilah penyaring bawah (ponsel) ───────────────────────────────────────
-         Kotak cari langsung bisa diketik di bilahnya — itu yang paling sering
-         dipakai, dan menyembunyikannya di balik satu ketukan cuma menambah langkah.
-         Fase dan urutan pindah ke lembar, karena keduanya berupa pilihan yang butuh
-         ruang untuk dibaca.
-
-         `sticky bottom-0`, bukan `fixed`: ia ikut arus halaman, jadi tidak menutupi
-         apa pun saat papan ketik terbuka dan tidak perlu menghitung ulang tinggi
-         layar yang berubah-ubah di ponsel. -->
-    <div class="filter-bar fixed inset-x-0 bottom-0 z-40 px-4 py-2.5 sm:hidden">
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="cari"
-          icon="i-lucide-search"
-          :placeholder="t.filterCari"
-          class="min-w-0 flex-1"
-          :ui="{ base: 'rounded-full' }"
-        >
-          <!-- Tombol kosongkan ditulis sendiri, bukan mengandalkan `type="search"`.
-               Silang bawaan peramban digambar WebKit dengan warnanya sendiri (biru
-               sistem), tidak bisa diwarnai, dan tidak muncul sama sekali di sebagian
-               peramban lain — jadi tombolnya ada atau tidak tergantung yang membuka,
-               bukan tergantung rancangan. -->
-          <template v-if="cari" #trailing>
-            <UButton
-              color="secondary"
-              variant="link"
-              size="sm"
-              icon="i-lucide-x"
-              class="text-cc-brown-500 hover:text-cc-brown-600"
-              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
-              @click="cari = ''"
-            />
-          </template>
-        </UInput>
-
-        <!-- Angka kecil di tombolnya memberi tahu ada penyaring yang menyala tanpa
-             perlu membuka lembarnya — tanpa itu, daftar yang tersaring terlihat
-             sama saja dengan daftar yang pendek. -->
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-sliders-horizontal"
-          size="lg"
-          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
-          :aria-label="t.filterKategori"
-          @click="lembarFilter = true"
-        >
-          <span
-            v-if="jumlahFilterAktif"
-            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
-          >
-            {{ jumlahFilterAktif }}
-          </span>
-        </UButton>
-      </div>
-
-      <!-- Baris ringkasan dicabut: bilahnya jadi dua tingkat dan terasa tinggi untuk
-           sesuatu yang menempel permanen di bawah layar. Keadaan tersaring tetap
-           terbaca dari angka kecil pada tombol filter, dan jumlah hasilnya sudah
-           tertulis di atas daftar. -->
-
-    </div>
 
     <!-- Lembar penyaring. Dari bawah, sejajar dengan bilah yang membukanya.
 

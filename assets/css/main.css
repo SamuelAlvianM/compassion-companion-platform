@@ -723,20 +723,26 @@ body {
     background: rgba(var(--color-primary-rgb), .95)
 }
 
-/* Bilah penyaring yang menempel di bawah layar ponsel (halaman event & jurnal).
-   Warnanya MEMINJAM deklarasi header di atas, bukan menyalin nilainya: keduanya
-   memang harus selalu sama — satu di kepala, satu di kaki, membingkai halaman —
-   dan nilai yang disalin adalah nilai yang nanti berubah cuma di salah satunya.
+/* Bilah penyaring yang menempel DI BAWAH NAVBAR pada ponsel (halaman event &
+   jurnal).
 
-   Versi pertamanya berlatar krem muda seperti badan halaman, dan akibatnya ia tidak
-   terbaca sebagai bilah sama sekali: kotak cari tampak mengambang di atas kartu
-   event terakhir. Gelap, ia langsung terbaca sebagai tepi layar. */
+   Warnanya MEMINJAM deklarasi header di atas, bukan menyalin nilainya: keduanya
+   memang harus selalu sama — satu di kepala, satu menempel tepat di bawahnya — dan
+   nilai yang disalin adalah nilai yang nanti berubah cuma di salah satunya.
+
+   `top` sebesar `--tinggi-header`, jadi ia berhenti persis di bawah navbar yang
+   juga sticky. Satu variabel dipakai keduanya; kalau tinggi header berubah, jarak
+   berhentinya ikut tanpa ada angka kedua yang harus diingat.
+
+   `margin-inline` negatif menembus padding `.container` (22px per sisi) supaya
+   bilahnya selebar layar seperti navbar di atasnya. Kotak yang menyisakan celah
+   kiri-kanan tidak terbaca sebagai satu kesatuan dengan header — ia terbaca sebagai
+   kartu yang kebetulan lengket. */
 .filter-bar {
+    top: var(--tinggi-header);
     background: rgba(var(--color-primary-rgb), .95);
     backdrop-filter: blur(8px);
-    /* Ruang aman iPhone: tanpa ini bilahnya berakhir persis di bawah garis home,
-       dan bagian bawah kotak carinya tidak bisa disentuh. */
-    padding-bottom: calc(10px + env(safe-area-inset-bottom))
+    margin-inline: -22px
 }
 
 .btn {
@@ -2046,26 +2052,166 @@ a[href^="https://wa.me/"]::before {
     }
 }
 
-/* Ruang di ujung halaman untuk bilah penyaring yang `fixed` (halaman event &
-   jurnal di ponsel).
+/* ═══════════════════════════════════════════════════════════════════════════
+   PENGETATAN RUANG DI PONSEL
+   ═══════════════════════════════════════════════════════════════════════════
 
-   Diberikan ke <body>, bukan ke <main>: bilahnya melayang di atas SELURUH halaman
-   termasuk footer, jadi yang perlu diberi ruang adalah ujung dokumen. Versi
-   sebelumnya menaruh elemen kosong di dalam <main> — dan footer, yang berdiri
-   sesudahnya, tetap tertutup pada baris terakhirnya.
+   Diukur sebelum diubah, di layar 375x812 pada halaman event: header 85px, judul
+   halaman setinggi 143px, hero berpadding 40px/80px — kartu event pertama baru
+   mulai di piksel ke-384. Artinya 47% layar pertama habis oleh kepala halaman
+   sebelum satu pun isinya terlihat.
 
-   Kelasnya dipasang halaman lewat `useHead({ bodyAttrs })` dan dilepas Nuxt saat
-   berpindah, jadi halaman tanpa bilah tidak ikut menyisakan celah kosong. */
-@media (max-width: 639px) {
+   Nilai-nilai di bawah adalah nilai desktop yang diperkecil, bukan angka baru yang
+   dikarang: yang berubah cuma seberapa besar ruang itu di layar sempit.
 
-    /* Ruangnya ditaruh DI DALAM footer, bukan sebagai padding <body>.
-       Versi pertama memberi padding ke <body>, dan yang tergambar di ruang itu
-       adalah latar body — sepotong pita krem di antara ujung footer dan bilah
-       gelapnya. Diberikan ke footer, warna hijaunya ikut memanjang sampai ke bawah
-       bilah, dan sambungannya tidak terlihat sama sekali.
+   Ditaruh di AKHIR berkas dengan sengaja. Sebagian aturan yang ditimpa di sini
+   didefinisikan jauh di bawah blok media 760px yang sudah ada (mis. `.journal-hero`
+   di baris ~1290), dan media query TIDAK menambah spesifisitas — yang menang tetap
+   yang belakangan di sumber. Kesalahan itu sudah berulang beberapa kali di berkas
+   ini; menaruhnya di akhir menutup seluruh kelasnya sekaligus. */
 
-       46px = padding bawah bawaan `.footer`; sisanya ruang untuk bilahnya. */
-    body.ada-filter-bar .footer {
-        padding-bottom: calc(46px + 72px + env(safe-area-inset-bottom))
+/* Tinggi header dipakai dua pihak: headernya sendiri dan `.filter-bar` yang
+   berhenti tepat di bawahnya. Satu angka, satu tempat. */
+:root {
+    --tinggi-header: 85px
+}
+
+@media (max-width: 760px) {
+
+    :root {
+        --tinggi-header: 61px
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────────
+       Dari 85px jadi 61px. Logonya tetap dua baris — itu bentuk mereknya — tapi
+       hurufnya dan lingkaran "CC"-nya dikecilkan. 24px yang dihemat di sini terasa
+       di setiap halaman, karena headernya sticky dan ikut terbawa terus. */
+    .site-header {
+        padding: 6px 0
+    }
+
+    .brand {
+        font-size: 16px;
+        gap: 8px
+    }
+
+    .brand .mark {
+        width: 30px;
+        height: 30px;
+        font-size: 13px
+    }
+
+    /* ── Lebar isi ───────────────────────────────────────────────────────────
+       44px total (22px per sisi) terlalu banyak di layar 375px. 32px menyisakan
+       343px untuk isinya, dan tepinya masih terbaca sebagai margin. */
+    .container {
+        width: calc(100% - 32px)
+    }
+
+    .filter-bar {
+        margin-inline: -16px
+    }
+
+    /* ── Kepala halaman ──────────────────────────────────────────────────────
+       Judul serif 45px yang patah tiga baris memakan 143px sendirian. 30px cukup
+       untuk tetap terbaca sebagai judul halaman tanpa menjadi separuh layar. */
+    .event-page {
+        padding: 20px 0 48px;
+        background: linear-gradient(#102944 0 190px, var(--paper) 190px)
+    }
+
+    .event-page h1 {
+        font-size: 30px;
+        line-height: 1.12
+    }
+
+    .event-page .page-head {
+        margin-bottom: 16px
+    }
+
+    /* Kalimat pengantar di bawah judul: dua baris 16px. Diturunkan ke 14px, ukuran
+       yang sama dengan pengantar halaman jurnal, supaya keduanya sepadan. */
+    .event-page .page-head p {
+        font-size: 14px;
+        line-height: 1.45
+    }
+
+    .event-page .eyebrow,
+    .journal-hero .eyebrow {
+        font-size: 11px;
+        letter-spacing: .12em
+    }
+
+    .journal-hero {
+        height: auto;
+        min-height: 0;
+        padding: 18px 0 16px
+    }
+
+    .journal-hero h1 {
+        font-size: 30px;
+        line-height: 1.12;
+        margin: 6px 0
+    }
+
+    .journal-hero p {
+        font-size: 14px
+    }
+
+    .journal-count {
+        padding-top: 10px;
+        margin-bottom: 10px;
+        font-size: 12px
+    }
+
+    /* ── Bagian isi halaman utama ────────────────────────────────────────────
+       84px atas-bawah per bagian berarti hampir seperempat layar kosong di antara
+       tiap bagian. */
+    .section {
+        padding: 40px 0
+    }
+
+    .section-title {
+        font-size: 28px;
+        line-height: 1.15
+    }
+
+    .about-intro {
+        padding: 32px 16px
+    }
+
+    .hero {
+        min-height: 460px
+    }
+
+    /* ── Area admin ──────────────────────────────────────────────────────────
+       Judul "Selamat datang, Admin Compassionate Companion" sempat memakan empat
+       baris serif 40px sebelum satu kartu pun terlihat. */
+    .admin-main {
+        padding: 16px 14px
+    }
+
+    .admin-hero h2 {
+        font-size: 26px
+    }
+
+    /* Judul halaman admin memakai `text-4xl` (36px) lewat Tailwind, di delapan
+       berkas. Ditimpa di sini sebagai SATU aturan, bukan delapan suntingan
+       `sm:text-4xl` yang harus diingat setiap kali halaman admin baru dibuat.
+       Aturan tanpa layer di berkas ini memang menang atas utility Tailwind yang
+       ber-layer, jadi tidak perlu `!important`. */
+    .admin-main h1 {
+        font-size: 26px;
+        line-height: 1.15
+    }
+
+    .admin-main h2 {
+        font-size: 20px
+    }
+
+    /* Keterangan di bawah judul: 4 baris teks 16px sebelum kartu pertama. */
+    .admin-main h1 + p,
+    .admin-main .admin-sub {
+        font-size: 14px
     }
 }

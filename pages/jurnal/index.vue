@@ -20,15 +20,6 @@ const sortOrder = ref<'newest' | 'oldest'>('newest')
 
 /** Penyaring ponsel tinggal di bilah bawah; lihat catatan di halaman event. */
 const lembarFilter = ref(false)
-/**
- * Menandai <body> selama halaman ini terbuka, supaya CSS bisa memberi ruang di
- * UJUNG halaman untuk bilah penyaring yang `fixed`.
- *
- * Ruang itu tidak bisa lagi berupa elemen kosong di dalam <main>: footer berdiri
- * SESUDAH <main>, dan bilah yang melayang menutupi baris terakhirnya. Nuxt melepas
- * kelas ini sendiri saat berpindah halaman, jadi halaman lain tidak ikut berpadding.
- */
-useHead({ bodyAttrs: { class: 'ada-filter-bar' } })
 
 
 /** Berapa penyaring yang menyala — angka kecil di tombol filter, supaya keadaan
@@ -220,6 +211,50 @@ watch(kartuSorot, (el) => {
         <!-- Saat muat pertama, hitungan disembunyikan. Tanpa ini yang terbaca
              sekejap adalah "0 jurnal ditemukan" — kalimat yang artinya "tidak ada
              apa-apa di sini", padahal datanya sedang dalam perjalanan. -->
+        <!-- Bilah penyaring (ponsel). Bentuk, warna, dan perilakunya sama persis
+             dengan halaman event: menempel di bawah navbar, bukan melayang di kaki
+             layar. Dua daftar yang disaring dengan cara yang sama sebaiknya juga
+             disaring lewat kendali yang sama. -->
+        <div class="filter-bar sticky z-30 mb-3 px-4 py-2 sm:hidden">
+        <div class="flex items-center gap-2">
+          <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            :placeholder="teks.cari"
+            class="min-w-0 flex-1"
+            :ui="{ base: 'rounded-full' }"
+          >
+            <template v-if="search" #trailing>
+              <UButton
+                color="secondary"
+                variant="link"
+                size="sm"
+                icon="i-lucide-x"
+                class="text-cc-brown-500 hover:text-cc-brown-600"
+                :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+                @click="search = ''"
+              />
+            </template>
+          </UInput>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-sliders-horizontal"
+            size="lg"
+            class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
+            :aria-label="teks.tipe"
+            @click="lembarFilter = true"
+          >
+            <span
+              v-if="jumlahFilterAktif"
+              class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+            >
+              {{ jumlahFilterAktif }}
+            </span>
+          </UButton>
+        </div>
+      </div>
+
         <p v-if="memuatAwal" class="journal-count">&nbsp;</p>
         <p v-else class="journal-count">{{ teks.hitung(filteredJournals.length) }}</p>
 
@@ -266,48 +301,6 @@ watch(kartuSorot, (el) => {
       </div>
     </section>
 
-    <!-- Bilah penyaring bawah (ponsel). Bentuk, warna, dan perilakunya sama persis
-         dengan halaman event — dua daftar yang disaring dengan cara yang sama
-         sebaiknya juga disaring lewat kendali yang sama. -->
-    <div class="filter-bar fixed inset-x-0 bottom-0 z-40 px-4 py-2.5 sm:hidden">
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="search"
-          icon="i-lucide-search"
-          :placeholder="teks.cari"
-          class="min-w-0 flex-1"
-          :ui="{ base: 'rounded-full' }"
-        >
-          <template v-if="search" #trailing>
-            <UButton
-              color="secondary"
-              variant="link"
-              size="sm"
-              icon="i-lucide-x"
-              class="text-cc-brown-500 hover:text-cc-brown-600"
-              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
-              @click="search = ''"
-            />
-          </template>
-        </UInput>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-sliders-horizontal"
-          size="lg"
-          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
-          :aria-label="teks.tipe"
-          @click="lembarFilter = true"
-        >
-          <span
-            v-if="jumlahFilterAktif"
-            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
-          >
-            {{ jumlahFilterAktif }}
-          </span>
-        </UButton>
-      </div>
-    </div>
 
     <!-- Lembar penyaring. Tanpa tombol terapkan: tiap pilihan berlaku seketika dan
          lembarnya menutup sendiri. -->
