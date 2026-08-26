@@ -5,6 +5,102 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 30: Gambar wajib dicabut lagi, tanggal yang membuntu, dan chip peserta
+
+### "Event mendatang tidak bisa disimpan" — dan jawabannya bukan yang saya duga
+
+Dilaporkan: mengubah tanggal mulai sebuah event mendatang tidak tersimpan. Dugaan
+pertama saya keliru — saya kira aturan "gambar wajib" dari Sesi 28, karena event itu
+memang belum bergambar. Yang menahan ternyata **peringatan tanggal**:
+
+Tanggal mulai digeser ke 23 Jun 2026, sementara batas pendaftarannya tetap 14 Sep
+2026 — jadi batas pendaftaran jatuh SESUDAH acara mulai, dan itu ditolak.
+
+Aturannya benar. Yang salah tidak adanya jalan keluar: pemilih batas pendaftaran
+memang tidak mengizinkan memilih tanggal sesudah tanggal mulai
+(`:maksimal="form.tanggalMulai"`), tapi penjagaan itu hanya berlaku saat BATASNYA
+yang diubah. Kalau tanggal MULAI yang digeser, batas yang sudah terisi tertinggal di
+belakang — dan formulirnya membeku sampai orangnya sadar sendiri harus membetulkan
+kolom kedua yang tidak ia sentuh.
+
+Ditambal dengan menyamakan perlakuannya dengan `tanggalSelesai`, yang sejak dulu
+memang ikut bergeser mengikuti tanggal mulai: kalau batas pendaftaran melewati
+tanggal mulai yang baru, ia ditarik mundur ke tanggal mulai itu. Dua kolom yang
+sama-sama bergantung pada tanggal mulai sebaiknya sama-sama ikut bergerak, bukan
+satu ikut dan satu membeku.
+
+### Gambar wajib dicabut dari penghalang simpan
+
+Diminta: pastikan input di halaman event bisa disunting pada SEMUA fase — mendatang,
+berlangsung, selesai.
+
+Yang menghalangi bukan fasenya (itu sudah dipastikan di Sesi 26 dan 28) melainkan
+aturan gambar dari Sesi 28: `coverMediaId` kosong berarti seluruh simpanan ditolak.
+Niatnya benar — event tanpa gambar tampil sebagai kartu abu-abu — tapi akibatnya
+empat dari enam event yang ada berhenti bisa disunting sama sekali, termasuk untuk
+membetulkan salah ketik yang tidak ada hubungannya dengan gambar.
+
+**Keberatan yang persis sama sudah tertulis di `bisaDilahirkan` jauh sebelumnya**,
+dan ternyata memang benar. Dicabut.
+
+Yang tersisa: gambar tetap wajib saat event DIBUAT (lewat `kurang`), dan tetap
+digambar dengan penanda wajib pada mode ubah — kekosongannya terbaca sebagai sesuatu
+yang harus dilengkapi, tanpa menyandera kolom lain.
+
+Diuji dengan tiga event buatan sendiri, satu per fase, ketiganya tanpa gambar:
+
+| Fase | Simpanan |
+|---|---|
+| mendatang | **tersimpan** |
+| berlangsung | **tersimpan** |
+| selesai | **tersimpan** |
+
+Ketiganya sudah dihapus sesudah diuji; enam event asli utuh.
+
+### Chip penyaring peserta: 3 di atas, 2 di bawah
+
+Lima chip status di tab "Daftar peserta" melipat jadi gumpalan di dalam wadah
+`rounded-full`, sama seperti penyaring halaman event. Barisan yang bisa digeser
+sempat dicoba dan ditolak — dan penolakannya beralasan: chip di luar layar hanya
+ditemukan orang yang menduga barisnya berlanjut, sementara kelima status ini pilihan
+setara yang harus terbaca sekaligus. Angka di dalam tiap chip pun tidak ada gunanya
+kalau sebagiannya tersembunyi.
+
+Bentuk akhirnya dua baris rata tengah, 3 + 2. Dua hal yang membuatnya bertahan:
+
+- **Titik lipatnya dipaksa**, bukan diserahkan ke `flex-wrap` — elemen `basis-full`
+  sesudah chip ketiga. Lebar chip berubah mengikuti angka di dalamnya, jadi
+  pembagian yang kebetulan pas hari ini bisa jadi 4 + 1 besok.
+- **Lencana angkanya diberi lebar minimum** (`min-w-4`). Tanpa itu, angka yang naik
+  dari satu digit ke dua melebarkan chipnya dan barisan tiga pecah lagi.
+
+Ukurannya diperkecil (`text-[11px]`, padding rapat, ikon dilepas di bawah `sm` —
+ikon itu memakan 16px per chip, tepat selisih yang membuat tiga tidak muat). Baris
+pertama kini 297px pada ruang 303px. Dari `sm` ke atas semuanya kembali seperti
+semula: satu baris pil, ikon kembali.
+
+### Kesalahan saya, dan pemulihannya
+
+Saat menguji, saya memicu autosave pada formulir yang masih memuat nilai sisa dari
+sesi penyuntingan yang sedang berjalan — dan autosave mengirim SELURUH isi formulir,
+bukan hanya kolom yang saya sentuh. Akibatnya `Leading Through Change` sempat
+tertulis dengan tanggal, judul, dan judul-EN yang salah.
+
+Dipulihkan ke nilai seed, dan diverifikasi satu per satu: judul, judulEn, slug,
+lokasi, tanggal mulai, tanggal selesai, batas pendaftaran. Dua sisa uji lama
+(" X" di lokasi dua event) juga ikut dibersihkan.
+
+Pelajarannya bukan soal ketelitian: **halaman yang menyimpan diri otomatis tidak
+aman dijadikan alat uji pada data sungguhan.** Sesudah ini pengujiannya memakai
+event buatan sendiri yang dihapus di akhir.
+
+### Belum dikerjakan
+
+- [ ] Tabel di tab "Daftar peserta" masih menggeser ke samping di ponsel. Empat
+      tabel daftar admin sudah jadi kartu di Sesi 29; yang ini terlewat.
+
+---
+
 ## 2026-08-26 — Sesi 29: Tampilan ponsel — situs tanpa menu, dan bilah ikon yang lebarnya nol
 
 Desktop sudah dinyatakan rapi, jadi seluruh sesi ini soal layar sempit. Diaudit

@@ -229,9 +229,27 @@ const selisihHari = (dari: string, ke: string) => {
 watch(() => form.value.tanggalMulai, (mulai, sebelumnya) => {
   if (!mulai) return
   const selesai = form.value.tanggalSelesai
-  if (!selesai || selesai === sebelumnya) { form.value.tanggalSelesai = mulai; return }
-  if (selesai < mulai && sebelumnya) form.value.tanggalSelesai = geserYmd(selesai, selisihHari(sebelumnya, mulai))
+  if (!selesai || selesai === sebelumnya) { form.value.tanggalSelesai = mulai }
+  else if (selesai < mulai && sebelumnya) form.value.tanggalSelesai = geserYmd(selesai, selisihHari(sebelumnya, mulai))
   else if (selesai < mulai) form.value.tanggalSelesai = mulai
+
+  // Batas pendaftaran ikut ditarik mundur kalau tanggal mulai bergeser ke belakang
+  // sampai melewatinya.
+  //
+  // Pemilih batas pendaftaran memang tidak MENGIZINKAN memilih tanggal sesudah
+  // tanggal mulai (`:maksimal="form.tanggalMulai"`), tapi penjagaan itu cuma berlaku
+  // saat batasnya yang diubah. Kalau tanggal MULAI yang dimajukan, batas yang sudah
+  // terlanjur terisi tertinggal di belakang — dan formulirnya berhenti bisa disimpan
+  // sampai orangnya sadar sendiri harus membetulkan kolom kedua yang tidak ia
+  // sentuh. Itu jalan buntu: pesannya benar, tapi tidak ada yang menawarkan jalan
+  // keluar.
+  //
+  // Perlakuannya disamakan dengan `tanggalSelesai` di atas, yang sejak dulu memang
+  // menyesuaikan diri mengikuti tanggal mulai. Dua kolom yang sama-sama bergantung
+  // pada tanggal mulai sebaiknya sama-sama ikut bergerak, bukan satu ikut dan satu
+  // membeku.
+  const tutup = form.value.tutupTanggal
+  if (tutup && tutup > mulai) form.value.tutupTanggal = mulai
 })
 
 // ── Gambar ───────────────────────────────────────────────────────────────────
@@ -364,21 +382,20 @@ const bisaDilahirkan = computed(() => kurang.value.length === 0 && !peringatan.v
  * tersimpan". Yang kedua wajib terbaca; yang pertama boleh duduk di dekat isian
  * yang bersangkutan.
  *
- * Gambar ikut menghalangi, dan itu perubahan yang disengaja. Sebelumnya ia hanya
- * dituntut saat event LAHIR, dengan alasan bahwa event lama yang belum bergambar
- * akan kehilangan kemampuan menyunting apa pun. Alasan itu masih benar — bedanya,
- * sekarang penolakannya terbaca dan menyebutkan apa yang harus dikerjakan, bukan
- * membuat formulirnya tampak mogok. Event tanpa gambar tetap tampil sebagai kartu
- * abu-abu di antara kartu bergambar, dan itu baru ketahuan sesudah terbit, oleh
- * orang yang bukan pembuatnya.
+ * GAMBAR TIDAK LAGI IKUT MENGHALANGI, dan itu pencabutan yang disengaja.
+ *
+ * Sempat ikut: kalau `coverMediaId` kosong, seluruh simpanan ditolak sampai
+ * gambarnya diunggah. Niatnya benar — event tanpa gambar tampil sebagai kartu
+ * abu-abu di antara kartu bergambar — tapi akibatnya empat dari enam event yang
+ * sudah ada berhenti bisa disunting sama sekali, termasuk untuk membetulkan salah
+ * ketik yang tidak ada hubungannya dengan gambar. Keberatan yang persis sama sudah
+ * tertulis di `bisaDilahirkan` jauh sebelumnya, dan ternyata memang benar.
+ *
+ * Yang tersisa: gambar tetap WAJIB saat event dibuat (lewat `kurang`), dan tetap
+ * digambar dengan penanda wajib pada mode ubah — jadi kekosongannya terbaca sebagai
+ * sesuatu yang harus dilengkapi, tanpa menyandera kolom lain.
  */
-const penghalangSimpan = computed(() => {
-  if (peringatan.value) return peringatan.value
-  if (!form.value.coverMediaId) {
-    return 'Gambar event wajib diisi. Unggah gambarnya di bagian “Gambar event” — sampai itu ada, perubahan lain belum bisa tersimpan.'
-  }
-  return ''
-})
+const penghalangSimpan = computed(() => peringatan.value)
 
 /**
  * "Buat event" — satu-satunya tombol simpan yang tersisa di halaman ini, dan pada

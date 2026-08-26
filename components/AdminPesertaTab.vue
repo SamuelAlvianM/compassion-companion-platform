@@ -308,27 +308,59 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
            · statusnya berwarna sendiri-sendiri, jadi warnanya ikut jadi penanda,
              bukan sekadar hiasan. -->
     <div class="mb-4 flex flex-wrap items-center gap-2">
-      <div class="flex flex-wrap items-center gap-1.5 rounded-full bg-cc-stone-100 p-1">
-        <button
-          v-for="s in STATUS"
-          :key="s.key"
-          type="button"
-          class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
-          :class="tab === s.key
-            ? warnaChip[s.warna]
-            : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'"
-          :aria-pressed="tab === s.key"
-          @click="tab = s.key"
-        >
-          <UIcon :name="s.ikon" class="size-3.5" />
-          {{ s.label }}
-          <span
-            class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
-            :class="tab === s.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'"
+      <!-- Di layar sempit: DUA BARIS rata tengah — tiga chip di atas, dua di bawah —
+           bukan barisan yang bisa digeser.
+
+           Digeser sempat dicoba dan salah: chip yang berada di luar layar hanya
+           ditemukan orang yang menduga barisnya masih berlanjut, sementara kelima
+           status ini adalah pilihan yang setara dan harus terbaca sekaligus.
+           Angka di dalam tiap chip pun jadi tidak ada gunanya kalau sebagiannya
+           tersembunyi.
+
+           Pembagian 3 + 2 tidak diserahkan ke `flex-wrap`. Lebar chip berubah
+           mengikuti angka di dalamnya ("0" versus "12"), jadi pembagian yang
+           kebetulan pas hari ini bisa jadi 4 + 1 besok. Pemutusnya elemen
+           `basis-full` sesudah chip ketiga: satu-satunya cara membuat titik lipat
+           itu tetap di tempatnya berapa pun isinya.
+
+           Ukurannya diperkecil (`text-xs`, padding lebih rapat, ikon lebih kecil)
+           supaya ketiganya benar-benar muat sebaris di layar 375px.
+
+           Radiusnya konsentris: wadah `rounded-2xl` (16px) dengan padding 4px, jadi
+           chipnya `rounded-xl` (12px). Pil di dalam kotak bersudut tumpul tidak
+           pernah sejajar di pojok. Dari `sm` ke atas keduanya kembali jadi pil
+           berjajar satu baris seperti semula. -->
+      <div
+        class="flex w-full min-w-0 flex-wrap justify-center gap-1 rounded-2xl bg-cc-stone-100 p-1 sm:w-auto sm:justify-start sm:gap-1.5 sm:rounded-full"
+      >
+        <template v-for="(s, i) in STATUS" :key="s.key">
+          <button
+            type="button"
+            class="inline-flex shrink-0 items-center gap-1 rounded-xl px-1 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors sm:gap-1.5 sm:rounded-full sm:px-3 sm:text-sm"
+            :class="tab === s.key
+              ? warnaChip[s.warna]
+              : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'"
+            :aria-pressed="tab === s.key"
+            @click="tab = s.key"
           >
-            {{ hitung[s.key] ?? 0 }}
-          </span>
-        </button>
+            <!-- Ikon dilepas di layar sempit. Ia memakan sekitar 16px per chip —
+                 48px untuk tiga chip sebaris — dan itu justru selisih yang membuat
+                 barisan tiga tidak muat. Labelnya sendiri sudah menyebutkan
+                 statusnya; ikonnya di sini penguat, bukan penanda tunggal. -->
+            <UIcon :name="s.ikon" class="hidden size-3.5 sm:inline-block" />
+            {{ s.label }}
+            <span
+              class="inline-block min-w-4 rounded-full px-0.5 py-0.5 text-center text-[10px] leading-none tabular-nums sm:min-w-0 sm:px-1.5 sm:text-[11px]"
+              :class="tab === s.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'"
+            >
+              {{ hitung[s.key] ?? 0 }}
+            </span>
+          </button>
+
+          <!-- Pemutus baris. `basis-full` memaksa chip berikutnya turun; di `sm` ke
+               atas ia dihilangkan supaya kelimanya kembali sebaris. -->
+          <div v-if="i === 2" class="basis-full sm:hidden" aria-hidden="true" />
+        </template>
       </div>
 
       <UInput
