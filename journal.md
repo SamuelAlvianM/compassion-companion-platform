@@ -5,6 +5,91 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 33: Panel bertumpuk — regresi dari Sesi 32, dan cara memeriksanya yang salah
+
+### Apa yang rusak
+
+Panel "Tulisan peserta" yang ditambahkan Sesi 32 tergambar MENIMPA panel testimoni
+di layar lebar. Isinya bercampur: kalimat dari satu panel muncul di tengah kotak
+panel lain, terpotong oleh bingkainya.
+
+Ini regresi yang saya sebabkan sendiri.
+
+### Sebabnya: dua panel sticky bertinggi mati
+
+Kolom kanan halaman event punya dua aturan lama:
+
+```css
+.registration  { position: sticky; top: 88px }
+.testimonials  { position: sticky; top: 88px; height: 530px }
+```
+
+Keduanya sah **selama panelnya satu-satunya di kolom itu** — terpaku sementara kolom
+kiri yang jauh lebih panjang tetap tergulir. Begitu saya menambahkan panel ketiga,
+aturan itu berubah jadi cacat: panel yang terpaku berhenti bergerak sementara panel
+di bawahnya terus naik, lalu menyelinap di bawahnya.
+
+Diukur pada 1280x800, event `listening-as-leadership`:
+
+| Scroll | Tumpang tindih |
+|---|---|
+| 0 – 400 | tidak |
+| 600 | **ya** |
+| 800 | **ya** (dua pasang) |
+| 1000+ | **ya** |
+
+Tinggi mati 530px juga meninggalkan lubang putih di dalam kotak testimoni saat
+isinya cuma dua-tiga baris.
+
+### Verifikasi saya yang salah, dan ini bagian yang lebih penting
+
+Sesi 32 saya "memverifikasi" tata letak ini — dan lolos. Yang saya ukur posisi tiap
+panel **pada scroll 0**, lalu menyimpulkan jaraknya 24px dan menyatakannya aman.
+
+Pada scroll 0, elemen `sticky` memang duduk persis di posisi alirannya. Cacatnya
+baru lahir saat digulir. Jadi pengukuran itu bukan salah angkanya — ia mengukur
+keadaan yang tidak pernah bermasalah, lalu dilaporkan seolah mewakili seluruhnya.
+
+Sejak sekarang, pemeriksaan tata letak yang menyangkut `sticky`/`fixed` harus
+menyapu BEBERAPA POSISI GULIR dan menguji tumpang tindih SETIAP PASANG panel, bukan
+memeriksa jarak berurutan sekali di puncak halaman.
+
+### Perbaikannya menuliskan SYARAT, bukan keputusan
+
+`.testimonials` dicabut sticky dan tinggi matinya — kolomnya kini mengalir biasa,
+sama seperti yang sudah berlaku di ≤850px sejak dulu. Batas gulir internalnya pindah
+ke `.testimonial-list` sendiri (`max-height: 420px`), supaya daftar panjang tidak
+memanjangkan halaman tanpa batas.
+
+`.registration` TIDAK dicabut begitu saja — pada event mendatang ia masih benar dan
+berguna. Yang ditulis syaratnya:
+
+```css
+.registration:has(~ .panel) { position: static }
+```
+
+Sticky dicabut tepat ketika ada panel lain sesudahnya. Perilaku yang benar pada
+event mendatang tetap utuh, dan panel keempat yang mungkin ditambahkan nanti ikut
+aman **tanpa ada yang perlu mengingat aturan ini** — itulah bedanya menuliskan
+syarat dengan menuliskan keputusan.
+
+### Hasil uji
+
+Enam event, dua lebar layar, seluruh posisi gulir sampai dasar halaman, menguji
+tumpang tindih setiap pasang panel:
+
+| Event | Panel di kolom kanan | `.registration` | Bentrok |
+|---|---|---|---|
+| Retret Adven (mendatang) | 1 | `sticky` | 0 |
+| Compassion in Practice | 1 | `sticky` | 0 |
+| Leadership with Compassion | 2 | `static` | 0 |
+| Listening as Leadership | 3 | `static` | 0 |
+| Test Event, Leading Through Change | 1 | `sticky` | 0 |
+
+**Total bentrok: 0**, di 1280px maupun 375px. `npm run typecheck` bersih.
+
+---
+
 ## 2026-08-26 — Sesi 32: Nama penulis yang membeku, pita kepala yang memotong, dan refleksi dari jurnal
 
 ### Nama penulis tidak ikut berubah saat akunnya diganti nama

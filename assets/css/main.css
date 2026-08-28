@@ -2236,3 +2236,65 @@ a[href^="https://wa.me/"]::before {
         font-size: 14px
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL TESTIMONI: TIDAK BOLEH `position: sticky`
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Aturan aslinya `position: sticky; top: 88px; height: 530px`. Itu sah selama
+   `.testimonials` adalah panel TERAKHIR di kolom kanan — ia terpaku sementara kolom
+   kiri yang jauh lebih panjang tetap tergulir.
+
+   Begitu ada panel lain di bawahnya ("Tulisan peserta"), aturan itu berubah jadi
+   cacat: panel yang terpaku berhenti bergerak, sementara panel di bawahnya terus
+   naik — dan menyelinap DI BAWAHNYA. Diukur pada 1280x800: aman di scroll 0 sampai
+   400, mulai bertumpuk di scroll 600, dan pada 1000 isi panel bawah tergambar di
+   tengah-tengah kotak testimoni.
+
+   Tinggi 530px yang mati juga meninggalkan ruang kosong besar saat testimoninya
+   cuma dua-tiga — terlihat sebagai lubang putih di dalam kotaknya.
+
+   Keduanya dicabut. Kolom kanan sekarang mengalir biasa, sama seperti yang sudah
+   berlaku di ≤850px sejak dulu (`position: static; height: auto`) — jadi ini bukan
+   perilaku baru, melainkan perilaku ponsel yang diberlakukan juga di layar lebar.
+
+   JANGAN kembalikan `sticky` di sini tanpa memastikan panel ini kembali jadi yang
+   terakhir di kolomnya. Elemen sticky bertinggi mati yang punya saudara di bawahnya
+   akan selalu ditimpa saudaranya; itu bukan bug yang bisa ditambal dengan z-index,
+   karena yang salah bukan urutan lapis melainkan tinggi yang tidak pernah mengikuti
+   isinya. */
+.testimonials {
+    position: static;
+    height: auto
+}
+
+/* Batas gulir dalamnya sekarang dipasang di daftarnya sendiri. Sebelumnya ia
+   menumpang pada tinggi mati induknya — begitu induknya `height: auto`, daftar
+   testimoni yang panjang akan memanjangkan halaman tanpa batas. */
+.testimonial-list {
+    max-height: 420px
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL PENDAFTARAN: STICKY HANYA SAH KALAU IA SENDIRIAN DI KOLOMNYA
+   ═══════════════════════════════════════════════════════════════════════════
+
+   `.registration` ber-`position: sticky; top: 88px`, dan itu memang berguna pada
+   event MENDATANG: kolom kanan cuma berisi panel ini, kolom kiri jauh lebih
+   panjang, jadi tombol daftarnya ikut turun bersama pembaca.
+
+   Pada event SELESAI kolomnya berisi tiga panel — pendaftaran, testimoni, tulisan
+   peserta. Panel pertama yang terpaku berhenti bergerak sementara dua panel di
+   bawahnya terus naik, dan menyelinap di bawahnya. Diukur pada 1280x800: bertumpuk
+   sejak scroll 400.
+
+   Yang ditulis di sini SYARATNYA, bukan keputusannya: sticky dicabut tepat ketika
+   ada panel lain sesudahnya. Dengan begitu perilaku yang benar pada event mendatang
+   tetap utuh, dan panel keempat yang mungkin ditambahkan nanti ikut aman tanpa ada
+   yang perlu mengingat aturan ini.
+
+   `:has()` dipakai dengan sadar: proyek ini sudah menuntut peramban modern lewat
+   Tailwind v4 (Chrome 111+, Safari 16.4+), yang seluruhnya mendukung `:has()`. */
+.registration:has(~ .panel) {
+    position: static
+}
