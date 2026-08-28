@@ -173,17 +173,11 @@ const sampul = computed(() => sampulEvent(e.value?.slug, e.value?.cover))
 // Label pendaftaran (biaya, kuota, keadaan tombol) tinggal di EventRegisterPanel
 // bersama markup-nya, dan label testimoni di EventTestimoni — supaya tidak ada dua
 // tempat yang harus diubah bersamaan.
+// Label panel refleksi tinggal di EventTestimoni bersama markup-nya, sejak jurnal
+// dan testimoni digabung ke satu panel di sana.
 const t = computed(() => isEn.value
-  ? {
-      kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location',
-      jurnalEyebrow: 'Event reflection', jurnalJudul: 'Written by participants',
-      baca: 'Read more',
-    }
-  : {
-      kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi',
-      jurnalEyebrow: 'Refleksi event', jurnalJudul: 'Tulisan peserta',
-      baca: 'Baca lebih lanjut',
-    })
+  ? { kembali: 'Events', info: 'Event information', tanggal: 'Date', waktu: 'Time', lokasi: 'Location' }
+  : { kembali: 'Events', info: 'Informasi acara', tanggal: 'Tanggal', waktu: 'Waktu', lokasi: 'Lokasi' })
 </script>
 
 <template>
@@ -266,50 +260,25 @@ const t = computed(() => isEn.value
                event yang sedang berlangsung ia mendahului acaranya sendiri. Juga
                disembunyikan dari mode sunting: tidak ada yang bisa ditulis sebelum
                eventnya usai. -->
+          <!-- Satu panel untuk keduanya: testimoni ketikan DAN tulisan lengkap
+               dari jurnal. Sebelumnya jurnalnya berdiri sebagai panel kedua, dan
+               dua panel berjudul "Refleksi event" bersebelahan membuat pembacanya
+               menebak apa bedanya.
+
+               Syarat fase dilonggarkan: panel ini tetap muncul kalau ADA jurnal
+               refleksinya, meski eventnya belum ditandai selesai. Jurnal hanya bisa
+               terbit lewat alur redaksi, jadi keberadaannya sendiri sudah cukup
+               jadi syarat — dan refleksi yang terbit lebih awal tidak ada alasannya
+               disembunyikan. -->
           <EventTestimoni
-            v-if="e.fase === 'selesai'"
+            v-if="e.fase === 'selesai' || refleksiJurnal.length"
             :daftar="testimoni"
+            :refleksi="refleksiJurnal"
+            :base="base"
             :is-en="isEn"
             :simpan="simpanTestimoni"
           />
 
-          <!-- Tulisan peserta: jurnal bertipe "event reflection" yang menunjuk event
-               ini. Digambar hanya kalau memang ada — panel kosong berjudul "Tulisan
-               peserta" menjanjikan sesuatu yang belum ditulis siapa pun.
-
-               Yang tampil judul + RINGKASANNYA saja, lalu tautan ke halaman bacanya.
-               Panel di samping halaman event bukan tempat membaca artikel utuh, dan
-               refleksi yang disalin penuh ke sini akan membuat halaman eventnya
-               memanjang mengikuti sesuatu yang sudah punya halamannya sendiri.
-
-               Tidak dibatasi `fase === 'selesai'` seperti testimoni: jurnal hanya
-               bisa terbit lewat alur redaksi, jadi keberadaannya sendiri sudah
-               menjadi syarat yang cukup — dan sebuah refleksi yang terbit lebih
-               awal tidak ada alasannya disembunyikan. -->
-          <section v-if="refleksiJurnal.length" class="panel">
-            <div class="eyebrow">{{ t.jurnalEyebrow }}</div>
-            <h2 class="mb-4 font-serif text-2xl text-cc-green-800">{{ t.jurnalJudul }}</h2>
-
-            <ul class="divide-y divide-cc-stone-200">
-              <li v-for="j in refleksiJurnal" :key="j.slug" class="py-4 first:pt-0 last:pb-0">
-                <h3 class="font-serif text-lg leading-snug text-cc-green-800">{{ j.judul }}</h3>
-
-                <p v-if="j.ringkasan" class="mt-1 text-sm leading-relaxed text-cc-stone-600">
-                  {{ j.ringkasan }}
-                </p>
-
-                <p class="mt-1 text-xs text-cc-brown-500">{{ j.kontributor }}</p>
-
-                <NuxtLink
-                  :to="`${base}/jurnal/${j.slug}`"
-                  class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-cc-brown-500 hover:underline"
-                >
-                  {{ t.baca }}
-                  <UIcon name="i-lucide-arrow-right" class="size-3.5 shrink-0" />
-                </NuxtLink>
-              </li>
-            </ul>
-          </section>
         </div>
       </div>
 

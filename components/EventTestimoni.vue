@@ -15,8 +15,27 @@ export interface Testimoni {
   teks: string
 }
 
+export interface RefleksiJurnal {
+  slug: string
+  judul: string
+  ringkasan: string
+  kontributor: string
+}
+
 const props = defineProps<{
   daftar: Testimoni[]
+  /**
+   * Jurnal bertipe "event reflection" yang menunjuk event ini.
+   *
+   * Masuk ke panel yang SAMA dengan testimoni, bukan panel sendiri. Keduanya
+   * menjawab pertanyaan yang sama — "apa kata mereka yang mengikutinya" — dan dua
+   * panel berjudul "Refleksi event" bersebelahan membuat pembacanya menebak apa
+   * bedanya. Yang berbeda cuma panjangnya: testimoni satu kalimat, jurnal satu
+   * tulisan utuh yang punya halamannya sendiri.
+   */
+  refleksi?: RefleksiJurnal[]
+  /** Awalan bahasa untuk tautan ke halaman baca jurnal. */
+  base?: string
   isEn?: boolean
   /** Penyimpan; menerima daftar utuh yang baru. Melempar error kalau gagal. */
   simpan: (daftar: Testimoni[]) => Promise<void>
@@ -28,6 +47,7 @@ const t = computed(() => props.isEn
   ? {
       eyebrow: 'Event reflection', judul: 'What they said',
       tambah: 'Add testimony', nama: 'Name', teks: 'Testimony',
+      tulisan: 'Full reflections', baca: 'Read more',
       namaPh: 'Participant name', teksPh: 'What did they say?',
       simpanTombol: 'Save', batal: 'Cancel', ubah: 'Edit', hapus: 'Delete',
       naik: 'Move up', turun: 'Move down',
@@ -39,6 +59,7 @@ const t = computed(() => props.isEn
   : {
       eyebrow: 'Refleksi event', judul: 'Apa kata mereka',
       tambah: 'Tambah testimoni', nama: 'Nama', teks: 'Testimoni',
+      tulisan: 'Tulisan lengkap', baca: 'Baca lebih lanjut',
       namaPh: 'Nama peserta', teksPh: 'Apa yang ia katakan?',
       simpanTombol: 'Simpan', batal: 'Batal', ubah: 'Ubah', hapus: 'Hapus',
       naik: 'Geser ke atas', turun: 'Geser ke bawah',
@@ -50,7 +71,9 @@ const t = computed(() => props.isEn
 
 // Panel tetap muncul saat daftarnya kosong TAPI mode sunting menyala — tanpa itu
 // tidak ada tempat untuk menekan "Tambah testimoni" pada event yang belum punya satu pun.
-const tampil = computed(() => props.daftar.length > 0 || aktif.value)
+const refleksiJurnal = computed(() => props.refleksi ?? [])
+
+const tampil = computed(() => props.daftar.length > 0 || refleksiJurnal.value.length > 0 || aktif.value)
 
 // ── Menyunting satu baris ────────────────────────────────────────────────────
 /** Indeks yang sedang disunting; -1 berarti sedang menambah baru; null berarti tidak ada. */
@@ -189,6 +212,43 @@ const geser = async (i: number, arah: -1 | 1) => {
         </div>
         <p v-if="galat" class="editable-error">{{ galat }}</p>
       </div>
+    </div>
+
+    <!-- Tulisan lengkap: jurnal "event reflection" yang menunjuk event ini.
+         Duduk di panel yang SAMA dengan testimoni, di bawahnya — keduanya menjawab
+         pertanyaan yang sama, dan yang membedakan cuma panjangnya.
+
+         Urutannya testimoni dulu, baru tulisan: kutipan satu kalimat bisa disapu
+         cepat, sementara tulisan menuntut keputusan untuk dibuka. Yang cepat dibaca
+         lebih dulu.
+
+         Judul kecil "Tulisan lengkap" hanya digambar kalau testimoninya juga ada.
+         Kalau yang ada cuma tulisan, ia langsung berdiri di bawah "Apa kata
+         mereka" tanpa sub-judul yang tidak memisahkan apa pun. -->
+    <div v-if="refleksiJurnal.length" :class="daftar.length ? 'mt-5 border-t border-cc-stone-200 pt-4' : 'mt-3'">
+      <p v-if="daftar.length" class="mb-3 text-xs font-semibold tracking-wide text-cc-stone-500 uppercase">
+        {{ t.tulisan }}
+      </p>
+
+      <ul class="divide-y divide-cc-stone-200">
+        <li v-for="j in refleksiJurnal" :key="j.slug" class="py-3 first:pt-0 last:pb-0">
+          <h3 class="font-serif text-lg leading-snug text-cc-green-800">{{ j.judul }}</h3>
+
+          <p v-if="j.ringkasan" class="mt-1 text-sm leading-relaxed text-cc-stone-600">
+            {{ j.ringkasan }}
+          </p>
+
+          <p class="mt-1 text-xs text-cc-brown-500">{{ j.kontributor }}</p>
+
+          <NuxtLink
+            :to="`${base ?? '/id'}/jurnal/${j.slug}`"
+            class="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-cc-brown-500 hover:underline"
+          >
+            {{ t.baca }}
+            <UIcon name="i-lucide-arrow-right" class="size-3.5 shrink-0" />
+          </NuxtLink>
+        </li>
+      </ul>
     </div>
 
     <template v-if="aktif">

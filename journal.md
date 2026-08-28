@@ -5,6 +5,41 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 34: "Apa kata mereka" jadi satu panel dengan jurnal
+
+Pertanyaannya: apakah panel "Apa kata mereka" sudah tersambung ke sub-judul jurnal?
+Belum — Sesi 32 menaruh jurnalnya di panel KEDUA bernama "Tulisan peserta", dan
+akibatnya ada dua panel berjudul "Refleksi event" bersebelahan. Pembacanya harus
+menebak apa bedanya. Itu sudah tercatat sebagai pertanyaan terbuka di sesi itu, dan
+sekarang dijawab: digabung.
+
+Satu panel "Apa kata mereka" yang memuat keduanya. Yang membedakan isinya bukan
+jenisnya melainkan panjangnya — testimoni satu kalimat, jurnal satu tulisan utuh
+yang punya halamannya sendiri — jadi urutannya testimoni dulu, baru tulisan: kutipan
+pendek bisa disapu cepat, sementara tulisan menuntut keputusan untuk dibuka.
+
+Sub-judul "Tulisan lengkap" hanya digambar kalau testimoninya juga ada. Kalau yang
+ada cuma tulisan, ia berdiri langsung di bawah "Apa kata mereka" — sub-judul yang
+tidak memisahkan apa pun cuma menambah baris yang harus dibaca.
+
+Syarat tampilnya ikut dilonggarkan: panel muncul kalau ada testimoni, ADA jurnal
+refleksi, atau mode sunting menyala. Sebelumnya terikat `fase === 'selesai'` saja.
+
+| Event | Isi | Hasil |
+|---|---|---|
+| Listening as Leadership | testimoni + 2 jurnal | satu panel, dipisah sub-judul "Tulisan lengkap" |
+| Leadership with Compassion | tanpa testimoni, 1 jurnal | jurnal langsung di bawah judul, tanpa sub-judul |
+| Compassion in Practice | tidak ada keduanya | panel tidak digambar |
+
+Panel di halaman turun dari 4 jadi 3. Diuji 1280px dan 375px, seluruh posisi gulir,
+menguji tumpang tindih setiap pasang panel — **0 bentrok**, memakai cara pemeriksaan
+yang ditetapkan Sesi 33. `npm run typecheck` bersih.
+
+Nama penulis yang mengikuti akun (Sesi 32) dikonfirmasi ulang: sudah terpasang dan
+sudah diuji dengan benar-benar mengganti nama akun lalu mengembalikannya.
+
+---
+
 ## 2026-08-26 — Sesi 33: Panel bertumpuk — regresi dari Sesi 32, dan cara memeriksanya yang salah
 
 ### Apa yang rusak
