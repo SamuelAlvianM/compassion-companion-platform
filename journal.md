@@ -5,6 +5,65 @@ Format: entri terbaru di atas. Setiap sesi kerja tambahkan satu blok.
 
 ---
 
+## 2026-08-26 — Sesi 35: Pita biru di situs hijau, dan bilah yang melayang
+
+### Warna: menyalin nilai, bukan meminjam deklarasi
+
+Pita kepala halaman event tergambar BIRU di ponsel, di tengah situs yang seluruhnya
+hijau.
+
+Sebabnya saya sendiri. Saat membuat pita itu mengikuti isinya (Sesi 32), saya
+menyalin `#102944` dari aturan dasar `.event-page` di baris ~304 — tanpa menyadari
+bahwa aturan itu SUDAH ditimpa blok tema di baris ~798 menjadi
+`var(--color-primary)`, yaitu hijau `#2B4028`. Jadi yang saya salin adalah warna
+yang sebenarnya sudah tidak dipakai siapa pun.
+
+Yang menyakitkan: prinsipnya sudah saya tulis sendiri beberapa baris di atasnya,
+untuk `.filter-bar` — *"MEMINJAM deklarasi header, bukan menyalin nilainya: nilai
+yang disalin adalah nilai yang nanti berubah cuma di salah satunya"* — lalu saya
+langgar di aturan berikutnya.
+
+Diperbaiki jadi `var(--color-primary)`. Diperiksa juga seluruh sisa `#102944` di
+berkas: kelimanya aturan dasar yang memang sudah ditimpa blok tema (`.site-header`,
+`.event-page`, `.admin-side`, `.admin-hero`), jadi tidak ada biru lain yang
+benar-benar tergambar.
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Header | hijau | hijau |
+| Pita kepala | **biru** | hijau |
+| Bilah penyaring | hijau | hijau |
+
+Ketiganya kini membaca token yang sama, jadi pergantian palet cukup satu tempat.
+
+### Bilah penyaring melayang, bukan menempel
+
+Ada celah krem 16px antara pita kepala dan bilah penyaring, sehingga bilahnya
+terbaca sebagai sepotong hijau yang mengambang — dikelilingi krem di atas dan di
+bawah.
+
+`.page-head { margin-bottom }` diturunkan jadi **0**. Karena warnanya sama, pita dan
+bilah kini terbaca sebagai satu blok utuh saat halaman baru dibuka. Jarak yang
+memisahkannya dari isi halaman tetap ada, tapi ditaruh DI BAWAH bilah, bukan di
+atasnya.
+
+Perilaku gulirnya tidak berubah dan memang itu yang diminta — menempel saat diam,
+lalu lepas dan terpaku di bawah navbar saat digulir:
+
+| Scroll | Posisi bilah |
+|---|---|
+| 0 | menempel di pita (celah 0) |
+| 150 | ikut naik |
+| 400+ | **terpaku di `top: 61px`**, tepat di bawah navbar |
+
+Halaman jurnal diperiksa juga: heronya sudah memakai `var(--color-primary)` sejak
+dulu, dan celah ke bilahnya sudah 0.
+
+Desktop 1280px tidak berubah: gradien hijau 300px tetap, `.page-head` tanpa latar
+maupun margin negatif, bilah `none`, baris penyaring atas tampil.
+
+---
+
 ## 2026-08-26 — Sesi 34: "Apa kata mereka" jadi satu panel dengan jurnal
 
 Pertanyaannya: apakah panel "Apa kata mereka" sudah tersambung ke sub-judul jurnal?

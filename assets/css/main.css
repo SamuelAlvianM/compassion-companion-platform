@@ -2136,7 +2136,18 @@ a[href^="https://wa.me/"]::before {
     }
 
     .event-page .page-head {
-        background: #102944;
+        /* `var(--color-primary)`, BUKAN `#102944`.
+           Nilai biru itu tersalin dari aturan dasar `.event-page` di baris ~304 —
+           dan aturan itu sendiri sudah ditimpa blok tema di baris ~798 menjadi
+           hijau `--color-primary`. Menyalin nilainya berarti mengambil warna yang
+           sudah tidak dipakai siapa pun, dan hasilnya pita biru di tengah situs
+           yang seluruhnya hijau.
+
+           Pelajaran yang sama sudah ditulis untuk `.filter-bar` beberapa baris di
+           atas — pinjam deklarasinya, jangan salin nilainya — lalu dilanggar di
+           sini. Sekarang keduanya membaca token yang sama, jadi pergantian palet
+           cukup satu tempat. */
+        background: var(--color-primary);
         margin-inline: -16px;
         padding: 18px 16px 22px
     }
@@ -2146,8 +2157,17 @@ a[href^="https://wa.me/"]::before {
         line-height: 1.12
     }
 
+    /* Nol, bukan 16px. Bilah penyaring berdiri persis sesudah pita ini dan
+       warnanya sama, jadi tanpa jarak keduanya terbaca sebagai satu blok utuh —
+       "menempel" saat halaman baru dibuka. Dengan jarak, bilahnya tampak melayang:
+       sepotong hijau yang dikelilingi krem di atas dan di bawahnya.
+
+       Yang memisahkannya dari isi halaman tetap ada, tapi ditaruh DI BAWAH bilah
+       (`mb-3` di markup), bukan di atasnya. Begitu digulir, bilahnya lepas dari
+       pita dan menempel di bawah navbar — dan di situ jarak atasnya memang tidak
+       diperlukan karena yang di atasnya navbar, bukan pita. */
     .event-page .page-head {
-        margin-bottom: 16px
+        margin-bottom: 0
     }
 
     /* Kalimat pengantar di bawah judul: dua baris 16px. Diturunkan ke 14px, ukuran
