@@ -253,17 +253,15 @@ const resetFilter = () => {
  */
 const lembarFilter = ref(false);
 
-
 /** Label fase yang sedang aktif, untuk dibaca di bilah bawah tanpa membukanya. */
 const labelFaseAktif = computed(
-  () => FASE_TAB.value.find(f => f.key === fase.value)?.label ?? "",
+  () => FASE_TAB.value.find((f) => f.key === fase.value)?.label ?? "",
 );
 
 /** Berapa penyaring yang sedang menyala — digambar sebagai angka kecil di tombol
     filter, supaya keadaan tersaring terbaca tanpa membuka lembarnya. */
 const jumlahFilterAktif = computed(
-  () =>
-    (fase.value !== "semua" ? 1 : 0) + (urutan.value !== "terbaru" ? 1 : 0),
+  () => (fase.value !== "semua" ? 1 : 0) + (urutan.value !== "terbaru" ? 1 : 0),
 );
 
 // ── Tampilan ─────────────────────────────────────────────────────────────────
@@ -272,7 +270,7 @@ const jumlahFilterAktif = computed(
 const badge = (f: string) =>
   ({
     mendatang: {
-      color: "primary" as const,
+      color: "accent" as const,
       variant: "solid" as const,
       icon: "i-lucide-calendar-clock",
       label: isEn.value ? "Upcoming" : "Mendatang",
@@ -424,59 +422,58 @@ const t = computed(() =>
            supaya ia selebar layar seperti navbar di atasnya; kotak yang menyisakan
            celah kiri-kanan tidak terbaca sebagai satu kesatuan dengan header. -->
       <div class="filter-bar sticky z-30 mb-3 px-4 py-2 sm:hidden">
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="cari"
-          icon="i-lucide-search"
-          :placeholder="t.filterCari"
-          class="min-w-0 flex-1"
-          :ui="{ base: 'rounded-full' }"
-        >
-          <!-- Tombol kosongkan ditulis sendiri, bukan mengandalkan `type="search"`.
+        <div class="flex items-center gap-2">
+          <UInput
+            v-model="cari"
+            icon="i-lucide-search"
+            :placeholder="t.filterCari"
+            class="min-w-0 flex-1"
+            :ui="{ base: 'rounded-full' }"
+          >
+            <!-- Tombol kosongkan ditulis sendiri, bukan mengandalkan `type="search"`.
                Silang bawaan peramban digambar WebKit dengan warnanya sendiri (biru
                sistem), tidak bisa diwarnai, dan tidak muncul sama sekali di sebagian
                peramban lain — jadi tombolnya ada atau tidak tergantung yang membuka,
                bukan tergantung rancangan. -->
-          <template v-if="cari" #trailing>
-            <UButton
-              color="secondary"
-              variant="link"
-              size="sm"
-              icon="i-lucide-x"
-              class="text-cc-brown-500 hover:text-cc-brown-600"
-              :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
-              @click="cari = ''"
-            />
-          </template>
-        </UInput>
+            <template v-if="cari" #trailing>
+              <UButton
+                color="secondary"
+                variant="link"
+                size="sm"
+                icon="i-lucide-x"
+                class="text-cc-brown-500 hover:text-cc-brown-600"
+                :aria-label="isEn ? 'Clear search' : 'Kosongkan pencarian'"
+                @click="cari = ''"
+              />
+            </template>
+          </UInput>
 
-        <!-- Angka kecil di tombolnya memberi tahu ada penyaring yang menyala tanpa
+          <!-- Angka kecil di tombolnya memberi tahu ada penyaring yang menyala tanpa
              perlu membuka lembarnya — tanpa itu, daftar yang tersaring terlihat
              sama saja dengan daftar yang pendek. -->
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-sliders-horizontal"
-          size="lg"
-          class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
-          :aria-label="t.filterKategori"
-          @click="lembarFilter = true"
-        >
-          <span
-            v-if="jumlahFilterAktif"
-            class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-sliders-horizontal"
+            size="lg"
+            class="relative shrink-0 rounded-full bg-white/10 text-white hover:bg-white/20"
+            :aria-label="t.filterKategori"
+            @click="lembarFilter = true"
           >
-            {{ jumlahFilterAktif }}
-          </span>
-        </UButton>
-      </div>
+            <span
+              v-if="jumlahFilterAktif"
+              class="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-cc-brown-500 text-[10px] font-bold text-white"
+            >
+              {{ jumlahFilterAktif }}
+            </span>
+          </UButton>
+        </div>
 
-      <!-- Baris ringkasan dicabut: bilahnya jadi dua tingkat dan terasa tinggi untuk
+        <!-- Baris ringkasan dicabut: bilahnya jadi dua tingkat dan terasa tinggi untuk
            sesuatu yang menempel permanen di bawah layar. Keadaan tersaring tetap
            terbaca dari angka kecil pada tombol filter, dan jumlah hasilnya sudah
            tertulis di atas daftar. -->
-
-    </div>
+      </div>
 
       <!-- Filter: chip kategori (+ tombol reset) di kiri, cari + urutan di kanan.
            Bentuk chipnya mengikuti penyaring status di dashboard:
@@ -604,7 +601,9 @@ const t = computed(() =>
             variant="ghost"
             icon="i-lucide-rotate-ccw"
             :class="adaFilter ? '' : 'invisible pointer-events-none'"
-            :ui="{ base: 'event-reset hidden shrink-0 rounded-full px-2 sm:inline-flex' }"
+            :ui="{
+              base: 'event-reset hidden shrink-0 rounded-full px-2 sm:inline-flex',
+            }"
             @click="resetFilter"
           >
             {{ t.reset }}
@@ -784,7 +783,6 @@ const t = computed(() =>
       </div>
     </div>
 
-
     <!-- Lembar penyaring. Dari bawah, sejajar dengan bilah yang membukanya.
 
          TANPA tombol "terapkan". Pilihannya berlaku seketika dan lembarnya menutup
@@ -815,12 +813,19 @@ const t = computed(() =>
                 : 'border-cc-stone-200 bg-white text-cc-stone-600'
             "
             :aria-pressed="fase === f.key"
-            @click="fase = f.key; lembarFilter = false"
+            @click="
+              fase = f.key;
+              lembarFilter = false;
+            "
           >
             {{ f.label }}
             <span
               class="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
-              :class="fase === f.key ? 'bg-white/25' : 'bg-cc-stone-100 text-cc-stone-500'"
+              :class="
+                fase === f.key
+                  ? 'bg-white/25'
+                  : 'bg-cc-stone-100 text-cc-stone-500'
+              "
             >
               {{ hitungFase[f.key] ?? 0 }}
             </span>

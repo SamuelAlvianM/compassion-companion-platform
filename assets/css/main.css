@@ -2,324 +2,334 @@
    paling atas berkas, dan berkas ini kini dimuat sebagai layer dari sana. */
 
 :root {
-    --ink: #102944;
-    --wine: #681f2b;
-    --gold: #c79a3b;
-    --paper: #f8f6f1;
-    --line: #e8e1d5;
-    --muted: #6c7180
+  --ink: #102944;
+  --wine: #681f2b;
+  --gold: #c79a3b;
+  --paper: #f8f6f1;
+  --line: #e8e1d5;
+  --muted: #6c7180;
 }
 
 * {
-    box-sizing: border-box
+  box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    background: var(--paper);
-    color: #172535;
-    font: 15px/1.6 'DM Sans', sans-serif
+  margin: 0;
+  background: var(--paper);
+  color: #172535;
+  font:
+    15px/1.6 "DM Sans",
+    sans-serif;
 }
 
 a {
-    text-decoration: none;
-    color: inherit
+  text-decoration: none;
+  color: inherit;
 }
 
 h1,
 h2,
 h3,
 p {
-    margin-top: 0
+  margin-top: 0;
 }
 
 h1,
 h2,
 h3,
 .serif {
-    font-family: 'Cormorant Garamond', serif;
-    line-height: 1.06
+  font-family: "Cormorant Garamond", serif;
+  line-height: 1.06;
 }
 
 .eyebrow {
-    color: var(--gold);
-    font-size: 11px;
-    letter-spacing: .16em;
-    font-weight: 700;
-    text-transform: uppercase
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .container {
-    width: min(1160px, calc(100% - 44px));
-    margin: auto
+  width: min(1160px, calc(100% - 44px));
+  margin: auto;
 }
 
 .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    width: 100%;
-    color: #fff;
-    padding: 9px 0;
-    background: #102944f2;
-    box-shadow: 0 3px 15px #0002
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  color: #fff;
+  padding: 9px 0;
+  background: #102944f2;
+  box-shadow: 0 3px 15px #0002;
 }
 
 .nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: 'Cormorant Garamond';
-    font-size: 21px;
-    letter-spacing: .06em
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Cormorant Garamond";
+  font-size: 21px;
+  letter-spacing: 0.06em;
 }
 
 .mark {
-    border: 1px solid var(--gold);
-    color: var(--gold);
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-weight: 700
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
 }
 
 .links {
-    display: flex;
-    gap: 23px;
-    font-size: 14px
+  display: flex;
+  gap: 23px;
+  font-size: 14px;
 }
 
 .nav-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .lang {
-    border: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid transparent;
-    padding: 12px 18px;
-    border-radius: 3px;
-    background: var(--wine);
-    color: white;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  padding: 12px 18px;
+  border-radius: 3px;
+  background: var(--wine);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .btn.gold {
-    background: var(--gold)
+  background: var(--gold);
 }
 
 .btn.outline {
-    background: transparent;
-    border-color: currentColor
+  background: transparent;
+  border-color: currentColor;
 }
 
 /* Tombol di navbar sengaja lebih kecil dari .btn biasa supaya tidak mendominasi
    header. Diselektor lewat .nav-actions (0,2,0) agar tetap menang atas override
    .btn di bagian token, tanpa perlu !important. */
 .nav-actions .btn {
-    padding: 7px 15px;
-    font-size: 12px
+  padding: 7px 15px;
+  font-size: 12px;
 }
 
 .hero {
-    min-height: 650px;
-    color: white;
-    background: linear-gradient(90deg, rgba(4, 20, 35, .92), rgba(4, 20, 35, .58), rgba(4, 20, 35, .08)), radial-gradient(circle at 75% 30%, #d4ad74 0, transparent 28%), linear-gradient(135deg, #0d2438, #775b48);
-    display: flex;
-    align-items: center
+  min-height: 650px;
+  color: white;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 20, 35, 0.92),
+      rgba(4, 20, 35, 0.58),
+      rgba(4, 20, 35, 0.08)
+    ),
+    radial-gradient(circle at 75% 30%, #d4ad74 0, transparent 28%),
+    linear-gradient(135deg, #0d2438, #775b48);
+  display: flex;
+  align-items: center;
 }
 
 .hero-copy {
-    max-width: 620px;
-    padding-top: 30px
+  max-width: 620px;
+  padding-top: 30px;
 }
 
 .hero h1 {
-    font-size: clamp(45px, 6vw, 76px);
-    margin: 15px 0 23px
+  font-size: clamp(45px, 6vw, 76px);
+  margin: 15px 0 23px;
 }
 
 .hero p {
-    max-width: 495px;
-    color: #f0e9df
+  max-width: 495px;
+  color: #f0e9df;
 }
 
 .hero-actions {
-    display: flex;
-    gap: 14px;
-    margin-top: 30px
+  display: flex;
+  gap: 14px;
+  margin-top: 30px;
 }
 
 .section {
-    padding: 84px 0
+  padding: 84px 0;
 }
 
 .section-title {
-    font-size: 48px;
-    margin-bottom: 15px
+  font-size: 48px;
+  margin-bottom: 15px;
 }
 
 .intro-grid,
 .profile-grid {
-    display: grid;
-    grid-template-columns: 1.2fr .8fr;
-    gap: 80px
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 80px;
 }
 
 /* Nilai desktopnya sama persis dengan inline style yang digantikannya, supaya
    tampilan lebar tidak ikut berubah — yang diperbaiki hanya layar sempit. */
 .about-intro {
-    padding: 80px 180px
+  padding: 80px 180px;
 }
 
 .pillars {
-    display: grid;
-    gap: 24px
+  display: grid;
+  gap: 24px;
 }
 
 .pillar {
-    padding-left: 62px;
-    position: relative
+  padding-left: 62px;
+  position: relative;
 }
 
 .pillar:before {
-    content: '✦';
-    position: absolute;
-    left: 0;
-    top: 4px;
-    color: var(--gold);
-    font-size: 27px
+  content: "✦";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  color: var(--gold);
+  font-size: 27px;
 }
 
 .profile {
-    background: #efe9df
+  background: #efe9df;
 }
 
 .profile-grid {
-    align-items: center
+  align-items: center;
 }
 
 .profile-grid img {
-    width: 100%;
-    border-radius: 7px
+  width: 100%;
+  border-radius: 7px;
 }
 
 .profile-note {
-    color: var(--wine);
-    font-weight: 600
+  color: var(--wine);
+  font-weight: 600;
 }
 
 .journey {
-    font-family: cursive;
-    font-size: 43px;
-    color: #e4c982;
-    margin-bottom: 25px
+  font-family: cursive;
+  font-size: 43px;
+  color: #e4c982;
+  margin-bottom: 25px;
 }
 
 .cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 19px
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 19px;
 }
 
 .card {
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    overflow: hidden;
-    box-shadow: 0 6px 24px #1e29360d
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px #1e29360d;
 }
 
 .card-image {
-    height: 176px;
-    background: linear-gradient(135deg, #253b4d, #b9976e)
+  height: 176px;
+  background: linear-gradient(135deg, #253b4d, #b9976e);
 }
 
 .card:nth-child(2) .card-image {
-    background: linear-gradient(135deg, #88623c, #e2ccb0)
+  background: linear-gradient(135deg, #88623c, #e2ccb0);
 }
 
 .card-body {
-    padding: 22px
+  padding: 22px;
 }
 
 .card h3 {
-    font-size: 28px;
-    margin-bottom: 8px
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 
 .muted {
-    color: var(--muted)
+  color: var(--muted);
 }
 
 .event-meta {
-    font-size: 12px;
-    color: var(--gold);
-    font-weight: 700;
-    letter-spacing: .08em
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .dark-band {
-    background: var(--ink);
-    color: #fff;
-    padding: 66px 0
+  background: var(--ink);
+  color: #fff;
+  padding: 66px 0;
 }
 
 .footer {
-    background: #651e2c;
-    color: #eee;
-    padding: 42px 0
+  background: #651e2c;
+  color: #eee;
+  padding: 42px 0;
 }
 
 .footer-grid {
-    display: flex;
-    justify-content: space-between;
-    gap: 30px
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
 }
 
 .event-page {
-    padding: 74px 0 80px;
-    background: linear-gradient(#102944 0 300px, var(--paper) 300px);
-    min-height: 100vh
+  padding: 74px 0 80px;
+  background: linear-gradient(#102944 0 300px, var(--paper) 300px);
+  min-height: 100vh;
 }
 
 .event-page .page-head {
-    color: white;
-    margin-bottom: 45px
+  color: white;
+  margin-bottom: 45px;
 }
 
 .event-page h1 {
-    font-size: 58px;
-    margin: 10px 0
+  font-size: 58px;
+  margin: 10px 0;
 }
 
 /* Tab halaman event kini memakai <UTabs>; aturan `.tabs button` yang lama dihapus
    karena spesifisitasnya (0,1,1) mengalahkan utility Nuxt UI di layer yang sama. */
 
 .registration {
-    max-width: 680px
+  max-width: 680px;
 }
 
 /* Formulir pendaftaran kini memakai UForm/UFormField/UInput/UCheckbox.
@@ -327,82 +337,84 @@ h3,
    berspesifisitas (0,1,1) sehingga akan menimpa utility Nuxt UI di layer yang sama. */
 
 .admin-shell {
-    min-height: 100vh;
-    background: #f5f4f0;
-    display: grid;
-    grid-template-columns: 254px 1fr;
-    transition: grid-template-columns .22s ease;
-    /* Jangkar untuk .sidebar-toggle yang diposisikan absolut. */
-    position: relative
+  min-height: 100vh;
+  background: #f5f4f0;
+  display: grid;
+  grid-template-columns: 254px 1fr;
+  transition: grid-template-columns 0.22s ease;
+  /* Jangkar untuk .sidebar-toggle yang diposisikan absolut. */
+  position: relative;
 }
 
 .admin-shell.is-collapsed {
-    grid-template-columns: 76px 1fr
+  grid-template-columns: 76px 1fr;
 }
 
 .admin-side {
-    background: #102944;
-    color: #d8e0e7;
-    padding: 22px 16px;
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto
+  background: #102944;
+  color: #d8e0e7;
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .admin-side .brand {
-    color: #fff;
-    font-size: 18px;
-    line-height: 1.15
+  color: #fff;
+  font-size: 18px;
+  line-height: 1.15;
 }
 
 .admin-menu {
-    display: grid;
-    gap: 4px;
-    margin-top: 34px
+  display: grid;
+  gap: 4px;
+  margin-top: 34px;
 }
 
 /* Dipakai oleh <a> maupun <button> (Keluar), jadi diselektor lewat kelas
    dan bukan lewat nama elemen. */
 .admin-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-size: 14px;
-    text-align: left;
-    cursor: pointer;
-    transition: background-color .18s ease, color .18s ease
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .admin-menu-item:hover,
 .admin-menu-item.is-active {
-    background: #ffffff18;
-    color: #fff
+  background: #ffffff18;
+  color: #fff;
 }
 
 .admin-menu-item.is-active {
-    font-weight: 600;
-    box-shadow: inset 3px 0 0 var(--color-accent)
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
 .admin-menu-item.is-logout:hover {
-    background: #ef444426;
-    color: #fecaca
+  background: #ef444426;
+  color: #fecaca;
 }
 
 /* Sidebar dilipat: hanya ikon, jadi item dibuat rata tengah. */
 .is-collapsed .admin-menu-item {
-    justify-content: center;
-    padding-inline: 0
+  justify-content: center;
+  padding-inline: 0;
 }
 
 /* Tombol lipat: lingkaran terang yang duduk PERSIS di garis batas sidebar,
@@ -410,71 +422,75 @@ h3,
    `left` dipatok ke lebar sidebar (bukan `right` di dalam aside) supaya tidak kena
    pemotongan overflow milik sidebar, dan ikut bergeser saat sidebar dilipat. */
 .sidebar-toggle {
-    position: absolute;
-    top: 92px;
-    left: 254px;
-    transform: translateX(-50%);
-    z-index: 30;
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 1px solid #ffffff2e;
-    border-radius: 50%;
-    /* Rata, tanpa bibir gelap: bayangan hitam di sekeliling tombol terbaca sebagai
+  position: absolute;
+  top: 92px;
+  left: 254px;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #ffffff2e;
+  border-radius: 50%;
+  /* Rata, tanpa bibir gelap: bayangan hitam di sekeliling tombol terbaca sebagai
        noda pada latar hijau tua sidebar, bukan sebagai kedalaman. */
-    background: var(--color-primary);
-    color: #f0ece2;
-    cursor: pointer;
-    box-shadow: none;
-    transition: left .22s ease, background .15s ease, transform .12s ease, border-color .15s ease
+  background: var(--color-primary);
+  color: #f0ece2;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    left 0.22s ease,
+    background 0.15s ease,
+    transform 0.12s ease,
+    border-color 0.15s ease;
 }
 
 .sidebar-toggle:hover {
-    background: #3c5a38;
-    border-color: var(--color-accent)
+  background: #3c5a38;
+  border-color: var(--color-accent);
 }
 
 .sidebar-toggle:active {
-    transform: translateX(-50%) scale(.94)
+  transform: translateX(-50%) scale(0.94);
 }
 
 .sidebar-toggle:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 3px
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .is-collapsed .sidebar-toggle {
-    left: 76px
+  left: 76px;
 }
 
 .sidebar-toggle:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .admin-side-footer {
-    margin-top: auto;
-    padding-top: 18px;
-    border-top: 1px solid #ffffff1f;
-    display: grid;
-    gap: 4px
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid #ffffff1f;
+  display: grid;
+  gap: 4px;
 }
 
 .admin-side-user {
-    margin-top: 8px;
-    padding: 10px 12px;
-    border-radius: 5px;
-    background: #ffffff12;
-    font-size: 12px;
-    line-height: 1.5
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: #ffffff12;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .admin-main {
-    padding: 38px 46px;
+  padding: 38px 46px;
 
-    /* Tanpa ini, tabel lebar mendorong SELURUH kerangka admin ke samping.
+  /* Tanpa ini, tabel lebar mendorong SELURUH kerangka admin ke samping.
 
        .admin-shell adalah grid `254px 1fr`, dan item grid punya `min-width: auto` —
        artinya kolom `1fr` menolak menyusut di bawah lebar min-content isinya. Satu
@@ -484,122 +500,122 @@ h3,
 
        `min-width: 0` mengembalikan hak kolomnya untuk menyusut; yang menggulir lalu
        jadi elemen yang memang punya overflow-nya sendiri — tabelnya. */
-    min-width: 0
+  min-width: 0;
 }
 
 .admin-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
 }
 
 .admin-top h1 {
-    font-size: 43px;
-    margin: 0
+  font-size: 43px;
+  margin: 0;
 }
 
 .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 
 .stat,
 .panel {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 20px
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 20px;
 }
 
 .stat strong {
-    display: block;
-    font: 44px 'Cormorant Garamond';
-    color: var(--wine)
+  display: block;
+  font: 44px "Cormorant Garamond";
+  color: var(--wine);
 }
 
 .panel {
-    margin-top: 22px
+  margin-top: 22px;
 }
 
 .table {
-    width: 100%;
-    border-collapse: collapse
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .table th,
 .table td {
-    text-align: left;
-    padding: 13px 8px;
-    border-bottom: 1px solid var(--line);
-    font-size: 13px
+  text-align: left;
+  padding: 13px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
 }
 
 .badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 99px;
-    background: #f8ecce;
-    color: #7d5a16;
-    font-size: 11px;
-    font-weight: 700
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #f8ecce;
+  color: #7d5a16;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .admin-hero {
-    margin-top: 22px;
-    background: linear-gradient(110deg, #102944, #385b65);
-    color: white;
-    border-radius: 6px;
-    padding: 28px
+  margin-top: 22px;
+  background: linear-gradient(110deg, #102944, #385b65);
+  color: white;
+  border-radius: 6px;
+  padding: 28px;
 }
 
 .admin-hero h2 {
-    font-size: 34px;
-    margin: 0 0 8px
+  font-size: 34px;
+  margin: 0 0 8px;
 }
 
 /* Tombol laci. Bawaannya tersembunyi dan dibuka di blok 760px di bawah — angka
    yang sama dengan tempat `.links` dan `.nav-actions .btn` disembunyikan, supaya
    tidak pernah ada lebar layar yang menampilkan keduanya atau tidak satu pun. */
 .nav-burger {
-    display: none
+  display: none;
 }
 
-@media(max-width:760px) {
-    .links {
-        display: none
-    }
+@media (max-width: 760px) {
+  .links {
+    display: none;
+  }
 
-    .nav-burger {
-        display: inline-flex
-    }
+  .nav-burger {
+    display: inline-flex;
+  }
 
-    .hero {
-        min-height: 620px
-    }
+  .hero {
+    min-height: 620px;
+  }
 
-    .intro-grid,
-    .cards,
-    .stats {
-        grid-template-columns: 1fr
-    }
+  .intro-grid,
+  .cards,
+  .stats {
+    grid-template-columns: 1fr;
+  }
 
-    .section-title {
-        font-size: 40px
-    }
+  .section-title {
+    font-size: 40px;
+  }
 
-    .event-page h1 {
-        font-size: 45px
-    }
+  .event-page h1 {
+    font-size: 45px;
+  }
 
-    .footer-grid {
-        display: block
-    }
+  .footer-grid {
+    display: block;
+  }
 
-    .nav-actions .btn {
-        display: none
-    }
+  .nav-actions .btn {
+    display: none;
+  }
 }
 
 /* Bilah atas hanya ada di layar sempit. Ditulis sebagai aturan tersendiri, bukan
@@ -607,7 +623,7 @@ h3,
    terhapus, yang muncul di desktop adalah bilah kedua di atas sidebar — bukan
    sesuatu yang langsung terbaca sebagai kesalahan. */
 .admin-topbar {
-    display: none
+  display: none;
 }
 
 /* ── Admin di layar sempit ────────────────────────────────────────────────────
@@ -622,105 +638,104 @@ h3,
    navigasi yang bisa dibaca. Penggantinya laci di layouts/admin.vue, yang menyimpan
    labelnya. */
 @media (max-width: 767px) {
+  .admin-shell,
+  .admin-shell.is-collapsed {
+    grid-template-columns: 1fr;
+  }
 
-    .admin-shell,
-    .admin-shell.is-collapsed {
-        grid-template-columns: 1fr
-    }
+  .admin-side,
+  .sidebar-toggle {
+    display: none;
+  }
 
-    .admin-side,
-    .sidebar-toggle {
-        display: none
-    }
+  .admin-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--color-primary);
+    color: #fff;
+    padding: 10px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
 
-    .admin-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        background: var(--color-primary);
-        color: #fff;
-        padding: 10px 16px;
-        position: sticky;
-        top: 0;
-        z-index: 20
-    }
-
-    /* Padding konten dikecilkan: 40px kiri-kanan di layar 375px menyisakan 295px
+  /* Padding konten dikecilkan: 40px kiri-kanan di layar 375px menyisakan 295px
        untuk tabel dan formulir, dan itu terasa pada tiap kartu. */
-    .admin-main {
-        padding: 22px 16px
-    }
+  .admin-main {
+    padding: 22px 16px;
+  }
 }
 
 .event-page {
-    padding-top: 40px
+  padding-top: 40px;
 }
 
 .event-page .page-head {
-    margin-bottom: 30px
+  margin-bottom: 30px;
 }
 
 .breadcrumb {
-    display: flex;
-    gap: 9px;
-    align-items: center;
-    margin-bottom: 18px;
-    font-size: 12px;
-    color: #d7e1e4
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: #d7e1e4;
 }
 
 .breadcrumb a {
-    text-decoration: underline;
-    text-underline-offset: 3px
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .breadcrumb a:hover {
-    color: #dfbf79
+  color: #dfbf79;
 }
 
 .dark-band .container {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .dark-band .journey {
-    order: 10;
-    margin-top: 28px;
-    margin-bottom: 0;
-    font-family: 'Lucida Handwriting', 'Segoe Script', cursive;
-    font-size: 28px
+  order: 10;
+  margin-top: 28px;
+  margin-bottom: 0;
+  font-family: "Lucida Handwriting", "Segoe Script", cursive;
+  font-size: 28px;
 }
 
 /* Brand colour tokens — change only these values for future palette updates. */
 :root {
-    --color-primary: #2B4028;
-    --color-secondary: #AC8158;
-    --color-accent: #E1B032;
-    --color-surface: #FBF4EB;
-    --color-surface-alt: #f3e8da;
-    --color-text: #263524;
-    --color-muted: #687064;
-    --color-line: #e4d7c6;
-    --color-on-primary: #fff;
-    --color-primary-rgb: 43, 64, 40;
-    --color-secondary-rgb: 172, 129, 88;
-    --ink: var(--color-primary);
-    --wine: var(--color-secondary);
-    --gold: var(--color-accent);
-    --paper: var(--color-surface);
-    --line: var(--color-line);
-    --muted: var(--color-muted)
+  --color-primary: #2b4028;
+  --color-secondary: #ac8158;
+  --color-accent: #e1b032;
+  --color-surface: #fbf4eb;
+  --color-surface-alt: #f3e8da;
+  --color-text: #263524;
+  --color-muted: #687064;
+  --color-line: #e4d7c6;
+  --color-on-primary: #fff;
+  --color-primary-rgb: 43, 64, 40;
+  --color-secondary-rgb: 172, 129, 88;
+  --ink: var(--color-primary);
+  --wine: var(--color-secondary);
+  --gold: var(--color-accent);
+  --paper: var(--color-surface);
+  --line: var(--color-line);
+  --muted: var(--color-muted);
 }
 
 body {
-    background: var(--color-surface);
-    color: var(--color-text)
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .site-header {
-    background: rgba(var(--color-primary-rgb), .95)
+  background: rgba(var(--color-primary-rgb), 0.95);
 }
 
 /* Bilah penyaring yang menempel DI BAWAH NAVBAR pada ponsel (halaman event &
@@ -739,144 +754,171 @@ body {
    kiri-kanan tidak terbaca sebagai satu kesatuan dengan header — ia terbaca sebagai
    kartu yang kebetulan lengket. */
 .filter-bar {
-    top: var(--tinggi-header);
-    background: rgba(var(--color-primary-rgb), .95);
-    backdrop-filter: blur(8px);
-    margin-inline: -22px
+  top: var(--tinggi-header);
+  background: rgba(var(--color-primary-rgb), 0.95);
+  backdrop-filter: blur(8px);
+  margin-inline: -22px;
 }
 
 .btn {
-    background: var(--color-secondary)
+  background: var(--color-secondary);
 }
 
 .btn.gold {
-    background: var(--color-accent);
-    color: var(--color-primary)
+  background: var(--color-accent);
+  color: var(--color-primary);
 }
 
 .hero {
-    background: linear-gradient(90deg, rgba(var(--color-primary-rgb), .94), rgba(var(--color-primary-rgb), .63), rgba(var(--color-primary-rgb), .12)), radial-gradient(circle at 75% 30%, var(--color-secondary) 0, transparent 28%), linear-gradient(135deg, var(--color-primary), var(--color-secondary))
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--color-primary-rgb), 0.94),
+      rgba(var(--color-primary-rgb), 0.63),
+      rgba(var(--color-primary-rgb), 0.12)
+    ),
+    radial-gradient(
+      circle at 75% 30%,
+      var(--color-secondary) 0,
+      transparent 28%
+    ),
+    linear-gradient(135deg, var(--color-primary), var(--color-secondary));
 }
 
 .hero p {
-    color: var(--color-surface)
+  color: var(--color-surface);
 }
 
 .profile {
-    background: var(--color-surface-alt)
+  background: var(--color-surface-alt);
 }
 
 .profile-note {
-    color: var(--color-secondary)
+  color: var(--color-secondary);
 }
 
 .journey {
-    color: var(--color-accent)
+  color: var(--color-accent);
 }
 
 .card {
-    background: var(--color-surface)
+  background: var(--color-surface);
 }
 
 .card-image {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary))
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
 }
 
 .card:nth-child(2) .card-image {
-    background: linear-gradient(135deg, var(--color-secondary), var(--color-accent))
+  background: linear-gradient(
+    135deg,
+    var(--color-secondary),
+    var(--color-accent)
+  );
 }
 
 .dark-band {
-    background: var(--color-primary)
+  background: var(--color-primary);
 }
 
 .footer {
-    background: var(--color-primary);
-    color: var(--color-surface)
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .event-page {
-    background: linear-gradient(var(--color-primary) 0 300px, var(--color-surface) 300px)
+  background: linear-gradient(
+    var(--color-primary) 0 300px,
+    var(--color-surface) 300px
+  );
 }
 
 .admin-shell {
-    background: var(--color-surface-alt)
+  background: var(--color-surface-alt);
 }
 
 .admin-side,
 .admin-hero {
-    background: var(--color-primary)
+  background: var(--color-primary);
 }
 
 .stat,
 .panel {
-    background: var(--color-surface)
+  background: var(--color-surface);
 }
 
 .stat strong {
-    color: var(--color-secondary)
+  color: var(--color-secondary);
 }
 
 .badge {
-    background: #f2dfb5;
-    color: var(--color-primary)
+  background: #f2dfb5;
+  color: var(--color-primary);
 }
 
 .breadcrumb {
-    color: var(--color-surface-alt)
+  color: var(--color-surface-alt);
 }
 
 .breadcrumb a:hover {
-    color: var(--color-accent)
+  color: var(--color-accent);
 }
 
 a[href^="https://wa.me/"] {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 a[href^="https://wa.me/"]::before {
-    content: '';
-    width: 18px;
-    height: 18px;
-    display: inline-block;
-    background: url('/images/whatsapp-icon.png') center/contain no-repeat
+  content: "";
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  background: url("/images/whatsapp-icon.png") center/contain no-repeat;
 }
 
 .article {
-    max-width: 850px
+  max-width: 850px;
 }
 
 .article-body {
-    font-size: 17px
+  font-size: 17px;
 }
 
 .article-body p {
-    max-width: 680px
+  max-width: 680px;
 }
 
 .article-body .lead {
-    font: 30px/1.2 'Cormorant Garamond', serif;
-    color: var(--color-primary)
+  font:
+    30px/1.2 "Cormorant Garamond",
+    serif;
+  color: var(--color-primary);
 }
 
 .article-body h2 {
-    font-size: 35px;
-    margin: 38px 0 12px
+  font-size: 35px;
+  margin: 38px 0 12px;
 }
 
 .article-body blockquote {
-    margin: 30px 0;
-    padding: 18px 24px;
-    border-left: 4px solid var(--color-accent);
-    background: var(--color-surface-alt);
-    font: 25px/1.25 'Cormorant Garamond', serif
+  margin: 30px 0;
+  padding: 18px 24px;
+  border-left: 4px solid var(--color-accent);
+  background: var(--color-surface-alt);
+  font:
+    25px/1.25 "Cormorant Garamond",
+    serif;
 }
 
 .article-body h3 {
-    font-size: 26px;
-    margin: 28px 0 10px
+  font-size: 26px;
+  margin: 28px 0 10px;
 }
 
 /* Daftar dari editor jurnal.
@@ -889,31 +931,45 @@ a[href^="https://wa.me/"]::before {
    dilihat penulis sama dengan yang dibaca pengunjung. */
 .article-body ul,
 .article-body ol {
-    max-width: 680px;
-    margin: 14px 0;
-    padding-left: 26px
+  max-width: 680px;
+  margin: 14px 0;
+  padding-left: 26px;
 }
 
-.article-body ol { list-style: decimal }
-.article-body ol ol { list-style: lower-alpha }
-.article-body ol ol ol { list-style: lower-roman }
-.article-body ul { list-style: disc }
-.article-body ul ul { list-style: circle }
+.article-body ol {
+  list-style: decimal;
+}
+.article-body ol ol {
+  list-style: lower-alpha;
+}
+.article-body ol ol ol {
+  list-style: lower-roman;
+}
+.article-body ul {
+  list-style: disc;
+}
+.article-body ul ul {
+  list-style: circle;
+}
 
-.article-body li { margin: 6px 0 }
-.article-body li > p { margin: 0 }
+.article-body li {
+  margin: 6px 0;
+}
+.article-body li > p {
+  margin: 0;
+}
 
 .article-body a {
-    color: var(--color-secondary);
-    text-decoration: underline;
-    text-underline-offset: 3px
+  color: var(--color-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .article-body img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 22px 0
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 22px 0;
 }
 
 /* Gambar bertulisan keterangan — bentuk yang dihasilkan node `gambarJurnal` di
@@ -921,110 +977,119 @@ a[href^="https://wa.me/"]::before {
    dari `data-align`; keduanya disusun penulis dan sudah lolos pembersih HTML.
    Yang diatur di sini cuma bagaimana ketiganya digambar. */
 .article-body figure[data-gambar] {
-    margin: 26px 0;
-    max-width: 100%
+  margin: 26px 0;
+  max-width: 100%;
 }
 
 .article-body figure[data-gambar] img {
-    width: 100%;
-    margin: 0
+  width: 100%;
+  margin: 0;
 }
 
 .article-body figure[data-gambar] figcaption {
-    margin-top: 8px;
-    text-align: center;
-    font-size: 14px;
-    font-style: italic;
-    color: var(--color-muted)
+  margin-top: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--color-muted);
 }
 
-.article-body figure[data-align="tengah"] { margin-left: auto; margin-right: auto }
-.article-body figure[data-align="kiri"] { margin-left: 0; margin-right: auto }
-.article-body figure[data-align="kanan"] { margin-left: auto; margin-right: 0 }
+.article-body figure[data-align="tengah"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+.article-body figure[data-align="kiri"] {
+  margin-left: 0;
+  margin-right: auto;
+}
+.article-body figure[data-align="kanan"] {
+  margin-left: auto;
+  margin-right: 0;
+}
 
 .article-body hr {
-    margin: 34px 0;
-    border: 0;
-    border-top: 1px solid var(--color-line)
+  margin: 34px 0;
+  border: 0;
+  border-top: 1px solid var(--color-line);
 }
 
 .contributor {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    max-width: 700px
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 700px;
 }
 
 .contributor h3 {
-    font-size: 29px;
-    margin: 4px 0
+  font-size: 29px;
+  margin: 4px 0;
 }
 
 .avatar {
-    width: 62px;
-    height: 62px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: var(--color-primary);
-    color: var(--color-accent);
-    font-weight: 700
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-primary);
+  color: var(--color-accent);
+  font-weight: 700;
 }
 
 .hero {
-    min-height: 500px
+  min-height: 500px;
 }
 
 .hero-copy {
-    margin-inline: auto;
-    text-align: center
+  margin-inline: auto;
+  text-align: center;
 }
 
 .hero p {
-    margin-inline: auto
+  margin-inline: auto;
 }
 
 .hero-actions {
-    justify-content: center
+  justify-content: center;
 }
 
 .hero-copy {
-    max-width: 850px
+  max-width: 850px;
 }
 
 .profile-grid img {
-    width: 50%;
-    justify-self: center
+  width: 50%;
+  justify-self: center;
 }
 
 .about-copy {
-    color: var(--color-muted)
+  color: var(--color-muted);
 }
 
 .about-copy p {
-    margin-bottom: 18px;
-    text-align: justify;
-    /* Menyertai `justify`, bukan hiasan. Tanpa pemenggalan, teks rata kanan-kiri
+  margin-bottom: 18px;
+  text-align: justify;
+  /* Menyertai `justify`, bukan hiasan. Tanpa pemenggalan, teks rata kanan-kiri
        melebarkan jarak antar-kata untuk menutup sisa baris — dan pada kolom sempit
        dengan kata panjang ("mengintegrasikan", "pendampingan") celahnya cukup lebar
        untuk membentuk "sungai" putih yang menarik mata turun, bukan ke samping.
        Peramban yang tidak bisa memenggal bahasa Indonesia mengabaikan baris ini
        tanpa efek samping. */
-    hyphens: auto
+  hyphens: auto;
 }
 
 .about-image-wrap {
-    align-self: center;
-    height: 100%;
+  align-self: center;
+  height: 100%;
 }
 
 .about-image-wrap img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    border-radius: 7px
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 7px;
 }
 
 /* Gambar "Tentang kami" meluap 219px keluar layar di ponsel.
@@ -1040,50 +1105,50 @@ a[href^="https://wa.me/"]::before {
    HARUS di bawah aturan dasar di atas — media query tidak menambah spesifisitas,
    jadi yang menang adalah yang belakangan di sumber. */
 @media (max-width: 760px) {
-    /* `minmax(0, 1fr)`, bukan `1fr`. Minimum otomatis sebuah track `1fr` adalah
+  /* `minmax(0, 1fr)`, bukan `1fr`. Minimum otomatis sebuah track `1fr` adalah
        min-content, dan min-content sebuah <img> adalah lebar intrinsik berkasnya —
        di sini 1152px. Jadi track itu menolak menyusut ke lebar layar, berapa pun
        sempitnya, dan `1fr` yang tampak "sudah satu kolom" tetap menghasilkan kolom
        selebar 594px. `minmax(0, …)` yang mencabut lantai itu. */
-    /* `.profile-grid` ikut di sini, dan itu perbaikan tersendiri: blok mobile yang
+  /* `.profile-grid` ikut di sini, dan itu perbaikan tersendiri: blok mobile yang
        lama menyebut `.intro-grid, .cards, .stats` tapi MELEWATKAN `.profile-grid`,
        padahal keduanya berbagi aturan dasar `1.2fr .8fr`. Akibatnya bagian profil
        tetap dua kolom di ponsel — foto kecil di kiri, teks tergencet jadi dua-tiga
        kata per baris di kanan. Yang sempat ditambal cuma gambarnya
        (`.profile-grid img { width: 50% }`), bukan kolomnya. */
-    .intro-grid,
-    .profile-grid {
-        grid-template-columns: minmax(0, 1fr)
-    }
+  .intro-grid,
+  .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-    /* Alasan yang sama satu tingkat di bawahnya: item grid pun ber-`min-width: auto`. */
-    .about-image-wrap {
-        min-width: 0;
-        height: auto
-    }
+  /* Alasan yang sama satu tingkat di bawahnya: item grid pun ber-`min-width: auto`. */
+  .about-image-wrap {
+    min-width: 0;
+    height: auto;
+  }
 
-    .about-image-wrap img {
-        height: auto;
-        max-width: 100%
-    }
+  .about-image-wrap img {
+    height: auto;
+    max-width: 100%;
+  }
 
-    /* 180px kiri-kanan menyisakan 15px untuk teks di layar 375px. Diturunkan ke
+  /* 180px kiri-kanan menyisakan 15px untuk teks di layar 375px. Diturunkan ke
        lebar yang sama dengan `.container` supaya bagian ini sejajar dengan sisa
        halaman, bukan menjorok sendiri. */
-    .about-intro {
-        padding: 48px 20px
-    }
+  .about-intro {
+    padding: 48px 20px;
+  }
 
-    /* Jarak 80px masuk akal sebagai selokan antar-kolom; ditumpuk vertikal ia jadi
+  /* Jarak 80px masuk akal sebagai selokan antar-kolom; ditumpuk vertikal ia jadi
        lubang kosong sepertiga layar antara teks dan gambarnya. */
-    .intro-grid,
-    .profile-grid {
-        gap: 32px
-    }
+  .intro-grid,
+  .profile-grid {
+    gap: 32px;
+  }
 }
 
 .programs-section {
-    background: #E0D4B2
+  background: #e0d4b2;
 }
 
 /* Diselektor lewat `.card .card-image.<nama>` (0,3,0), bukan lewat :nth-child.
@@ -1091,176 +1156,184 @@ a[href^="https://wa.me/"]::before {
    bisa dijadikan patokan — sementara spesifisitasnya harus tetap menyamai aturan
    gradien `.card:nth-child(2) .card-image` agar menang lewat urutan sumber. */
 .card .card-image.leadership-image {
-    background: url('/images/leadership-with-compassion.webp') center/cover no-repeat
+  background: url("/images/leadership-with-compassion.webp") center/cover
+    no-repeat;
 }
 
 .card .card-image.listening-image {
-    background: url('/images/listening-as-leadership.webp') center/cover no-repeat
+  background: url("/images/listening-as-leadership.webp") center/cover no-repeat;
 }
 
 #insights {
-    background: #C0D5BD
+  background: #c0d5bd;
 }
 
 .insight-section {
-    padding: 82px 0;
-    background: linear-gradient(135deg, #e4eadc, #C0D5BD);
-    color: var(--color-primary);
-    position: relative;
-    overflow: hidden
+  padding: 82px 0;
+  background: linear-gradient(135deg, #e4eadc, #c0d5bd);
+  color: var(--color-primary);
+  position: relative;
+  overflow: hidden;
 }
 
 .insight-section:after {
-    content: '❧';
-    position: absolute;
-    right: 7%;
-    top: -45px;
-    color: #79906d55;
-    font-size: 250px;
-    transform: rotate(-20deg)
+  content: "❧";
+  position: absolute;
+  right: 7%;
+  top: -45px;
+  color: #79906d55;
+  font-size: 250px;
+  transform: rotate(-20deg);
 }
 
 .insight-section .container {
-    position: relative;
-    z-index: 1
+  position: relative;
+  z-index: 1;
 }
 
 .insight-section .section-title {
-    margin-bottom: 6px
+  margin-bottom: 6px;
 }
 
 .insight-tagline {
-    font: 28px 'Lucida Handwriting', 'Segoe Script', cursive;
-    color: #607251;
-    margin-bottom: 38px
+  font:
+    28px "Lucida Handwriting",
+    "Segoe Script",
+    cursive;
+  color: #607251;
+  margin-bottom: 38px;
 }
 
 .reflection-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 25px
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
 }
 
 .reflection-card {
-    background: var(--color-surface);
-    padding: 28px 34px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px #30432a1c
+  background: var(--color-surface);
+  padding: 28px 34px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px #30432a1c;
 }
 
 .quote-mark {
-    font: 62px/34px 'Cormorant Garamond', serif;
-    color: var(--color-secondary)
+  font:
+    62px/34px "Cormorant Garamond",
+    serif;
+  color: var(--color-secondary);
 }
 
 .reflection-card h3 {
-    font-size: 28px;
-    color: var(--color-secondary);
-    margin: 20px 0 0
+  font-size: 28px;
+  color: var(--color-secondary);
+  margin: 20px 0 0;
 }
 
 .reflection-event {
-    color: var(--color-secondary);
-    font-size: 13px
+  color: var(--color-secondary);
+  font-size: 13px;
 }
 
 .reflection-rule {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    color: var(--color-secondary);
-    margin: 20px 0
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--color-secondary);
+  margin: 20px 0;
 }
 
 .reflection-rule:before,
 .reflection-rule:after {
-    content: '';
-    height: 1px;
-    background: #d9bd8e;
-    flex: 1
+  content: "";
+  height: 1px;
+  background: #d9bd8e;
+  flex: 1;
 }
 
 .reflection-card p {
-    color: #535b51;
-    margin: 0
+  color: #535b51;
+  margin: 0;
 }
 
-@media(max-width:760px) {
-    .reflection-cards {
-        grid-template-columns: 1fr
-    }
+@media (max-width: 760px) {
+  .reflection-cards {
+    grid-template-columns: 1fr;
+  }
 
-    .insight-section:after {
-        font-size: 140px
-    }
+  .insight-section:after {
+    font-size: 140px;
+  }
 }
 
 .footer {
-    background: var(--color-primary);
-    padding: 46px 0
+  background: var(--color-primary);
+  padding: 46px 0;
 }
 
 .footer-contact {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    color: var(--color-accent);
-    font: 20px 'Cormorant Garamond', serif
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--color-accent);
+  font:
+    20px "Cormorant Garamond",
+    serif;
 }
 
 .footer-contact a {
-    display: flex;
-    align-items: center;
-    gap: 10px
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.footer-contact>a:not(.footer-brand) {
-    white-space: nowrap
+.footer-contact > a:not(.footer-brand) {
+  white-space: nowrap;
 }
 
 .footer-brand {
-    font-size: 28px;
-    color: var(--color-surface);
-    font-weight: 600
+  font-size: 28px;
+  color: var(--color-surface);
+  font-weight: 600;
 }
 
 .footer-brand .mark {
-    color: var(--color-accent);
-    border-color: var(--color-accent)
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
-@media(max-width:900px) {
-    .footer-contact {
-        align-items: flex-start;
-        flex-direction: column;
-        font-size: 18px
-    }
+@media (max-width: 900px) {
+  .footer-contact {
+    align-items: flex-start;
+    flex-direction: column;
+    font-size: 18px;
+  }
 
-    .footer-brand {
-        font-size: 25px
-    }
+  .footer-brand {
+    font-size: 25px;
+  }
 }
 
 .footer-contact a[href^="https://wa.me/"]::before {
-    display: none
+  display: none;
 }
 
 .social-icon {
-    width: 60px;
-    height: 60px;
-    stroke: var(--color-accent);
-    stroke-width: 1.8;
-    fill: none;
-    flex: none
+  width: 60px;
+  height: 60px;
+  stroke: var(--color-accent);
+  stroke-width: 1.8;
+  fill: none;
+  flex: none;
 }
 
 .event-detail-grid {
-    display: grid;
-    grid-template-columns: 1.08fr .92fr;
-    gap: 28px;
-    align-items: start
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 28px;
+  align-items: start;
 }
 
 /* Sampul acara: 16:9, rasio yang sama dengan yang dikunci saat mengunggah dan
@@ -1268,74 +1341,547 @@ a[href^="https://wa.me/"]::before {
    memotong kiri-kanan gambar; dengan rasio yang sama, `cover` tidak membuang apa
    pun — dan kartu di halaman daftar memakai bingkai 16:9 yang sama, jadi satu
    acara tampil sebagai gambar yang sama di kedua tempat. */
-.event-overview>img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    border-radius: 7px;
-    margin-bottom: 22px
+.event-overview > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 7px;
+  margin-bottom: 22px;
 }
 
 .event-information {
-    margin-top: 0
+  margin-top: 0;
 }
 
 .event-information dl {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    border-block: 1px solid var(--color-line);
-    padding: 16px 0;
-    margin: 18px 0
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  border-block: 1px solid var(--color-line);
+  padding: 16px 0;
+  margin: 18px 0;
 }
 
 .event-information dt {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--color-secondary)
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
 }
 
 .event-information dd {
-    margin: 5px 0 0;
-    font-weight: 600;
-    font-size: 14px
+  margin: 5px 0 0;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .event-information h2 {
-    font-size: 34px;
-    margin: 22px 0 10px
+  font-size: 34px;
+  margin: 22px 0 10px;
 }
 
 .registration {
-    margin-top: 0;
-    position: sticky;
-    top: 88px
+  margin-top: 0;
+  position: sticky;
+  top: 88px;
 }
 
-@media(max-width:850px) {
-    .event-detail-grid {
-        grid-template-columns: 1fr
-    }
+@media (max-width: 850px) {
+  .event-detail-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .registration {
-        position: static
-    }
+  .registration {
+    position: static;
+  }
 
-    .event-information dl {
-        grid-template-columns: 1fr
-    }
+  .event-information dl {
+    grid-template-columns: 1fr;
+  }
 
-    .event-overview>img {
-        aspect-ratio: 16 / 9
-    }
+  .event-overview > img {
+    aspect-ratio: 16 / 9;
+  }
 }
-.sharing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.sharing-card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:7px;padding:26px;display:flex;flex-direction:column;align-items:flex-start}.sharing-card h2{font-size:31px;margin:12px 0}.sharing-card p{color:var(--color-muted);flex:1}.sharing-author{font-size:13px;color:var(--color-secondary);margin:14px 0 20px;font-weight:600}@media(max-width:850px){.sharing-grid{grid-template-columns:1fr}}
-.resources-section{margin-top:56px}.resources-section>.section-title{font-size:38px}.resource-session{border:1px solid var(--color-accent);background:#fffdfa;margin-top:14px;border-radius:14px;overflow:hidden}.resource-toggle{display:flex;width:100%;justify-content:space-between;align-items:center;border:0;background:transparent;padding:20px 34px;color:#151515;font:700 19px 'DM Sans',sans-serif;text-align:left;cursor:pointer}.resource-chevron{font-size:27px;color:var(--color-accent);line-height:1;transition:transform .2s}.resource-chevron.expanded{transform:rotate(180deg)}.session-content{padding:0 34px 30px}.resource-group{margin-top:22px}.resource-group h3{font:700 16px 'DM Sans',sans-serif;text-decoration:underline;text-decoration-color:#d25657;text-underline-offset:5px;margin:0 0 18px;color:#151515}.material-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 22px}.material-tile{display:flex;align-items:center;gap:12px;min-width:0;position:relative;color:#151515;text-decoration:none;padding:4px 0}.material-tile:hover strong,.reference-link:hover span:nth-child(2){color:var(--color-secondary)}.resource-icon{display:grid;place-items:center;flex:none;width:42px;height:36px;border:2px solid #222;border-radius:3px;font:bold 11px Arial;color:#222}.resource-icon.pdf{border-color:#ef4444;color:#e11d48;font-size:9px}.resource-icon.video{font-size:18px}.material-text{display:flex;flex-direction:column;min-width:0;gap:5px}.material-text strong{font:500 14px 'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.material-text small{font:13px 'DM Sans',sans-serif;color:#b4b1ad}.lock-badge{position:absolute;left:29px;top:-8px;font-size:18px;line-height:1}.gallery-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 28px}.gallery-item{display:block;aspect-ratio:1.7;overflow:hidden;background:#e7dfd2}.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .25s}.gallery-item:hover img{transform:scale(1.04)}.reference-list{display:flex;flex-wrap:wrap;gap:12px 30px}.reference-link{display:flex;align-items:center;gap:10px;color:#151515;text-decoration:none;max-width:260px}.reference-icon{display:grid;place-items:center;flex:none;width:31px;height:31px;border:1px solid #e11d48;color:#e11d48;border-radius:3px;font:bold 8px Arial}.reference-icon.link{border-color:#2c6fac;color:#2c6fac;font-size:21px}.reference-icon.video{border:0;background:#f00;color:#fff;font-size:14px}.external-arrow{font-size:22px;margin-left:auto;color:#263524}.testimonials{margin-top:0;position:sticky;top:88px;height:530px;display:flex;flex-direction:column}.testimonials .section-title{font-size:38px}.testimonial-list{overflow-y:auto;min-height:0;padding-right:8px}.comment{border-top:1px solid var(--color-line);padding:16px 0}.comment p{color:var(--color-muted);margin:6px 0 0}.testimonial-list::-webkit-scrollbar{width:6px}.testimonial-list::-webkit-scrollbar-thumb{background:var(--color-secondary);border-radius:999px}@media(max-width:850px){.testimonials{position:static;height:auto}.testimonial-list{max-height:360px}.resource-toggle{padding:18px 20px}.session-content{padding:0 20px 24px}.material-grid,.gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reference-list{display:grid;grid-template-columns:1fr;gap:14px}}@media(max-width:480px){.resources-section>.section-title{font-size:32px}.material-grid,.gallery-grid{grid-template-columns:1fr}.resource-toggle{font-size:16px}}
+.sharing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+.sharing-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.sharing-card h2 {
+  font-size: 31px;
+  margin: 12px 0;
+}
+.sharing-card p {
+  color: var(--color-muted);
+  flex: 1;
+}
+.sharing-author {
+  font-size: 13px;
+  color: var(--color-secondary);
+  margin: 14px 0 20px;
+  font-weight: 600;
+}
+@media (max-width: 850px) {
+  .sharing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.resources-section {
+  margin-top: 56px;
+}
+.resources-section > .section-title {
+  font-size: 38px;
+}
+.resource-session {
+  border: 1px solid var(--color-accent);
+  background: #fffdfa;
+  margin-top: 14px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.resource-toggle {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding: 20px 34px;
+  color: #151515;
+  font:
+    700 19px "DM Sans",
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.resource-chevron {
+  font-size: 27px;
+  color: var(--color-accent);
+  line-height: 1;
+  transition: transform 0.2s;
+}
+.resource-chevron.expanded {
+  transform: rotate(180deg);
+}
+.session-content {
+  padding: 0 34px 30px;
+}
+.resource-group {
+  margin-top: 22px;
+}
+.resource-group h3 {
+  font:
+    700 16px "DM Sans",
+    sans-serif;
+  text-decoration: underline;
+  text-decoration-color: #d25657;
+  text-underline-offset: 5px;
+  margin: 0 0 18px;
+  color: #151515;
+}
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 22px;
+}
+.material-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  position: relative;
+  color: #151515;
+  text-decoration: none;
+  padding: 4px 0;
+}
+.material-tile:hover strong,
+.reference-link:hover span:nth-child(2) {
+  color: var(--color-secondary);
+}
+.resource-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 36px;
+  border: 2px solid #222;
+  border-radius: 3px;
+  font: bold 11px Arial;
+  color: #222;
+}
+.resource-icon.pdf {
+  border-color: #ef4444;
+  color: #e11d48;
+  font-size: 9px;
+}
+.resource-icon.video {
+  font-size: 18px;
+}
+.material-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+.material-text strong {
+  font:
+    500 14px "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.material-text small {
+  font:
+    13px "DM Sans",
+    sans-serif;
+  color: #b4b1ad;
+}
+.lock-badge {
+  position: absolute;
+  left: 29px;
+  top: -8px;
+  font-size: 18px;
+  line-height: 1;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 28px;
+}
+.gallery-item {
+  display: block;
+  aspect-ratio: 1.7;
+  overflow: hidden;
+  background: #e7dfd2;
+}
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s;
+}
+.gallery-item:hover img {
+  transform: scale(1.04);
+}
+.reference-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 30px;
+}
+.reference-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #151515;
+  text-decoration: none;
+  max-width: 260px;
+}
+.reference-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 31px;
+  height: 31px;
+  border: 1px solid #e11d48;
+  color: #e11d48;
+  border-radius: 3px;
+  font: bold 8px Arial;
+}
+.reference-icon.link {
+  border-color: #2c6fac;
+  color: #2c6fac;
+  font-size: 21px;
+}
+.reference-icon.video {
+  border: 0;
+  background: #f00;
+  color: #fff;
+  font-size: 14px;
+}
+.external-arrow {
+  font-size: 22px;
+  margin-left: auto;
+  color: #263524;
+}
+.testimonials {
+  margin-top: 0;
+  position: sticky;
+  top: 88px;
+  height: 530px;
+  display: flex;
+  flex-direction: column;
+}
+.testimonials .section-title {
+  font-size: 38px;
+}
+.testimonial-list {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 8px;
+}
+.comment {
+  border-top: 1px solid var(--color-line);
+  padding: 16px 0;
+}
+.comment p {
+  color: var(--color-muted);
+  margin: 6px 0 0;
+}
+.testimonial-list::-webkit-scrollbar {
+  width: 6px;
+}
+.testimonial-list::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 999px;
+}
+@media (max-width: 850px) {
+  .testimonials {
+    position: static;
+    height: auto;
+  }
+  .testimonial-list {
+    max-height: 360px;
+  }
+  .resource-toggle {
+    padding: 18px 20px;
+  }
+  .session-content {
+    padding: 0 20px 24px;
+  }
+  .material-grid,
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .reference-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+@media (max-width: 480px) {
+  .resources-section > .section-title {
+    font-size: 32px;
+  }
+  .material-grid,
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+  .resource-toggle {
+    font-size: 16px;
+  }
+}
 
-.journal-hero{height:300px;box-sizing:border-box;background:var(--color-primary);color:var(--color-surface);padding:40px 0}.journal-hero .eyebrow{color:var(--color-accent)}.journal-hero h1{font-size:58px;line-height:1.08;margin:10px 0}.journal-hero p{margin:0;font-size:16px}.journal-controls{display:grid;grid-template-columns:300px 1fr 155px;gap:0;background:var(--color-surface);border-radius:8px;padding:7px;margin-top:28px;color:var(--color-text);position:relative}.control-field,.search-field,.sort-field{display:flex;align-items:center;gap:9px;min-width:0}.control-field{border-right:1px solid var(--color-line);padding:0 12px}.control-field span,.sort-field span{font-size:12px;font-weight:700;white-space:nowrap}.search-field{padding:0 8px}.sort-field{padding-left:10px}.control-event{position:absolute;top:54px;left:0;width:360px;background:var(--color-surface);border:1px solid var(--color-line);border-radius:0 0 8px 8px;padding:10px;z-index:2}.journal-listing{background:var(--color-surface-alt);padding:0 0 70px}.journal-count{color:var(--color-muted);margin:0 0 18px;padding-top:24px;font-size:13px}.journal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}.journal-card{position:relative;background:var(--color-surface);border:1px solid var(--color-line);border-radius:7px;padding:24px 26px;display:flex;flex-direction:column;align-items:flex-start}.journal-card-icon{position:absolute;right:22px;top:21px;display:grid;place-items:center;width:35px;height:35px;border:1px solid var(--color-secondary);border-radius:50%;color:var(--color-secondary);font:600 20px/1 'DM Sans',sans-serif}.journal-card-icon.icon-event-reflection{font-size:23px}.journal-card-icon.icon-sharing-journey{font-size:25px}.journal-card-icon.icon-insight{color:var(--color-accent);border-color:var(--color-accent)}.journal-card-icon.icon-practice{color:#3f7044;border-color:#3f7044}.journal-type{color:var(--color-accent);font-size:13px;text-transform:uppercase;font-weight:800;margin:12px 46px 2px 0}.journal-event{color:var(--color-secondary);font-size:12px;text-transform:uppercase;font-weight:700;letter-spacing:.04em}.journal-card h2{font-size:31px;line-height:1.08;margin:18px 0 12px}.journal-card>p{margin:0;color:var(--color-muted);line-height:1.55}.journal-meta{font-size:13px;line-height:1.6;color:var(--color-secondary);font-weight:600;margin:20px 0 10px}.journal-card .btn{margin-top:auto}.journal-empty{text-align:center;padding:50px;color:var(--color-muted)}@media(max-width:850px){.journal-hero{height:auto;min-height:300px;padding:40px 0}.journal-hero h1{font-size:43px}.journal-controls{grid-template-columns:1fr;gap:9px}.control-field{border-right:0;padding:0}.control-event{position:static;width:auto}.search-field{padding:0}.sort-field{padding-left:0}.journal-grid{grid-template-columns:1fr}}@media(max-width:480px){.journal-hero h1{font-size:36px}.journal-card h2{font-size:27px}}
+.journal-hero {
+  height: 300px;
+  box-sizing: border-box;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  padding: 40px 0;
+}
+.journal-hero .eyebrow {
+  color: var(--color-accent);
+}
+.journal-hero h1 {
+  font-size: 58px;
+  line-height: 1.08;
+  margin: 10px 0;
+}
+.journal-hero p {
+  margin: 0;
+  font-size: 16px;
+}
+.journal-controls {
+  display: grid;
+  grid-template-columns: 300px 1fr 155px;
+  gap: 0;
+  background: var(--color-surface);
+  border-radius: 8px;
+  padding: 7px;
+  margin-top: 28px;
+  color: var(--color-text);
+  position: relative;
+}
+.control-field,
+.search-field,
+.sort-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.control-field {
+  border-right: 1px solid var(--color-line);
+  padding: 0 12px;
+}
+.control-field span,
+.sort-field span {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.search-field {
+  padding: 0 8px;
+}
+.sort-field {
+  padding-left: 10px;
+}
+.control-event {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  width: 360px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0 0 8px 8px;
+  padding: 10px;
+  z-index: 2;
+}
+.journal-listing {
+  background: var(--color-surface-alt);
+  padding: 0 0 70px;
+}
+.journal-count {
+  color: var(--color-muted);
+  margin: 0 0 18px;
+  padding-top: 24px;
+  font-size: 13px;
+}
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.journal-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.journal-card-icon {
+  position: absolute;
+  right: 22px;
+  top: 21px;
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--color-secondary);
+  border-radius: 50%;
+  color: var(--color-secondary);
+  font:
+    600 20px/1 "DM Sans",
+    sans-serif;
+}
+.journal-card-icon.icon-event-reflection {
+  font-size: 23px;
+}
+.journal-card-icon.icon-sharing-journey {
+  font-size: 25px;
+}
+.journal-card-icon.icon-insight {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.journal-card-icon.icon-practice {
+  color: #3f7044;
+  border-color: #3f7044;
+}
+.journal-type {
+  color: var(--color-accent);
+  font-size: 13px;
+  text-transform: uppercase;
+  font-weight: 800;
+  margin: 12px 46px 2px 0;
+}
+.journal-event {
+  color: var(--color-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.journal-card h2 {
+  font-size: 31px;
+  line-height: 1.08;
+  margin: 18px 0 12px;
+}
+.journal-card > p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+.journal-meta {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-secondary);
+  font-weight: 600;
+  margin: 20px 0 10px;
+}
+.journal-card .btn {
+  margin-top: auto;
+}
+.journal-empty {
+  text-align: center;
+  padding: 50px;
+  color: var(--color-muted);
+}
+@media (max-width: 850px) {
+  .journal-hero {
+    height: auto;
+    min-height: 300px;
+    padding: 40px 0;
+  }
+  .journal-hero h1 {
+    font-size: 43px;
+  }
+  .journal-controls {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .control-field {
+    border-right: 0;
+    padding: 0;
+  }
+  .control-event {
+    position: static;
+    width: auto;
+  }
+  .search-field {
+    padding: 0;
+  }
+  .sort-field {
+    padding-left: 0;
+  }
+  .journal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .journal-hero h1 {
+    font-size: 36px;
+  }
+  .journal-card h2 {
+    font-size: 27px;
+  }
+}
 /* ── Transisi ────────────────────────────────────────────────────────────────
  * Nama `page` dan `layout` dirujuk dari app.pageTransition/layoutTransition di
  * nuxt.config.ts. Keduanya memakai mode `out-in`, jadi halaman lama selesai keluar
@@ -1349,19 +1895,21 @@ a[href^="https://wa.me/"]::before {
 .page-leave-active,
 .layout-enter-active,
 .layout-leave-active {
-    transition: opacity .28s ease, transform .28s ease
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
 }
 
 .page-enter-from,
 .layout-enter-from {
-    opacity: 0;
-    transform: translateY(8px)
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .page-leave-to,
 .layout-leave-to {
-    opacity: 0;
-    transform: translateY(-6px)
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* Transisi halus untuk elemen interaktif yang sebelumnya berpindah keadaan seketika. */
@@ -1374,84 +1922,111 @@ a[href^="https://wa.me/"]::before {
 .links a,
 .admin-menu a,
 .footer-contact a {
-    transition: background-color .2s ease, color .2s ease, border-color .2s ease,
-        box-shadow .25s ease, transform .25s ease
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
 }
 
 .btn:hover {
-    filter: brightness(1.07)
+  filter: brightness(1.07);
 }
 
 .card:hover,
 .journal-card:hover,
 .sharing-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 30px #1e29361f
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px #1e29361f;
 }
 
 .links a:hover {
-    color: var(--color-accent)
+  color: var(--color-accent);
 }
 
 /* Hormati preferensi sistem: kalau pengguna meminta gerakan dikurangi, matikan
    semua animasi alih-alih sekadar mempercepatnya. */
 @media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active,
+  .layout-enter-active,
+  .layout-leave-active {
+    transition: none;
+  }
 
-    .page-enter-active,
-    .page-leave-active,
-    .layout-enter-active,
-    .layout-leave-active {
-        transition: none
-    }
+  .page-enter-from,
+  .layout-enter-from,
+  .page-leave-to,
+  .layout-leave-to {
+    opacity: 1;
+    transform: none;
+  }
 
-    .page-enter-from,
-    .layout-enter-from,
-    .page-leave-to,
-    .layout-leave-to {
-        opacity: 1;
-        transform: none
-    }
+  .card:hover,
+  .journal-card:hover,
+  .sharing-card:hover {
+    transform: none;
+  }
 
-    .card:hover,
-    .journal-card:hover,
-    .sharing-card:hover {
-        transform: none
-    }
-
-    *,
-    *::before,
-    *::after {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .01ms !important;
-        scroll-behavior: auto !important
-    }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-.article-body p{font-family:'DM Sans',Arial,sans-serif;font-size:18px;line-height:1.75}.article-body .article-quote{margin:30px 0 30px 28px;padding:16px 24px;border-left:4px solid var(--color-accent);background:#f4eadc;font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;line-height:1.28;color:var(--color-text)}@media(max-width:600px){.article-body p{font-size:16px}.article-body .article-quote{margin-left:0;font-size:24px;padding:14px 18px}}
+.article-body p {
+  font-family: "DM Sans", Arial, sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+}
+.article-body .article-quote {
+  margin: 30px 0 30px 28px;
+  padding: 16px 24px;
+  border-left: 4px solid var(--color-accent);
+  background: #f4eadc;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 28px;
+  line-height: 1.28;
+  color: var(--color-text);
+}
+@media (max-width: 600px) {
+  .article-body p {
+    font-size: 16px;
+  }
+  .article-body .article-quote {
+    margin-left: 0;
+    font-size: 24px;
+    padding: 14px 18px;
+  }
+}
 
 /* ── Halaman event: filter ramping & kartu bersampul ─────────────────────────────
    Filter dulunya panel penuh dengan tiga field bertingkat; kini satu baris chip.
    Warnanya diambil dari token brand, bukan abu-abu bawaan komponen, supaya
    menyatu dengan latar krem halaman. */
 .event-chips {
-    background: #ffffff;
-    border: 1px solid var(--color-line);
-    box-shadow: 0 1px 2px #30432a12
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  box-shadow: 0 1px 2px #30432a12;
 }
 
 /* Kartu event memakai .card/.card-image/.card-body yang sama dengan beranda, jadi
    sampulnya penuh sampai tepi. Yang ditambahkan di sini hanya hal-hal yang tidak
    dimiliki kartu statis: bingkai 16:9, jangkar badge, tata letak isi, dan animasi. */
 .event-page .cards {
-    /* Tanpa `stretch`, tiap kartu setinggi isinya sendiri dan barisnya jomplang.
+  /* Tanpa `stretch`, tiap kartu setinggi isinya sendiri dan barisnya jomplang.
        .card-body dibuat kolom fleksibel supaya tombol tetap menempel di dasar. */
-    align-items: stretch
+  align-items: stretch;
 }
 
 .event-card {
-    display: flex;
-    flex-direction: column
+  display: flex;
+  flex-direction: column;
 }
 
 /* Selektornya sengaja 0,3,0 (`.event-page` ikut disebut), bukan `.event-card
@@ -1463,78 +2038,82 @@ a[href^="https://wa.me/"]::before {
    spesifisitas yang sama, aturan yang di bawah menang — dan aturan ini ada di
    bawah. Masalah yang sama pernah ditambal untuk `.leadership-image` di atas. */
 .event-page .event-card .card-image {
-    position: relative;
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    transition: transform .35s ease;
-    /* 16:9 — rasio yang sama dengan yang dikunci saat mengunggah sampul dan dengan
+  position: relative;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: transform 0.35s ease;
+  /* 16:9 — rasio yang sama dengan yang dikunci saat mengunggah sampul dan dengan
        template bawaan. Selama bingkai dan gambar serasio, `cover` tidak memotong
        apa pun: gambarnya tampil utuh, bukan pita tengahnya saja. Tinggi tetap
        176px yang dipakai sebelumnya memotong ~70px di atas dan bawah — cukup untuk
        membuang lambang dan ranting pada template. */
-    height: auto;
-    aspect-ratio: 16 / 9
+  height: auto;
+  aspect-ratio: 16 / 9;
 }
 
 /* Badge fase duduk di pojok kanan atas sampul. */
 .event-card .event-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    box-shadow: 0 1px 3px #0000002e
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  box-shadow: 0 1px 3px #0000002e;
 }
 
+.event-badge[class*="accent"] {
+  color: #000;
+  font-weight: bold;
+}
 .event-card .card-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 9px
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
 /* Deskripsi yang mengambil sisa ruang mendorong baris meta & tombol ke dasar
    kartu, sehingga tombol semua kartu sebaris meski panjang teksnya berbeda. */
 .event-card .card-body > p {
-    flex: 1
+  flex: 1;
 }
 
 .event-card .card-body p {
-    margin: 0
+  margin: 0;
 }
 
 .event-card h3 {
-    margin: 0
+  margin: 0;
 }
 
 /* Lokasi · biaya · sisa kuota dalam satu baris; versi <dl> dua barisnya membuat
    kartu jauh lebih tinggi dari kartu statis di beranda. */
 .event-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 7px;
-    min-width: 0;
-    padding-top: 9px;
-    border-top: 1px solid var(--color-line);
-    font-size: 13px;
-    color: var(--color-muted)
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+  min-width: 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--color-line);
+  font-size: 13px;
+  color: var(--color-muted);
 }
 
 /* Lokasi mengambil satu baris penuh saat panjang; biaya & sisa kuota turun ke
    baris berikutnya alih-alih memotong nama tempatnya jadi "Rumah R…". */
 .event-lokasi {
-    min-width: 0;
-    flex: 1 1 auto
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .event-line strong {
-    flex: none;
-    color: var(--color-primary)
+  flex: none;
+  color: var(--color-primary);
 }
 
 .event-sisa {
-    flex: none;
-    font-size: 12px
+  flex: none;
+  font-size: 12px;
 }
 
 /* Baris batas pendaftaran. Hanya keadaan "sudah ditutup" yang berpindah ke merah,
@@ -1543,73 +2122,75 @@ a[href^="https://wa.me/"]::before {
    warnanya sendiri; `color` yang cuma diwariskan akan kalah oleh kelas itu. */
 .event-line-tutup,
 .event-line-tutup * {
-    color: #a13a3a
+  color: #a13a3a;
 }
 
 .event-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 2px
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 /* Kartu masuk dengan naik-memudar; jeda antar kartu diatur lewat
    `animation-delay` inline di template agar berurutan, bukan serempak. */
 .event-card {
-    animation: event-card-in .42s cubic-bezier(.22, .61, .36, 1) backwards;
-    transition: transform .22s ease, box-shadow .22s ease
+  animation: event-card-in 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
 .event-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px #30432a1f
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px #30432a1f;
 }
 
 /* Sampul ikut membesar sedikit saat kartu disentuh — gerakan tunggal, searah
    dengan angkatan kartunya. */
 .event-page .event-card:hover .card-image {
-    transform: scale(1.05)
+  transform: scale(1.05);
 }
 
 @keyframes event-card-in {
-    from {
-        opacity: 0;
-        transform: translateY(14px)
-    }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 
-    to {
-        opacity: 1;
-        transform: none
-    }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 900px) {
-    .event-page .cards {
-        grid-template-columns: repeat(2, 1fr)
-    }
+  .event-page .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
-    .event-page .cards {
-        grid-template-columns: 1fr
-    }
+  .event-page .cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .event-card {
-        animation: none
-    }
+  .event-card {
+    animation: none;
+  }
 
-    .event-card:hover,
-    .event-page .event-card:hover .card-image {
-        transform: none
-    }
+  .event-card:hover,
+  .event-page .event-card:hover .card-image {
+    transform: none;
+  }
 }
 
 /* Tanggal memakai .event-meta dari kartu beranda, tapi warnanya diturunkan ke
    cokelat: emas di atas kartu putih terlalu tipis untuk teks sekecil ini. */
 .event-card .event-meta {
-    color: var(--color-secondary);
-    text-transform: uppercase
+  color: var(--color-secondary);
+  text-transform: uppercase;
 }
 
 /* ── Materi & dokumentasi: kartu chip ────────────────────────────────────────
@@ -1622,113 +2203,120 @@ a[href^="https://wa.me/"]::before {
    atribut title), baris kedua untuk metadata atau domain, dan panah menempel di
    ujung baris pertama. Semua kartu jadi setinggi sama. */
 .tile-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 16px
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
 }
 
 .tile {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    min-width: 0;
-    width: 100%;
-    padding: 9px 12px;
-    border: 1px solid var(--color-line);
-    border-radius: 9px;
-    background: #fff;
-    color: var(--color-text);
-    font: inherit;
-    text-align: left;
-    text-decoration: none;
-    cursor: pointer;
-    transition: border-color .16s ease, background-color .16s ease, transform .16s ease
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    transform 0.16s ease;
 }
 
 .tile:hover {
-    border-color: var(--color-secondary);
-    background: #fffaf3;
-    transform: translateY(-1px)
+  border-color: var(--color-secondary);
+  background: #fffaf3;
+  transform: translateY(-1px);
 }
 
 .tile:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Chip: kotak lembut berwarna brand, bukan ikon telanjang. Ukurannya tetap 28px
    apa pun panjang judulnya, jadi kolom ikon selalu lurus. */
 .tile-chip {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 7px;
-    background: #f2e7d8;
-    color: var(--color-secondary)
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #f2e7d8;
+  color: var(--color-secondary);
 }
 
 .tile-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 1px
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
 }
 
 .tile-text strong {
-    font: 500 14px 'DM Sans', sans-serif;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
+  font:
+    500 14px "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tile-text small {
-    font: 12px 'DM Sans', sans-serif;
-    color: var(--color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
+  font:
+    12px "DM Sans",
+    sans-serif;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tile-lock,
 .tile-arrow {
-    flex: none;
-    margin-left: auto;
-    color: var(--color-muted)
+  flex: none;
+  margin-left: auto;
+  color: var(--color-muted);
 }
 
 /* Materi terkunci tetap terbaca, hanya diredam — ia harus tetap mengundang klik
    karena kliknya yang menjelaskan kenapa terkunci. */
 .tile.is-locked .tile-chip {
-    background: #eee9e1;
-    color: var(--color-muted)
+  background: #eee9e1;
+  color: var(--color-muted);
 }
 
 .tile.is-locked:hover .tile-lock {
-    color: var(--color-secondary)
+  color: var(--color-secondary);
 }
 
 /* Galeri kini tombol, bukan <a href="#"> */
 .gallery-item {
-    display: block;
-    width: 100%;
-    padding: 0;
-    border: 1px solid var(--color-line);
-    border-radius: 10px;
-    background: #e7dfd2;
-    cursor: zoom-in
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: #e7dfd2;
+  cursor: zoom-in;
 }
 
 /* Foto ikut membulat bersama bingkainya. Tanpa ini sudutnya menonjol keluar dari
    radius kartunya, dan pada kisi yang rapat itu terbaca sebagai gambar yang
    saling menempel. */
 .gallery-item img {
-    border-radius: 9px
+  border-radius: 9px;
 }
 
 .gallery-item:hover {
-    border-color: var(--color-secondary)
+  border-color: var(--color-secondary);
 }
 
 /* Galeri dilonggarkan: empat kolom berjarak 18px membuat foto berhimpitan pada
@@ -1736,34 +2324,34 @@ a[href^="https://wa.me/"]::before {
    padahal mengenali isi itulah satu-satunya gunanya kisi ini. Tiga kolom dengan
    jarak lebih lebar memberi tiap foto ruang yang cukup. */
 .gallery-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
 }
 
 /* Kepala tiap bagian materi/galeri/referensi: judul di kiri, tombol tambah di
    kanan. Tombolnya dulu berkumpul di dasar panel, tempat ia baru terlihat sesudah
    seluruh isi sesi tergulir habis. */
 .resource-group-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 0 0 18px
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 18px;
 }
 
 .resource-group-head h3 {
-    margin: 0
+  margin: 0;
 }
 
 @media (max-width: 850px) {
-    .tile-grid {
-        grid-template-columns: 1fr
-    }
+  .tile-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .gallery-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px
-    }
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
 }
 
 /* Aturan 1 kolom di blok lama berada LEBIH AWAL di berkas ini, jadi aturan 2 kolom
@@ -1771,144 +2359,152 @@ a[href^="https://wa.me/"]::before {
    keduanya berspesifisitas sama dan yang belakangan yang dipakai. Ditulis ulang di
    sini supaya urutannya benar. */
 @media (max-width: 480px) {
-    .gallery-grid {
-        grid-template-columns: 1fr
-    }
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Tombol reset filter event. Varian `ghost` bawaan memakai abu-abu yang nyaris
    hilang di latar krem; yang diubah cukup warna hurufnya — cokelat brand — tanpa
    latar, supaya ia tetap terbaca tanpa bersaing dengan tombol utama. */
 .event-reset {
-    background: transparent;
-    color: var(--color-line)
+  background: transparent;
+  color: var(--color-line);
 }
 
 .event-reset:hover {
-    color: var(--color-accent);
-    text-underline-offset: 3px
+  color: var(--color-accent);
+  text-underline-offset: 3px;
 }
 
 /* Penanda kaki daftar jurnal untuk pemuatan bertahap. */
 .journal-more {
-    margin-top: 30px;
-    text-align: center;
-    font-size: 14px;
-    color: var(--color-muted)
+  margin-top: 30px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-muted);
 }
 
 /* ── Penyuntingan di tempat ───────────────────────────────────────────────────
    Bilah melayang di kaki layar; hanya dirender untuk level ≤ 3. */
 .edit-bar {
-    position: fixed;
-    left: 50%;
-    bottom: 22px;
-    transform: translateX(-50%);
-    z-index: 60;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 9px 16px;
-    border: 1px solid var(--color-line);
-    border-radius: 999px;
-    background: #fff;
-    color: var(--color-text);
-    box-shadow: 0 8px 26px #30432a26
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 8px 26px #30432a26;
 }
 
 .edit-bar.is-on {
-    border-color: var(--color-accent);
-    box-shadow: 0 8px 26px #30432a33, 0 0 0 3px #e1b03230
+  border-color: var(--color-accent);
+  box-shadow:
+    0 8px 26px #30432a33,
+    0 0 0 3px #e1b03230;
 }
 
 .edit-bar-label {
-    font: 600 13px 'DM Sans', sans-serif;
-    white-space: nowrap
+  font:
+    600 13px "DM Sans",
+    sans-serif;
+  white-space: nowrap;
 }
 
 /* Penanda area yang bisa disunting. Hanya muncul saat mode sunting menyala —
    di mode baca komponennya merender slot apa adanya, tanpa pembungkus. */
 .editable {
-    display: inline;
-    position: relative;
-    border-radius: 4px;
-    box-shadow: inset 0 0 0 1px #e1b03266;
-    background: #e1b0320f;
-    cursor: text
+  display: inline;
+  position: relative;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px #e1b03266;
+  background: #e1b0320f;
+  cursor: text;
 }
 
 .editable:hover {
-    box-shadow: inset 0 0 0 1px var(--color-accent);
-    background: #e1b0321f
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  background: #e1b0321f;
 }
 
 .editable:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .editable-pen {
-    margin-left: 5px;
-    color: var(--color-secondary);
-    vertical-align: baseline
+  margin-left: 5px;
+  color: var(--color-secondary);
+  vertical-align: baseline;
 }
 
 .editable-form {
-    display: block;
-    margin: 4px 0
+  display: block;
+  margin: 4px 0;
 }
 
 .editable-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 7px
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
 }
 
 .editable-hint {
-    font: 11px 'DM Sans', sans-serif;
-    color: var(--color-muted)
+  font:
+    11px "DM Sans",
+    sans-serif;
+  color: var(--color-muted);
 }
 
 .editable-error {
-    display: block;
-    margin-top: 6px;
-    font: 12px 'DM Sans', sans-serif;
-    color: #b3261e
+  display: block;
+  margin-top: 6px;
+  font:
+    12px "DM Sans",
+    sans-serif;
+  color: #b3261e;
 }
 
 /* Panel testimoni saat mode sunting: tinggi tetap & sticky dilepas supaya form
    tambah/ubah punya ruang. Lihat komentar di components/EventTestimoni.vue. */
 .testimonials.is-editing {
-    position: static;
-    height: auto
+  position: static;
+  height: auto;
 }
 
 .testimonials.is-editing .testimonial-list {
-    overflow: visible
+  overflow: visible;
 }
 
 .testimonial-actions {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-top: 8px
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 8px;
 }
 
 .testimonial-form {
-    display: flex;
-    flex-direction: column;
-    gap: 8px
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Baris tombol di bawah tiap kartu materi/foto/referensi saat mode sunting.
    Hanya tergambar kalau mode sunting menyala, jadi tinggi kartu di halaman yang
    dibaca pengunjung tidak berubah sama sekali. */
 .item-tools {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    margin-top: 4px
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-top: 4px;
 }
 
 /* ── Tinggi pita hijau kepala halaman ────────────────────────────────────────
@@ -1922,8 +2518,11 @@ a[href^="https://wa.me/"]::before {
    satu nilai, bukan menyalin ulang seluruh aturan gradien dan berisiko lepas dari
    palet saat warnanya diganti. */
 .event-page {
-    --pita-hijau: 300px;
-    background: linear-gradient(var(--color-primary) 0 var(--pita-hijau), var(--color-surface) var(--pita-hijau))
+  --pita-hijau: 300px;
+  background: linear-gradient(
+    var(--color-primary) 0 var(--pita-hijau),
+    var(--color-surface) var(--pita-hijau)
+  );
 }
 
 /* Profil tidak memakai angka tetap sama sekali: pitanya dipindahkan ke .page-head
@@ -1932,14 +2531,14 @@ a[href^="https://wa.me/"]::before {
    nilai tetap berapa pun pasti meleset untuk sebagian nama, entah memotong angka
    statistik atau menelan bilah tab di bawahnya. */
 .event-page.profil-page {
-    padding-top: 0;
-    background: var(--color-surface)
+  padding-top: 0;
+  background: var(--color-surface);
 }
 
 .profil-page .page-head {
-    padding: 40px 0 30px;
-    background: var(--color-primary);
-    /* Melebarkan latar sampai tepi layar walau elemennya duduk di dalam .container
+  padding: 40px 0 30px;
+  background: var(--color-primary);
+  /* Melebarkan latar sampai tepi layar walau elemennya duduk di dalam .container
        yang lebarnya terbatas.
        Yang dipakai SPREAD (nilai keempat), bukan offset: offset hanya memindahkan
        salinan kotaknya sejauh 100vw sehingga justru meninggalkan celah di antara
@@ -1947,8 +2546,8 @@ a[href^="https://wa.me/"]::before {
        kembali arah vertikalnya supaya hijaunya tidak meluber ke atas dan ke bawah.
        Dipakai box-shadow, bukan margin negatif, karena box-shadow tidak menambah
        lebar dokumen sehingga tidak memunculkan gulir horizontal. */
-    box-shadow: 0 0 0 100vw var(--color-primary);
-    clip-path: inset(0 -100vw)
+  box-shadow: 0 0 0 100vw var(--color-primary);
+  clip-path: inset(0 -100vw);
 }
 
 /* Bar tak-tentu: dipakai saat berkas sudah habis terkirim dan yang ditunggu tinggal
@@ -1959,29 +2558,28 @@ a[href^="https://wa.me/"]::before {
    enam puluh kali sedetik, tepat ketika utas utama sedang juga menunggu balasan
    unggahan. Transform dijalankan compositor dan tidak menyentuh layout sama sekali. */
 @keyframes sapu {
-    0% {
-        transform: translateX(-100%)
-    }
+  0% {
+    transform: translateX(-100%);
+  }
 
-    100% {
-        transform: translateX(300%)
-    }
+  100% {
+    transform: translateX(300%);
+  }
 }
 
 .animate-sapu {
-    animation: sapu 1.1s ease-in-out infinite
+  animation: sapu 1.1s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-    /* Yang meminta gerak dikurangi tetap butuh tahu bahwa prosesnya berjalan.
+  /* Yang meminta gerak dikurangi tetap butuh tahu bahwa prosesnya berjalan.
        Gantinya denyut opasitas: perubahan yang terbaca tanpa ada yang bergerak
        melintasi layar. */
-    .animate-sapu {
-        animation: none;
-        width: 100%;
-        opacity: .45
-    }
+  .animate-sapu {
+    animation: none;
+    width: 100%;
+    opacity: 0.45;
+  }
 }
 
 /* ── Sorotan kartu jurnal dari log kerja (?sorot={slug}) ──────────────────────
@@ -1997,19 +2595,26 @@ a[href^="https://wa.me/"]::before {
    Dihormati juga oleh yang mematikan animasi di sistemnya: bagi mereka kartunya
    tetap ditandai, hanya tidak bergerak. */
 @keyframes cc-sorot-kedip {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); border-color: var(--color-line); }
-  50%      { box-shadow: 0 0 0 4px rgba(191, 149, 63, .55); border-color: var(--color-accent); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    border-color: var(--color-line);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(191, 149, 63, 0.55);
+    border-color: var(--color-accent);
+  }
 }
 
 .journal-card.is-sorot {
-  animation: cc-sorot-kedip .5s ease-in-out 2;
+  animation: cc-sorot-kedip 0.5s ease-in-out 2;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .journal-card.is-sorot {
     animation: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(191, 149, 63, .45);
+    box-shadow: 0 0 0 3px rgba(191, 149, 63, 0.45);
   }
 }
 
@@ -2026,12 +2631,12 @@ a[href^="https://wa.me/"]::before {
    Ditulis di akhir berkas dengan sengaja: aturan lama ada di blok terminifikasi
    yang berspesifisitas sama, jadi yang belakangan yang menang. */
 .article-body p {
-    margin: 0 0 1.15em
+  margin: 0 0 1.15em;
 }
 
 /* Paragraf penutup tidak perlu menyisakan ruang di dasar kotaknya. */
 .article-body p:last-child {
-    margin-bottom: 0
+  margin-bottom: 0;
 }
 
 /* `.journal-controls` diberi `display: grid` oleh aturan tanpa layer di berkas ini,
@@ -2047,9 +2652,9 @@ a[href^="https://wa.me/"]::before {
    bawahnya, supaya tidak ada lebar layar yang menampilkan keduanya atau tidak satu
    pun. */
 @media (max-width: 639px) {
-    .journal-controls {
-        display: none
-    }
+  .journal-controls {
+    display: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2073,49 +2678,48 @@ a[href^="https://wa.me/"]::before {
 /* Tinggi header dipakai dua pihak: headernya sendiri dan `.filter-bar` yang
    berhenti tepat di bawahnya. Satu angka, satu tempat. */
 :root {
-    --tinggi-header: 85px
+  --tinggi-header: 85px;
 }
 
 @media (max-width: 760px) {
+  :root {
+    --tinggi-header: 61px;
+  }
 
-    :root {
-        --tinggi-header: 61px
-    }
-
-    /* ── Header ──────────────────────────────────────────────────────────────
+  /* ── Header ──────────────────────────────────────────────────────────────
        Dari 85px jadi 61px. Logonya tetap dua baris — itu bentuk mereknya — tapi
        hurufnya dan lingkaran "CC"-nya dikecilkan. 24px yang dihemat di sini terasa
        di setiap halaman, karena headernya sticky dan ikut terbawa terus. */
-    .site-header {
-        padding: 6px 0
-    }
+  .site-header {
+    padding: 6px 0;
+  }
 
-    .brand {
-        font-size: 16px;
-        gap: 8px
-    }
+  .brand {
+    font-size: 16px;
+    gap: 8px;
+  }
 
-    .brand .mark {
-        width: 30px;
-        height: 30px;
-        font-size: 13px
-    }
+  .brand .mark {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
 
-    /* ── Lebar isi ───────────────────────────────────────────────────────────
+  /* ── Lebar isi ───────────────────────────────────────────────────────────
        44px total (22px per sisi) terlalu banyak di layar 375px. 32px menyisakan
        343px untuk isinya, dan tepinya masih terbaca sebagai margin. */
-    .container {
-        width: calc(100% - 32px)
-    }
+  .container {
+    width: calc(100% - 32px);
+  }
 
-    .filter-bar {
-        margin-inline: -16px
-    }
+  .filter-bar {
+    margin-inline: -16px;
+  }
 
-    /* ── Kepala halaman ──────────────────────────────────────────────────────
+  /* ── Kepala halaman ──────────────────────────────────────────────────────
        Judul serif 45px yang patah tiga baris memakan 143px sendirian. 30px cukup
        untuk tetap terbaca sebagai judul halaman tanpa menjadi separuh layar. */
-    /* Pita gelap di kepala halaman MENGIKUTI ISINYA, bukan setinggi angka mati.
+  /* Pita gelap di kepala halaman MENGIKUTI ISINYA, bukan setinggi angka mati.
        Versi sebelumnya menggambarnya sebagai gradien yang berhenti di piksel ke-190
        sementara teksnya berwarna putih dan tingginya bergantung isi. Diukur pada
        satu jurnal dengan sub-judul panjang: teks berakhir di 306px, jadi 116px
@@ -2130,13 +2734,13 @@ a[href^="https://wa.me/"]::before {
 
        `margin-inline` negatif menembus selokan `.container` supaya pitanya tetap
        selebar layar seperti sebelumnya. */
-    .event-page {
-        padding: 0 0 48px;
-        background: var(--paper)
-    }
+  .event-page {
+    padding: 0 0 48px;
+    background: var(--paper);
+  }
 
-    .event-page .page-head {
-        /* `var(--color-primary)`, BUKAN `#102944`.
+  .event-page .page-head {
+    /* `var(--color-primary)`, BUKAN `#102944`.
            Nilai biru itu tersalin dari aturan dasar `.event-page` di baris ~304 —
            dan aturan itu sendiri sudah ditimpa blok tema di baris ~798 menjadi
            hijau `--color-primary`. Menyalin nilainya berarti mengambil warna yang
@@ -2147,17 +2751,17 @@ a[href^="https://wa.me/"]::before {
            atas — pinjam deklarasinya, jangan salin nilainya — lalu dilanggar di
            sini. Sekarang keduanya membaca token yang sama, jadi pergantian palet
            cukup satu tempat. */
-        background: var(--color-primary);
-        margin-inline: -16px;
-        padding: 18px 16px 22px
-    }
+    background: var(--color-primary);
+    margin-inline: -16px;
+    padding: 18px 16px 22px;
+  }
 
-    .event-page h1 {
-        font-size: 30px;
-        line-height: 1.12
-    }
+  .event-page h1 {
+    font-size: 30px;
+    line-height: 1.12;
+  }
 
-    /* Nol, bukan 16px. Bilah penyaring berdiri persis sesudah pita ini dan
+  /* Nol, bukan 16px. Bilah penyaring berdiri persis sesudah pita ini dan
        warnanya sama, jadi tanpa jarak keduanya terbaca sebagai satu blok utuh —
        "menempel" saat halaman baru dibuka. Dengan jarak, bilahnya tampak melayang:
        sepotong hijau yang dikelilingi krem di atas dan di bawahnya.
@@ -2166,95 +2770,95 @@ a[href^="https://wa.me/"]::before {
        (`mb-3` di markup), bukan di atasnya. Begitu digulir, bilahnya lepas dari
        pita dan menempel di bawah navbar — dan di situ jarak atasnya memang tidak
        diperlukan karena yang di atasnya navbar, bukan pita. */
-    .event-page .page-head {
-        margin-bottom: 0
-    }
+  .event-page .page-head {
+    margin-bottom: 0;
+  }
 
-    /* Kalimat pengantar di bawah judul: dua baris 16px. Diturunkan ke 14px, ukuran
+  /* Kalimat pengantar di bawah judul: dua baris 16px. Diturunkan ke 14px, ukuran
        yang sama dengan pengantar halaman jurnal, supaya keduanya sepadan. */
-    .event-page .page-head p {
-        font-size: 14px;
-        line-height: 1.45
-    }
+  .event-page .page-head p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
 
-    .event-page .eyebrow,
-    .journal-hero .eyebrow {
-        font-size: 11px;
-        letter-spacing: .12em
-    }
+  .event-page .eyebrow,
+  .journal-hero .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
 
-    .journal-hero {
-        height: auto;
-        min-height: 0;
-        padding: 18px 0 16px
-    }
+  .journal-hero {
+    height: auto;
+    min-height: 0;
+    padding: 18px 0 16px;
+  }
 
-    .journal-hero h1 {
-        font-size: 30px;
-        line-height: 1.12;
-        margin: 6px 0
-    }
+  .journal-hero h1 {
+    font-size: 30px;
+    line-height: 1.12;
+    margin: 6px 0;
+  }
 
-    .journal-hero p {
-        font-size: 14px
-    }
+  .journal-hero p {
+    font-size: 14px;
+  }
 
-    .journal-count {
-        padding-top: 10px;
-        margin-bottom: 10px;
-        font-size: 12px
-    }
+  .journal-count {
+    padding-top: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
 
-    /* ── Bagian isi halaman utama ────────────────────────────────────────────
+  /* ── Bagian isi halaman utama ────────────────────────────────────────────
        84px atas-bawah per bagian berarti hampir seperempat layar kosong di antara
        tiap bagian. */
-    .section {
-        padding: 40px 0
-    }
+  .section {
+    padding: 40px 0;
+  }
 
-    .section-title {
-        font-size: 28px;
-        line-height: 1.15
-    }
+  .section-title {
+    font-size: 28px;
+    line-height: 1.15;
+  }
 
-    .about-intro {
-        padding: 32px 16px
-    }
+  .about-intro {
+    padding: 32px 16px;
+  }
 
-    .hero {
-        min-height: 460px
-    }
+  .hero {
+    min-height: 460px;
+  }
 
-    /* ── Area admin ──────────────────────────────────────────────────────────
+  /* ── Area admin ──────────────────────────────────────────────────────────
        Judul "Selamat datang, Admin Compassionate Companion" sempat memakan empat
        baris serif 40px sebelum satu kartu pun terlihat. */
-    .admin-main {
-        padding: 16px 14px
-    }
+  .admin-main {
+    padding: 16px 14px;
+  }
 
-    .admin-hero h2 {
-        font-size: 26px
-    }
+  .admin-hero h2 {
+    font-size: 26px;
+  }
 
-    /* Judul halaman admin memakai `text-4xl` (36px) lewat Tailwind, di delapan
+  /* Judul halaman admin memakai `text-4xl` (36px) lewat Tailwind, di delapan
        berkas. Ditimpa di sini sebagai SATU aturan, bukan delapan suntingan
        `sm:text-4xl` yang harus diingat setiap kali halaman admin baru dibuat.
        Aturan tanpa layer di berkas ini memang menang atas utility Tailwind yang
        ber-layer, jadi tidak perlu `!important`. */
-    .admin-main h1 {
-        font-size: 26px;
-        line-height: 1.15
-    }
+  .admin-main h1 {
+    font-size: 26px;
+    line-height: 1.15;
+  }
 
-    .admin-main h2 {
-        font-size: 20px
-    }
+  .admin-main h2 {
+    font-size: 20px;
+  }
 
-    /* Keterangan di bawah judul: 4 baris teks 16px sebelum kartu pertama. */
-    .admin-main h1 + p,
-    .admin-main .admin-sub {
-        font-size: 14px
-    }
+  /* Keterangan di bawah judul: 4 baris teks 16px sebelum kartu pertama. */
+  .admin-main h1 + p,
+  .admin-main .admin-sub {
+    font-size: 14px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2284,15 +2888,15 @@ a[href^="https://wa.me/"]::before {
    karena yang salah bukan urutan lapis melainkan tinggi yang tidak pernah mengikuti
    isinya. */
 .testimonials {
-    position: static;
-    height: auto
+  position: static;
+  height: auto;
 }
 
 /* Batas gulir dalamnya sekarang dipasang di daftarnya sendiri. Sebelumnya ia
    menumpang pada tinggi mati induknya — begitu induknya `height: auto`, daftar
    testimoni yang panjang akan memanjangkan halaman tanpa batas. */
 .testimonial-list {
-    max-height: 420px
+  max-height: 420px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2316,5 +2920,5 @@ a[href^="https://wa.me/"]::before {
    `:has()` dipakai dengan sadar: proyek ini sudah menuntut peramban modern lewat
    Tailwind v4 (Chrome 111+, Safari 16.4+), yang seluruhnya mendukung `:has()`. */
 .registration:has(~ .panel) {
-    position: static
+  position: static;
 }

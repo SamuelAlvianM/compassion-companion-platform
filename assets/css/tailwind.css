@@ -2,10 +2,10 @@
  *
  * Font harus di paling atas: aturan @import wajib mendahului aturan lain.
  */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap");
 
-@import 'tailwindcss';
-@import '@nuxt/ui';
+@import "tailwindcss";
+@import "@nuxt/ui";
 
 /* main.css dimasukkan ke layer `utilities`, TEPAT SETELAH utility Tailwind.
  *
@@ -22,7 +22,7 @@
  * Menempatkannya di layer yang sama, setelah utility, mengembalikan kedua aturan
  * pemenang di atas sekaligus tanpa perlu tambalan per-kelas.
  */
-@import './main.css' layer(utilities);
+@import "./main.css" layer(utilities);
 
 @source '../../pages/**/*.vue';
 @source '../../layouts/**/*.vue';
@@ -99,6 +99,18 @@
   --color-cc-stone-800: #3a3d36;
   --color-cc-stone-900: #263524;
   --color-cc-stone-950: #171c16;
+
+  --color-cc-accent-50: #fdf8ec;
+  --color-cc-accent-100: #faedcb;
+  --color-cc-accent-200: #f5da97;
+  --color-cc-accent-300: #efc563;
+  --color-cc-accent-400: #e8bd42;
+  --color-cc-accent-500: #e1b032; /* base kamu */
+  --color-cc-accent-600: #c4931f;
+  --color-cc-accent-700: #a3771a;
+  --color-cc-accent-800: #825e18;
+  --color-cc-accent-900: #6b4d17;
+  --color-cc-accent-950: #3c2a0b;
 }
 
 /* ── Kompatibilitas preflight v3 → v4 ────────────────────────────────────────
@@ -128,7 +140,7 @@
   }
 
   button:not(:disabled),
-  [role='button']:not(:disabled) {
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
 
@@ -139,9 +151,9 @@
   }
 
   /* v4 membuat kontrol input transparan; kembalikan latar putih bawaan browser. */
-  input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not(
-      [type='reset']
-    ),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not(
+      [type="submit"]
+    ):not([type="reset"]),
   textarea {
     background-color: #fff;
   }

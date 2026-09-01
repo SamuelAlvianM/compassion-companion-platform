@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  compatibilityDate: '2026-07-25',
+  compatibilityDate: "2026-07-25",
   devtools: { enabled: true },
   // Port lokal dipatok di sini supaya `npm run dev` / `yarn dev` / `pnpm dev` sama-sama pakai 3009.
   //
@@ -29,20 +29,34 @@ export default defineNuxtConfig({
   // memindahkan WebSocket itu lewat `vite.server.hmr.port` (ia bukan HMR Vite),
   // dan mematikan `devtools` (bukan itu pemiliknya). Yang tersisa cuma memilih
   // keluarga alamat mana yang dilayani, dan `localhost` adalah yang diketik orang.
-  devServer: { port: 3009, host: 'localhost' },
+  devServer: { port: 3009, host: "localhost" },
   // Satu entry saja: tailwind.css meng-import main.css sebagai layer `components`.
   // Lihat komentar di berkas itu — urutan layer menentukan siapa yang menang.
-  css: ['~/assets/css/tailwind.css'],
-  modules: ['@nuxtjs/i18n', '@nuxt/ui', '@nuxt/image'],
+  css: ["~/assets/css/tailwind.css"],
+  modules: ["@nuxtjs/i18n", "@nuxt/ui", "@nuxt/image"],
 
   // Situs ini hanya punya mode terang. Tanpa penguncian ini Nuxt UI bisa
   // menyalakan kelas `.dark` dan mengubah seluruh warna.
-  colorMode: { preference: 'light', fallback: 'light' },
+  colorMode: { preference: "light", fallback: "light" },
 
   // Font sudah dimuat manual lewat @import Google Fonts di main.css.
   // Pemetaan warna brand ada di app.config.ts — Nuxt UI membaca `ui.colors` dari sana,
   // bukan dari berkas ini.
-  ui: { fonts: false },
+  ui: {
+    fonts: false,
+    theme: {
+      colors: [
+        "primary",
+        "secondary",
+        "accent",
+        "success",
+        "info",
+        "warning",
+        "error",
+        "neutral",
+      ],
+    },
+  },
 
   /**
    * Tiptap & ProseMirror harus dimuat SATU KALI saja.
@@ -72,13 +86,13 @@ export default defineNuxtConfig({
   vite: {
     resolve: {
       dedupe: [
-        '@tiptap/core',
-        '@tiptap/vue-3',
-        '@tiptap/pm',
-        'prosemirror-state',
-        'prosemirror-view',
-        'prosemirror-model',
-        'prosemirror-transform',
+        "@tiptap/core",
+        "@tiptap/vue-3",
+        "@tiptap/pm",
+        "prosemirror-state",
+        "prosemirror-view",
+        "prosemirror-model",
+        "prosemirror-transform",
       ],
     },
     /**
@@ -117,39 +131,39 @@ export default defineNuxtConfig({
      */
     optimizeDeps: {
       include: [
-        '@tiptap/core',
-        '@tiptap/vue-3',
-        '@tiptap/vue-3/menus',
-        '@tiptap/starter-kit',
-        '@tiptap/suggestion',
-        '@tiptap/markdown',
-        '@tiptap/extension-bubble-menu',
-        '@tiptap/extension-code',
-        '@tiptap/extension-drag-handle-vue-3',
-        '@tiptap/extension-floating-menu',
-        '@tiptap/extension-horizontal-rule',
-        '@tiptap/extension-image',
-        '@tiptap/extension-mention',
-        '@tiptap/extension-placeholder',
-        '@tiptap/pm/commands',
-        '@tiptap/pm/dropcursor',
-        '@tiptap/pm/gapcursor',
-        '@tiptap/pm/history',
-        '@tiptap/pm/inputrules',
-        '@tiptap/pm/keymap',
-        '@tiptap/pm/model',
-        '@tiptap/pm/schema-list',
-        '@tiptap/pm/state',
-        '@tiptap/pm/tables',
-        '@tiptap/pm/transform',
-        '@tiptap/pm/view',
+        "@tiptap/core",
+        "@tiptap/vue-3",
+        "@tiptap/vue-3/menus",
+        "@tiptap/starter-kit",
+        "@tiptap/suggestion",
+        "@tiptap/markdown",
+        "@tiptap/extension-bubble-menu",
+        "@tiptap/extension-code",
+        "@tiptap/extension-drag-handle-vue-3",
+        "@tiptap/extension-floating-menu",
+        "@tiptap/extension-horizontal-rule",
+        "@tiptap/extension-image",
+        "@tiptap/extension-mention",
+        "@tiptap/extension-placeholder",
+        "@tiptap/pm/commands",
+        "@tiptap/pm/dropcursor",
+        "@tiptap/pm/gapcursor",
+        "@tiptap/pm/history",
+        "@tiptap/pm/inputrules",
+        "@tiptap/pm/keymap",
+        "@tiptap/pm/model",
+        "@tiptap/pm/schema-list",
+        "@tiptap/pm/state",
+        "@tiptap/pm/tables",
+        "@tiptap/pm/transform",
+        "@tiptap/pm/view",
         // Bukan tiptap, tapi masalahnya sama: dua paket ini juga baru ketahuan
         // saat halaman berjalan, dan penemuan itulah yang memicu muat-ulang
         // diam-diam. Disebut di sini supaya dev server menyala dengan semuanya
         // sudah siap. Daftar ini bukan tebakan — dev server mencetaknya sendiri
         // ("Vite discovered new dependencies at runtime") begitu ada yang tersisa.
-        '@vue/devtools-core',
-        '@vue/devtools-kit',
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
       ],
     },
   },
@@ -164,21 +178,45 @@ export default defineNuxtConfig({
    * pencari memindahkan peringkat halaman lamanya ke alamat baru.
    */
   routeRules: Object.fromEntries(
-    ['id', 'en'].flatMap(bahasa => ([
-      [`/${bahasa}/reflection-journey`, { redirect: { to: `/${bahasa}/jurnal/menemukan-arah-dalam-kebersamaan`, statusCode: 301 as const } }],
-      [`/${bahasa}/sharing-mendengar-dengan-hadir`, { redirect: { to: `/${bahasa}/jurnal/ketika-saya-belajar-mendengarkan`, statusCode: 301 as const } }],
-      [`/${bahasa}/sharing-menata-kegelisahan`, { redirect: { to: `/${bahasa}/jurnal/membawa-kegelisahan-kepada-tuhan`, statusCode: 301 as const } }],
-    ])),
+    ["id", "en"].flatMap((bahasa) => [
+      [
+        `/${bahasa}/reflection-journey`,
+        {
+          redirect: {
+            to: `/${bahasa}/jurnal/menemukan-arah-dalam-kebersamaan`,
+            statusCode: 301 as const,
+          },
+        },
+      ],
+      [
+        `/${bahasa}/sharing-mendengar-dengan-hadir`,
+        {
+          redirect: {
+            to: `/${bahasa}/jurnal/ketika-saya-belajar-mendengarkan`,
+            statusCode: 301 as const,
+          },
+        },
+      ],
+      [
+        `/${bahasa}/sharing-menata-kegelisahan`,
+        {
+          redirect: {
+            to: `/${bahasa}/jurnal/membawa-kegelisahan-kepada-tuhan`,
+            statusCode: 301 as const,
+          },
+        },
+      ],
+    ]),
   ),
 
   // Transisi halaman & layout. Kelasnya ada di assets/css/main.css dan otomatis
   // dinonaktifkan saat pengguna memilih "reduce motion" di sistemnya.
   app: {
-    pageTransition: { name: 'page', mode: 'out-in' },
-    layoutTransition: { name: 'layout', mode: 'out-in' },
+    pageTransition: { name: "page", mode: "out-in" },
+    layoutTransition: { name: "layout", mode: "out-in" },
   },
 
-  icon: { serverBundle: { collections: ['lucide'] } },
+  icon: { serverBundle: { collections: ["lucide"] } },
 
   runtimeConfig: {
     // Kunci enkripsi cookie sesi, diisi dari env NUXT_SESSION_PASSWORD (lihat .env.example).
@@ -186,35 +224,35 @@ export default defineNuxtConfig({
     // salinan repo memakai kunci yang sama, dan siapa pun yang membacanya bisa
     // memalsukan cookie sesi siapa saja. server/utils/session.ts menolak jalan
     // kalau nilainya masih kosong.
-    sessionPassword: '',
+    sessionPassword: "",
   },
 
   i18n: {
-    defaultLocale: 'id',
-    strategy: 'prefix',
-    customRoutes: 'config',
+    defaultLocale: "id",
+    strategy: "prefix",
+    customRoutes: "config",
     pages: {
       admin: false,
-      'admin-members': false,
-      'admin-events': false,
-      'admin-jurnal': false,
-      'admin-jurnal-id': false,
-      'admin-statistik': false,
-      'admin-contributors': false,
-      'admin-section': false,
-      'admin-event-id': false,
-      'admin-member-id': false,
-      'admin-petunjuk': false,
+      "admin-members": false,
+      "admin-events": false,
+      "admin-jurnal": false,
+      "admin-jurnal-id": false,
+      "admin-statistik": false,
+      "admin-contributors": false,
+      "admin-section": false,
+      "admin-event-id": false,
+      "admin-member-id": false,
+      "admin-petunjuk": false,
       // Halaman admin baru WAJIB didaftarkan di sini. Tanpa barisnya, i18n
       // memasang awalan locale dan rutenya jadi /id/admin/… — alamat /admin/…
       // yang sebenarnya lalu jatuh ke penangkap /admin/[section] dan yang tampil
       // adalah halaman POC lama, tanpa galat apa pun yang memberi tahu.
-      'admin-log': false,
-      'admin-akun': false,
+      "admin-log": false,
+      "admin-akun": false,
     },
     locales: [
-      { code: 'id', language: 'id-ID', name: 'Indonesia' },
-      { code: 'en', language: 'en-US', name: 'English' },
+      { code: "id", language: "id-ID", name: "Indonesia" },
+      { code: "en", language: "en-US", name: "English" },
     ],
   },
-})
+});

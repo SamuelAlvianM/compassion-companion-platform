@@ -68,11 +68,11 @@ const tanggal = (nilai: string | null) =>
 
 const warnaFase = (f: string) =>
   (({
-    mendatang: "primary",
+    mendatang: "accent",
     berlangsung: "secondary",
     selesai: "neutral",
     batal: "error",
-  })[f] ?? "neutral") as "neutral" | "primary" | "secondary" | "error";
+  })[f] ?? "neutral") as "neutral" | "accent" | "secondary" | "error";
 
 // ── Hapus ────────────────────────────────────────────────────────────────────
 const hapusTarget = ref<{ id: string; judul: string } | null>(null);
@@ -317,9 +317,8 @@ const columns = [
         <template #fase-cell="{ row }">
           <UBadge
             :color="warnaFase(row.original.fase)"
-            variant="subtle"
-            size="sm"
-            class="rounded-full"
+            size="md"
+            class="event-badge rounded-full capitalize"
           >
             {{ row.original.fase }}
           </UBadge>
@@ -401,16 +400,27 @@ const columns = [
               size="sm"
               icon="i-lucide-trash-2"
               :aria-label="`Hapus ${e.judul}`"
-              @click="hapusTarget = { id: e.id, judul: e.judul }; galat = ''"
+              @click="
+                hapusTarget = { id: e.id, judul: e.judul };
+                galat = '';
+              "
             />
           </div>
         </div>
 
-        <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-cc-stone-100 pt-3">
-          <UBadge :color="warnaFase(e.fase)" variant="subtle" size="sm" class="rounded-full">
+        <div
+          class="mt-3 flex flex-wrap items-center gap-2 border-t border-cc-stone-100 pt-3"
+        >
+          <UBadge
+            :color="warnaFase(e.fase)"
+            size="md"
+            class="event-badge rounded-full capitalize"
+          >
             {{ e.fase }}
           </UBadge>
-          <span class="text-sm text-cc-stone-600">{{ tanggal(e.tanggalMulai) }}</span>
+          <span class="text-sm text-cc-stone-600">{{
+            tanggal(e.tanggalMulai)
+          }}</span>
           <span
             v-if="e.belumKonfirmasi"
             class="ml-auto inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700"

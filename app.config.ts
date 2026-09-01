@@ -7,9 +7,10 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      primary: 'cc-green',
-      secondary: 'cc-brown',
-      neutral: 'cc-stone',
+      primary: "cc-green",
+      secondary: "cc-brown",
+      neutral: "cc-stone",
+      accent: "cc-accent",
     },
 
     /**
@@ -27,7 +28,7 @@ export default defineAppConfig({
      */
     modal: {
       slots: {
-        title: 'font-serif text-base font-normal text-cc-green-800',
+        title: "font-serif text-base font-normal text-cc-green-800",
       },
     },
 
@@ -46,7 +47,7 @@ export default defineAppConfig({
      */
     slideover: {
       slots: {
-        title: 'font-serif text-2xl font-normal text-cc-green-800',
+        title: "font-serif text-2xl font-normal text-cc-green-800",
       },
     },
 
@@ -77,8 +78,8 @@ export default defineAppConfig({
      */
     selectMenu: {
       slots: {
-        content: 'max-h-80',
+        content: "max-h-80",
       },
     },
   },
-})
+});

@@ -21,12 +21,12 @@
 // lewat WhatsApp atau di tempat, dan menyuruh mereka mendaftar ulang lewat halaman
 // publik berarti mengulang pekerjaan yang sudah selesai. Endpointnya baru —
 // POST /api/admin/events/[id]/peserta.
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: "admin" });
 
-const route = useRoute()
-const router = useRouter()
-const id = computed(() => String(route.params.id))
-const baru = computed(() => id.value === 'new')
+const route = useRoute();
+const router = useRouter();
+const id = computed(() => String(route.params.id));
+const baru = computed(() => id.value === "new");
 
 // Harga dan status sengaja tidak ada di sini.
 //
@@ -40,20 +40,56 @@ const baru = computed(() => id.value === 'new')
 // kalendernya. Server memasang `terbit` untuk setiap kegiatan yang disimpan dari
 // sini — lihat catatan di bacaKegiatan().
 const kosong = () => ({
-  judul: '', judulEn: '', deskripsi: '', deskripsiEn: '',
-  lokasi: '', tautanDaring: '',
-  tanggalMulai: '', tanggalSelesai: '',
-  jamMulai: '', jamSelesai: '',
-  tutupTanggal: '', tutupJam: '23:55',
+  judul: "",
+  judulEn: "",
+  deskripsi: "",
+  deskripsiEn: "",
+  lokasi: "",
+  tautanDaring: "",
+  tanggalMulai: "",
+  tanggalSelesai: "",
+  jamMulai: "",
+  jamSelesai: "",
+  tutupTanggal: "",
+  tutupJam: "23:55",
   // Selalu string, meski isinya angka: `<UInput>` hanya menerima string, dan
   // validasi-event.ts sudah menerima kuota dalam bentuk teks maupun angka.
-  kuota: '',
-  coverMediaId: '',
-  thumbnailMediaId: '',
-})
+  kuota: "",
+  coverMediaId: "",
+  thumbnailMediaId: "",
+});
 
-const form = ref(kosong())
-const sesi = ref<any[]>([])
+const form = ref(kosong());
+const sesi = ref<any[]>([]);
+const fase = ref("mendatang");
+
+const { data, refresh } = useFetch("/api/admin/events", {
+  query: computed(() => ({
+    fase: fase.value === "mendatang" ? undefined : fase.value,
+  })),
+});
+
+const faseEvent = computed(() => {
+  if (baru.value) return "baru";
+  const e = data.value?.data?.find((e: any) => e.id === id.value);
+  return e?.fase ?? "mendatang";
+});
+
+const ikonBadge = (f: string) =>
+  (({
+    mendatang: "i-lucide-calendar",
+    berlangsung: "i-lucide-clock",
+    selesai: "i-lucide-check-circle",
+    batal: "i-lucide-x-circle",
+  })[f] ?? "i-lucide-help-circle") as string;
+
+const warnaFase = (f: string) =>
+  (({
+    mendatang: "accent",
+    berlangsung: "secondary",
+    selesai: "neutral",
+    batal: "error",
+  })[f] ?? "neutral") as "neutral" | "accent" | "secondary" | "error";
 
 /**
  * Peserta yang dimasukkan tangan admin sebelum eventnya ada — yang membooking
@@ -62,17 +98,17 @@ const sesi = ref<any[]>([])
  * Hanya dipakai mode `baru`. Pada event tersimpan, AdminPesertaTab mengurus
  * daftarnya sendiri langsung ke server; tidak ada gunanya menyalinnya ke sini.
  */
-const pesertaDraf = ref<any[]>([])
+const pesertaDraf = ref<any[]>([]);
 
 /** Terbukanya modal "Tambah peserta". Tinggal di sini karena tombolnya duduk di
     kepala kartu, sementara formnya ada di dalam PesertaDraf. */
-const pesertaModal = ref(false)
-const galat = ref('')
-const sibuk = ref(false)
-const toast = useToast()
+const pesertaModal = ref(false);
+const galat = ref("");
+const sibuk = ref(false);
+const toast = useToast();
 
 /** Alamat gambar yang sedang terpasang — untuk pratinjau, bukan untuk disimpan. */
-const gambar = ref<string | null>(null)
+const gambar = ref<string | null>(null);
 
 /**
  * Status redaksional event yang tersimpan di server.
@@ -82,8 +118,8 @@ const gambar = ref<string | null>(null)
  * pengetikan judul, dan pembatalan bukan sesuatu yang boleh terjadi sebagai efek
  * samping mengetik. Ia diubah hanya lewat tombolnya sendiri, sekali kirim.
  */
-const statusEvent = ref<string>('terbit')
-const dibatalkan = computed(() => statusEvent.value === 'batal')
+const statusEvent = ref<string>("terbit");
+const dibatalkan = computed(() => statusEvent.value === "batal");
 
 /**
  * Sidik isian yang terakhir diketahui sudah tersimpan.
@@ -94,7 +130,7 @@ const dibatalkan = computed(() => statusEvent.value === 'batal')
  * dibaca. Menambah sesi pun akan memicu satu PATCH kegiatan yang tidak diminta
  * siapa pun.
  */
-const tersimpan = ref('')
+const tersimpan = ref("");
 
 /**
  * Kolom yang ikut menentukan "sudah berubah atau belum".
@@ -105,108 +141,152 @@ const tersimpan = ref('')
  * masih dalam TDZ pada saat itu — "Cannot access 'KUNCI' before initialization",
  * dan halamannya mati dengan 500 sebelum sempat tergambar.
  */
-const KUNCI = ['judul', 'judulEn', 'deskripsi', 'deskripsiEn', 'lokasi', 'tautanDaring',
-  'tanggalMulai', 'tanggalSelesai', 'jamMulai', 'jamSelesai', 'tutupTanggal', 'tutupJam',
-  'kuota', 'coverMediaId', 'thumbnailMediaId'] as const
+const KUNCI = [
+  "judul",
+  "judulEn",
+  "deskripsi",
+  "deskripsiEn",
+  "lokasi",
+  "tautanDaring",
+  "tanggalMulai",
+  "tanggalSelesai",
+  "jamMulai",
+  "jamSelesai",
+  "tutupTanggal",
+  "tutupJam",
+  "kuota",
+  "coverMediaId",
+  "thumbnailMediaId",
+] as const;
 
-const sidik = () => JSON.stringify(KUNCI.map(k => form.value[k]))
+const sidik = () => JSON.stringify(KUNCI.map((k) => form.value[k]));
 
 // Timestamp dari API → 'YYYY-MM-DD', dibaca dalam WIB supaya tanggalnya tidak
 // mundur sehari (bug yang sama pernah muncul di halaman event publik).
 const keYmd = (nilai: string | null) => {
-  if (!nilai) return ''
-  return new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Jakarta',
-  }).format(new Date(nilai))
-}
+  if (!nilai) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(nilai));
+};
 
 /** Timestamp → `HH:MM` WIB, dibulatkan ke bawah ke kelipatan 5 menit supaya nilai
     lama tetap bisa diperlihatkan kembali oleh WaktuPicker. */
 const keJamWib = (nilai: string | null) => {
-  if (!nilai) return ''
-  const [h, m] = new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta',
-  }).format(new Date(nilai)).split(':')
-  return `${h}:${String(Math.floor(Number(m) / 5) * 5).padStart(2, '0')}`
-}
+  if (!nilai) return "";
+  const [h, m] = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  })
+    .format(new Date(nilai))
+    .split(":");
+  return `${h}:${String(Math.floor(Number(m) / 5) * 5).padStart(2, "0")}`;
+};
 
 const muat = async () => {
   if (baru.value) {
-    form.value = kosong()
-    sesi.value = []
-    gambar.value = null
-    statusEvent.value = 'terbit'
-    return
+    form.value = kosong();
+    sesi.value = [];
+    gambar.value = null;
+    statusEvent.value = "terbit";
+    return;
   }
   // Saat SSR, $fetch tidak ikut membawa cookie browser — tanpa penerusan ini,
   // endpoint admin selalu menjawab 401 pada render pertama.
-  const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-  const res = await $fetch<any>(`/api/admin/events/${id.value}`, { headers })
-  const d = res.data
+  const headers = import.meta.server
+    ? useRequestHeaders(["cookie"])
+    : undefined;
+  const res = await $fetch<any>(`/api/admin/events/${id.value}`, { headers });
+  const d = res.data;
   form.value = {
-    judul: d.judul ?? '', judulEn: d.judulEn ?? '',
-    deskripsi: d.deskripsi ?? '', deskripsiEn: d.deskripsiEn ?? '',
-    lokasi: d.lokasi ?? '', tautanDaring: d.tautanDaring ?? '',
-    tanggalMulai: keYmd(d.tanggalMulai), tanggalSelesai: keYmd(d.tanggalSelesai),
-    jamMulai: d.jamMulai ?? '', jamSelesai: d.jamSelesai ?? '',
+    judul: d.judul ?? "",
+    judulEn: d.judulEn ?? "",
+    deskripsi: d.deskripsi ?? "",
+    deskripsiEn: d.deskripsiEn ?? "",
+    lokasi: d.lokasi ?? "",
+    tautanDaring: d.tautanDaring ?? "",
+    tanggalMulai: keYmd(d.tanggalMulai),
+    tanggalSelesai: keYmd(d.tanggalSelesai),
+    jamMulai: d.jamMulai ?? "",
+    jamSelesai: d.jamSelesai ?? "",
     tutupTanggal: keYmd(d.tutupPendaftaran),
-    tutupJam: keJamWib(d.tutupPendaftaran) || '23:55',
-    kuota: d.kuota == null ? '' : String(d.kuota),
-    coverMediaId: d.coverMediaId ?? '',
-    thumbnailMediaId: d.thumbnailMediaId ?? '',
-  }
+    tutupJam: keJamWib(d.tutupPendaftaran) || "23:55",
+    kuota: d.kuota == null ? "" : String(d.kuota),
+    coverMediaId: d.coverMediaId ?? "",
+    thumbnailMediaId: d.thumbnailMediaId ?? "",
+  };
   // Event lama bisa punya salah satunya saja; yang mana pun ada, itu yang tampil.
-  gambar.value = d.cover ?? d.thumbnail ?? null
-  statusEvent.value = d.status ?? 'terbit'
-  sesi.value = res.sesi ?? []
-  tersimpan.value = sidik()
-}
+  gambar.value = d.cover ?? d.thumbnail ?? null;
+  statusEvent.value = d.status ?? "terbit";
+  sesi.value = res.sesi ?? [];
+  tersimpan.value = sidik();
+};
 
-await muat()
-watch(id, muat)
+await muat();
+watch(id, muat);
 
 const pesan = (e: any, bawaan: string) =>
-  e?.data?.statusMessage ?? e?.statusMessage ?? bawaan
+  e?.data?.statusMessage ?? e?.statusMessage ?? bawaan;
 
 /** Event sehari — hanya di situ urutan jam bisa dibandingkan. Pada event
     berhari-hari, "selesai 09.00" setelah "mulai 16.00" justru normal. */
-const sehari = computed(() =>
-  !form.value.tanggalSelesai || form.value.tanggalSelesai === form.value.tanggalMulai)
+const sehari = computed(
+  () =>
+    !form.value.tanggalSelesai ||
+    form.value.tanggalSelesai === form.value.tanggalMulai,
+);
 
 /**
  * Pemeriksaan yang bisa dijawab tanpa server, ditampilkan sebelum tombol simpan
  * ditekan. Server tetap memeriksa hal yang sama — ini kenyamanan, bukan penjagaan.
  */
 const peringatan = computed(() => {
-  if (form.value.tanggalSelesai && form.value.tanggalSelesai < form.value.tanggalMulai) {
-    return 'Tanggal selesai tidak boleh mendahului tanggal mulai.'
+  if (
+    form.value.tanggalSelesai &&
+    form.value.tanggalSelesai < form.value.tanggalMulai
+  ) {
+    return "Tanggal selesai tidak boleh mendahului tanggal mulai.";
   }
-  if (sehari.value && form.value.jamMulai && form.value.jamSelesai
-    && form.value.jamSelesai <= form.value.jamMulai) {
-    return 'Jam selesai harus setelah jam mulai.'
+  if (
+    sehari.value &&
+    form.value.jamMulai &&
+    form.value.jamSelesai &&
+    form.value.jamSelesai <= form.value.jamMulai
+  ) {
+    return "Jam selesai harus setelah jam mulai.";
   }
   // Batas pendaftaran sesudah acara mulai bukan batas apa pun. Dibandingkan
   // sebagai tanggal, bukan sebagai saat: batas "23.55 di hari acara" itu lazim.
-  if (form.value.tutupTanggal && form.value.tanggalMulai
-    && form.value.tutupTanggal > form.value.tanggalMulai) {
-    return 'Batas akhir pendaftaran tidak boleh melewati tanggal mulai.'
+  if (
+    form.value.tutupTanggal &&
+    form.value.tanggalMulai &&
+    form.value.tutupTanggal > form.value.tanggalMulai
+  ) {
+    return "Batas akhir pendaftaran tidak boleh melewati tanggal mulai.";
   }
-  return ''
-})
+  return "";
+});
 
 /** `YYYY-MM-DD` digeser sekian hari. Lewat `Date.UTC` supaya tidak menyentuh zona
     waktu mesin — yang ditambah di sini hari kalender, bukan 24 jam. */
 const geserYmd = (ymd: string, hari: number) => {
-  const [y, b, t] = ymd.split('-').map(Number)
-  const d = new Date(Date.UTC(y!, b! - 1, t! + hari))
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-}
+  const [y, b, t] = ymd.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, b! - 1, t! + hari));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+};
 
 const selisihHari = (dari: string, ke: string) => {
-  const [y1, b1, t1] = dari.split('-').map(Number)
-  const [y2, b2, t2] = ke.split('-').map(Number)
-  return Math.round((Date.UTC(y2!, b2! - 1, t2!) - Date.UTC(y1!, b1! - 1, t1!)) / 86_400_000)
-}
+  const [y1, b1, t1] = dari.split("-").map(Number);
+  const [y2, b2, t2] = ke.split("-").map(Number);
+  return Math.round(
+    (Date.UTC(y2!, b2! - 1, t2!) - Date.UTC(y1!, b1! - 1, t1!)) / 86_400_000,
+  );
+};
 
 /**
  * Tanggal selesai mengikuti tanggal mulai — tiga aturan, bukan satu.
@@ -226,31 +306,39 @@ const selisihHari = (dari: string, ke: string) => {
  * Di luar ketiganya tangan yang mengetik yang menentukan: 12–15 lalu mulainya
  * dibetulkan jadi 13 tetap berakhir 15.
  */
-watch(() => form.value.tanggalMulai, (mulai, sebelumnya) => {
-  if (!mulai) return
-  const selesai = form.value.tanggalSelesai
-  if (!selesai || selesai === sebelumnya) { form.value.tanggalSelesai = mulai }
-  else if (selesai < mulai && sebelumnya) form.value.tanggalSelesai = geserYmd(selesai, selisihHari(sebelumnya, mulai))
-  else if (selesai < mulai) form.value.tanggalSelesai = mulai
+watch(
+  () => form.value.tanggalMulai,
+  (mulai, sebelumnya) => {
+    if (!mulai) return;
+    const selesai = form.value.tanggalSelesai;
+    if (!selesai || selesai === sebelumnya) {
+      form.value.tanggalSelesai = mulai;
+    } else if (selesai < mulai && sebelumnya)
+      form.value.tanggalSelesai = geserYmd(
+        selesai,
+        selisihHari(sebelumnya, mulai),
+      );
+    else if (selesai < mulai) form.value.tanggalSelesai = mulai;
 
-  // Batas pendaftaran ikut ditarik mundur kalau tanggal mulai bergeser ke belakang
-  // sampai melewatinya.
-  //
-  // Pemilih batas pendaftaran memang tidak MENGIZINKAN memilih tanggal sesudah
-  // tanggal mulai (`:maksimal="form.tanggalMulai"`), tapi penjagaan itu cuma berlaku
-  // saat batasnya yang diubah. Kalau tanggal MULAI yang dimajukan, batas yang sudah
-  // terlanjur terisi tertinggal di belakang — dan formulirnya berhenti bisa disimpan
-  // sampai orangnya sadar sendiri harus membetulkan kolom kedua yang tidak ia
-  // sentuh. Itu jalan buntu: pesannya benar, tapi tidak ada yang menawarkan jalan
-  // keluar.
-  //
-  // Perlakuannya disamakan dengan `tanggalSelesai` di atas, yang sejak dulu memang
-  // menyesuaikan diri mengikuti tanggal mulai. Dua kolom yang sama-sama bergantung
-  // pada tanggal mulai sebaiknya sama-sama ikut bergerak, bukan satu ikut dan satu
-  // membeku.
-  const tutup = form.value.tutupTanggal
-  if (tutup && tutup > mulai) form.value.tutupTanggal = mulai
-})
+    // Batas pendaftaran ikut ditarik mundur kalau tanggal mulai bergeser ke belakang
+    // sampai melewatinya.
+    //
+    // Pemilih batas pendaftaran memang tidak MENGIZINKAN memilih tanggal sesudah
+    // tanggal mulai (`:maksimal="form.tanggalMulai"`), tapi penjagaan itu cuma berlaku
+    // saat batasnya yang diubah. Kalau tanggal MULAI yang dimajukan, batas yang sudah
+    // terlanjur terisi tertinggal di belakang — dan formulirnya berhenti bisa disimpan
+    // sampai orangnya sadar sendiri harus membetulkan kolom kedua yang tidak ia
+    // sentuh. Itu jalan buntu: pesannya benar, tapi tidak ada yang menawarkan jalan
+    // keluar.
+    //
+    // Perlakuannya disamakan dengan `tanggalSelesai` di atas, yang sejak dulu memang
+    // menyesuaikan diri mengikuti tanggal mulai. Dua kolom yang sama-sama bergantung
+    // pada tanggal mulai sebaiknya sama-sama ikut bergerak, bukan satu ikut dan satu
+    // membeku.
+    const tutup = form.value.tutupTanggal;
+    if (tutup && tutup > mulai) form.value.tutupTanggal = mulai;
+  },
+);
 
 // ── Gambar ───────────────────────────────────────────────────────────────────
 // Yang disimpan `mediaId`; alamatnya cuma untuk pratinjau. Pada mode ubah,
@@ -268,17 +356,17 @@ watch(() => form.value.tanggalMulai, (mulai, sebelumnya) => {
 // dengan media yang sama, sehingga seluruh pembaca di sisi tampilan (kartu daftar
 // event, halaman detail, API publik) tidak perlu diubah satu pun — dan kalau kelak
 // potongan terpisah diinginkan lagi, tempatnya masih ada.
-const pasangGambar = (hasil: { mediaId: string, url: string }) => {
-  form.value.coverMediaId = hasil.mediaId
-  form.value.thumbnailMediaId = hasil.mediaId
-  gambar.value = hasil.url
-}
+const pasangGambar = (hasil: { mediaId: string; url: string }) => {
+  form.value.coverMediaId = hasil.mediaId;
+  form.value.thumbnailMediaId = hasil.mediaId;
+  gambar.value = hasil.url;
+};
 
 const lepasGambar = () => {
-  form.value.coverMediaId = ''
-  form.value.thumbnailMediaId = ''
-  gambar.value = null
-}
+  form.value.coverMediaId = "";
+  form.value.thumbnailMediaId = "";
+  gambar.value = null;
+};
 
 // ── Pembatalan event ─────────────────────────────────────────────────────────
 //
@@ -290,47 +378,51 @@ const lepasGambar = () => {
 // Tombolnya dibuat DUA ARAH. Satu tombol yang hanya bisa membatalkan berarti salah
 // tekan sekali membuat event tidak bisa dikembalikan dari layar mana pun — dan
 // pembatalan justru tindakan yang paling mungkin ditekan karena keliru membaca.
-const konfirmasiBatal = ref(false)
-const memprosesStatus = ref(false)
+const konfirmasiBatal = ref(false);
+const memprosesStatus = ref(false);
 
-const ubahStatusEvent = async (status: 'batal' | 'terbit') => {
-  memprosesStatus.value = true
-  galat.value = ''
+const ubahStatusEvent = async (status: "batal" | "terbit") => {
+  memprosesStatus.value = true;
+  galat.value = "";
   try {
-    await $fetch(`/api/admin/events/${id.value}`, { method: 'PATCH', body: { status } })
-    statusEvent.value = status
-    konfirmasiBatal.value = false
+    await $fetch(`/api/admin/events/${id.value}`, {
+      method: "PATCH",
+      body: { status },
+    });
+    statusEvent.value = status;
+    konfirmasiBatal.value = false;
     toast.add({
-      title: status === 'batal' ? 'Event dibatalkan' : 'Event dipulihkan',
-      description: status === 'batal'
-        ? 'Halaman event kini ditandai dibatalkan dan pendaftaran ditutup.'
-        : 'Fase event kembali dihitung dari tanggal acara.',
-      color: status === 'batal' ? 'warning' : 'success',
-    })
+      title: status === "batal" ? "Event dibatalkan" : "Event dipulihkan",
+      description:
+        status === "batal"
+          ? "Halaman event kini ditandai dibatalkan dan pendaftaran ditutup."
+          : "Fase event kembali dihitung dari tanggal acara.",
+      color: status === "batal" ? "warning" : "success",
+    });
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal mengubah status event.");
+  } finally {
+    memprosesStatus.value = false;
   }
-  catch (e: any) {
-    galat.value = pesan(e, 'Gagal mengubah status event.')
-  }
-  finally {
-    memprosesStatus.value = false
-  }
-}
+};
 
 /** Body yang dikirim ke API: dua kotak batas pendaftaran dilebur jadi satu nilai,
     dan kolom bantu (`tutupTanggal`, `tutupJam`) tidak ikut terkirim. */
 const payload = () => {
-  const { tutupTanggal, tutupJam, ...sisa } = form.value
+  const { tutupTanggal, tutupJam, ...sisa } = form.value;
   return {
     ...sisa,
     // Jam tanpa tanggal bukan batas apa pun, jadi tanggal yang menentukan ada
     // tidaknya nilai ini.
-    tutupPendaftaran: tutupTanggal ? `${tutupTanggal}T${tutupJam || '23:55'}` : null,
-  }
-}
+    tutupPendaftaran: tutupTanggal
+      ? `${tutupTanggal}T${tutupJam || "23:55"}`
+      : null,
+  };
+};
 
 // Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
 // bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
-const wajibKosong = belumDiisi
+const wajibKosong = belumDiisi;
 
 /**
  * "Buat event" sudah pernah ditekan.
@@ -339,17 +431,17 @@ const wajibKosong = belumDiisi
  * event baru selalu kosong pada detik pertama, dan tiga kolom merah yang menyambut
  * orang sebelum ia sempat mengetik apa pun bukan peringatan — itu cuma latar.
  */
-const dicoba = ref(false)
+const dicoba = ref(false);
 
 /** Kolom wajib yang masih kosong — disebutkan namanya, bukan cuma "lengkapi dulu". */
 const kurang = computed(() => {
-  const daftar: string[] = []
-  if (!form.value.judul.trim()) daftar.push('judul')
-  if (!form.value.lokasi.trim()) daftar.push('lokasi')
-  if (!form.value.tanggalMulai) daftar.push('tanggal mulai')
-  if (!form.value.coverMediaId) daftar.push('gambar event')
-  return daftar
-})
+  const daftar: string[] = [];
+  if (!form.value.judul.trim()) daftar.push("judul");
+  if (!form.value.lokasi.trim()) daftar.push("lokasi");
+  if (!form.value.tanggalMulai) daftar.push("tanggal mulai");
+  if (!form.value.coverMediaId) daftar.push("gambar event");
+  return daftar;
+});
 
 /**
  * Syarat sebuah event boleh lahir.
@@ -372,7 +464,9 @@ const kurang = computed(() => {
  * kurang — atau, lebih buruk, menerima yang kurang. Karena itu ia berdiri SESUDAH
  * `kurang`, bukan sebelumnya.
  */
-const bisaDilahirkan = computed(() => kurang.value.length === 0 && !peringatan.value)
+const bisaDilahirkan = computed(
+  () => kurang.value.length === 0 && !peringatan.value,
+);
 
 /**
  * Alasan sebuah simpanan otomatis ditolak — kosong berarti boleh jalan.
@@ -395,7 +489,7 @@ const bisaDilahirkan = computed(() => kurang.value.length === 0 && !peringatan.v
  * digambar dengan penanda wajib pada mode ubah — jadi kekosongannya terbaca sebagai
  * sesuatu yang harus dilengkapi, tanpa menyandera kolom lain.
  */
-const penghalangSimpan = computed(() => peringatan.value)
+const penghalangSimpan = computed(() => peringatan.value);
 
 /**
  * "Buat event" — satu-satunya tombol simpan yang tersisa di halaman ini, dan pada
@@ -417,51 +511,58 @@ const penghalangSimpan = computed(() => peringatan.value)
 const buatEvent = async () => {
   // Ditekan lebih dulu, baru diperiksa: tombolnya sengaja tetap hidup saat isian
   // belum lengkap, karena tekanan inilah yang menyalakan penanda kolom wajib.
-  dicoba.value = true
+  dicoba.value = true;
   if (!bisaDilahirkan.value) {
-    galat.value = `Belum bisa dibuat — ${kurang.value.join(', ')} masih kosong.`
-    tabAktif.value = 'info'
-    return false
+    galat.value = `Belum bisa dibuat — ${kurang.value.join(", ")} masih kosong.`;
+    tabAktif.value = "info";
+    return false;
   }
-  if (peringatan.value) { galat.value = peringatan.value; return false }
-  const tanpaJudul = sesi.value.find(s => !String(s.judul ?? '').trim())
+  if (peringatan.value) {
+    galat.value = peringatan.value;
+    return false;
+  }
+  const tanpaJudul = sesi.value.find((s) => !String(s.judul ?? "").trim());
   if (tanpaJudul) {
-    galat.value = 'Ada sesi yang judulnya masih kosong. Isi dulu di tab Materi.'
-    tabAktif.value = 'materi'
-    return false
+    galat.value =
+      "Ada sesi yang judulnya masih kosong. Isi dulu di tab Materi.";
+    tabAktif.value = "materi";
+    return false;
   }
 
-  sibuk.value = true
-  galat.value = ''
+  sibuk.value = true;
+  galat.value = "";
   try {
-    const res = await $fetch<any>('/api/admin/events', { method: 'POST', body: payload() })
-    const kegiatanId = res.data.id
+    const res = await $fetch<any>("/api/admin/events", {
+      method: "POST",
+      body: payload(),
+    });
+    const kegiatanId = res.data.id;
     // Server membekali tiap event baru dengan satu sesi. Sesi itu dipakai ulang
     // untuk draf pertama alih-alih dibuat lagi — kalau tidak, event yang drafnya
     // satu sesi akan lahir dengan dua, dan yang kedua kosong tanpa ada yang memintanya.
-    const sesiBawaan: string | undefined = res.data.sesi?.[0]?.id
+    const sesiBawaan: string | undefined = res.data.sesi?.[0]?.id;
 
-    const drafSesi = sesi.value
+    const drafSesi = sesi.value;
     for (const [i, s] of drafSesi.entries()) {
-      let sesiId = i === 0 ? sesiBawaan : undefined
+      let sesiId = i === 0 ? sesiBawaan : undefined;
       if (!sesiId) {
-        const dibuat = await $fetch<any>('/api/admin/sesi', {
-          method: 'POST',
+        const dibuat = await $fetch<any>("/api/admin/sesi", {
+          method: "POST",
           body: { kegiatanId, judul: s.judul, judulEn: s.judulEn || null },
-        })
-        sesiId = dibuat.data.id
+        });
+        sesiId = dibuat.data.id;
       }
       // Selalu PATCH, juga untuk sesi yang barusan dibuat: POST sesi tidak menerima
       // `tampil`, dan sesi yang sengaja disembunyikan akan terbit tanpa itu.
       await $fetch(`/api/admin/sesi/${sesiId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: { judul: s.judul, judulEn: s.judulEn || null, tampil: s.tampil },
-      })
+      });
 
-      for (const bagian of ['materi', 'galeri', 'referensi'] as const) {
+      for (const bagian of ["materi", "galeri", "referensi"] as const) {
         for (const item of s[bagian] ?? []) {
-          await $fetch('/api/admin/sesi-item', {
-            method: 'POST',
+          await $fetch("/api/admin/sesi-item", {
+            method: "POST",
             body: {
               sesiId,
               bagian,
@@ -472,7 +573,7 @@ const buatEvent = async () => {
               url: item.url || null,
               terkunci: item.terkunci,
             },
-          })
+          });
         }
       }
     }
@@ -480,7 +581,7 @@ const buatEvent = async () => {
     // Draf yang seluruh sesinya dibuang: sesi bawaan server ikut dibuang, kalau
     // tidak event itu lahir dengan sesi yang sudah dihapus orangnya di layar.
     if (!drafSesi.length && sesiBawaan) {
-      await $fetch(`/api/admin/sesi/${sesiBawaan}`, { method: 'DELETE' })
+      await $fetch(`/api/admin/sesi/${sesiBawaan}`, { method: "DELETE" });
     }
 
     // Peserta terakhir, dan sengaja: kalau salah satunya ditolak (email bentrok
@@ -489,21 +590,32 @@ const buatEvent = async () => {
     // yang sudah terbuka.
     for (const p of pesertaDraf.value) {
       await $fetch(`/api/admin/events/${kegiatanId}/peserta`, {
-        method: 'POST',
+        method: "POST",
         body: {
-          nama: p.nama, email: p.email, noHp: p.noHp,
-          catatan: p.catatan, status: p.status,
+          nama: p.nama,
+          email: p.email,
+          noHp: p.noHp,
+          catatan: p.catatan,
+          status: p.status,
         },
-      })
+      });
     }
 
-    await router.replace(`/admin/event/${kegiatanId}`)
-    toast.add({ title: 'Event dibuat', icon: 'i-lucide-check', color: 'primary', duration: 2000 })
-    return true
+    await router.replace(`/admin/event/${kegiatanId}`);
+    toast.add({
+      title: "Event dibuat",
+      icon: "i-lucide-check",
+      color: "primary",
+      duration: 2000,
+    });
+    return true;
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal menyimpan event.");
+    return false;
+  } finally {
+    sibuk.value = false;
   }
-  catch (e: any) { galat.value = pesan(e, 'Gagal menyimpan event.'); return false }
-  finally { sibuk.value = false }
-}
+};
 
 // ── Autosave ─────────────────────────────────────────────────────────────────
 // Polanya sama dengan SesiPengaturan.vue yang duduk di tab sebelah: jeda 800 ms
@@ -517,7 +629,7 @@ const buatEvent = async () => {
 //
 // Galat TIDAK lewat toast: yang gagal harus tetap terbaca sesudah tiga detik
 // berlalu, jadi ia mengendap di UAlert di kepala halaman.
-let timer: ReturnType<typeof setTimeout> | undefined
+let timer: ReturnType<typeof setTimeout> | undefined;
 
 /**
  * Keadaan autosave, digambar `IndikatorSimpan` di kepala halaman.
@@ -527,10 +639,12 @@ let timer: ReturnType<typeof setTimeout> | undefined
  * yang baru muncul sesudahnya membuat detik pertama terbaca sebagai "tidak
  * terjadi apa-apa".
  */
-const keadaanSimpan = ref<'diam' | 'menunggu' | 'menyimpan' | 'tersimpan' | 'gagal'>('diam')
+const keadaanSimpan = ref<
+  "diam" | "menunggu" | "menyimpan" | "tersimpan" | "gagal"
+>("diam");
 
 const simpanSekarang = async () => {
-  if (baru.value) return
+  if (baru.value) return;
 
   // Isian yang belum sah tetap tidak dikirim — tapi penolakannya TIDAK BOLEH DIAM.
   //
@@ -545,37 +659,52 @@ const simpanSekarang = async () => {
   // Sekarang alasannya mendarat di tempat kegagalan lain sudah mendarat: UAlert di
   // kepala halaman, plus indikator `gagal`. Satu penolakan, satu kabar.
   if (penghalangSimpan.value) {
-    keadaanSimpan.value = 'gagal'
-    galat.value = penghalangSimpan.value
-    return
+    keadaanSimpan.value = "gagal";
+    galat.value = penghalangSimpan.value;
+    return;
   }
-  if (sidik() === tersimpan.value) { keadaanSimpan.value = 'diam'; return }
+  if (sidik() === tersimpan.value) {
+    keadaanSimpan.value = "diam";
+    return;
+  }
 
-  const dikirim = sidik()
-  sibuk.value = true
-  keadaanSimpan.value = 'menyimpan'
-  galat.value = ''
+  const dikirim = sidik();
+  sibuk.value = true;
+  keadaanSimpan.value = "menyimpan";
+  galat.value = "";
   try {
-    await $fetch(`/api/admin/events/${id.value}`, { method: 'PATCH', body: payload() })
-    tersimpan.value = dikirim
-    keadaanSimpan.value = 'tersimpan'
-    toast.add({ title: 'Tersimpan', icon: 'i-lucide-check', color: 'primary', duration: 1000 })
+    await $fetch(`/api/admin/events/${id.value}`, {
+      method: "PATCH",
+      body: payload(),
+    });
+    tersimpan.value = dikirim;
+    keadaanSimpan.value = "tersimpan";
+    toast.add({
+      title: "Tersimpan",
+      icon: "i-lucide-check",
+      color: "primary",
+      duration: 1000,
+    });
+  } catch (e: any) {
+    keadaanSimpan.value = "gagal";
+    galat.value = pesan(e, "Gagal menyimpan event.");
+  } finally {
+    sibuk.value = false;
   }
-  catch (e: any) {
-    keadaanSimpan.value = 'gagal'
-    galat.value = pesan(e, 'Gagal menyimpan event.')
-  }
-  finally { sibuk.value = false }
-}
+};
 
-watch(form, () => {
-  if (baru.value) return
-  clearTimeout(timer)
-  keadaanSimpan.value = 'menunggu'
-  timer = setTimeout(simpanSekarang, 800)
-}, { deep: true })
+watch(
+  form,
+  () => {
+    if (baru.value) return;
+    clearTimeout(timer);
+    keadaanSimpan.value = "menunggu";
+    timer = setTimeout(simpanSekarang, 800);
+  },
+  { deep: true },
+);
 
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => clearTimeout(timer));
 
 // ── Tindakan sesi & item ─────────────────────────────────────────────────────
 //
@@ -588,19 +717,25 @@ onBeforeUnmount(() => clearTimeout(timer))
 // Tiap tindakan memuat ulang seluruh halaman event sesudahnya (`muat()`), jadi
 // jedanya bukan nol — tanpa penanda, klik pada "geser" terasa seperti tidak
 // diterima dan ditekan dua kali.
-const aksiSibuk = ref('')
+const aksiSibuk = ref("");
 
-const jalankanAksi = async (kunci: string, kerja: () => Promise<void>, pesanGagal: string) => {
-  if (aksiSibuk.value) return
-  aksiSibuk.value = kunci
-  galat.value = ''
+const jalankanAksi = async (
+  kunci: string,
+  kerja: () => Promise<void>,
+  pesanGagal: string,
+) => {
+  if (aksiSibuk.value) return;
+  aksiSibuk.value = kunci;
+  galat.value = "";
   try {
-    await kerja()
-    await muat()
+    await kerja();
+    await muat();
+  } catch (e: any) {
+    galat.value = pesan(e, pesanGagal);
+  } finally {
+    aksiSibuk.value = "";
   }
-  catch (e: any) { galat.value = pesan(e, pesanGagal) }
-  finally { aksiSibuk.value = '' }
-}
+};
 
 // ── Draf sesi (khusus event baru) ────────────────────────────────────────────
 //
@@ -613,145 +748,182 @@ const jalankanAksi = async (kunci: string, kerja: () => Promise<void>, pesanGaga
 // nomornya naik terus — memakai panjang larik sebagai nomor menghasilkan id yang
 // dipakai ulang sesudah ada yang dihapus, dan `:key` yang berulang membuat Vue
 // menggambar ulang isian milik sesi lain.
-let nomorTmp = 0
-const tmpId = () => `tmp-${++nomorTmp}`
+let nomorTmp = 0;
+const tmpId = () => `tmp-${++nomorTmp}`;
 
 const sesiKosong = () => ({
   id: tmpId(),
   judul: `Sesi ${sesi.value.length + 1}`,
-  judulEn: sesi.value.length === 0 ? 'Session 1' : '',
+  judulEn: sesi.value.length === 0 ? "Session 1" : "",
   tampil: true,
   materi: [] as any[],
   galeri: [] as any[],
   referensi: [] as any[],
-})
+});
 
 /** Event baru selalu dibuka dengan satu sesi — cerminan dari apa yang dilakukan
     server saat event dibuat, supaya yang terlihat di layar sama sebelum dan sesudah. */
-if (baru.value) sesi.value = [sesiKosong()]
+if (baru.value) sesi.value = [sesiKosong()];
 
-const cariSesi = (sesiId: string) => sesi.value.find(s => s.id === sesiId)
+const cariSesi = (sesiId: string) => sesi.value.find((s) => s.id === sesiId);
 
-const geserDalamLarik = (arr: any[], i: number, arah: 'naik' | 'turun') => {
-  const j = arah === 'naik' ? i - 1 : i + 1
-  if (j < 0 || j >= arr.length) return
-  arr.splice(j, 0, arr.splice(i, 1)[0])
-}
+const geserDalamLarik = (arr: any[], i: number, arah: "naik" | "turun") => {
+  const j = arah === "naik" ? i - 1 : i + 1;
+  if (j < 0 || j >= arr.length) return;
+  arr.splice(j, 0, arr.splice(i, 1)[0]);
+};
 
 const tambahSesi = () => {
-  if (baru.value) { sesi.value.push(sesiKosong()); return }
+  if (baru.value) {
+    sesi.value.push(sesiKosong());
+    return;
+  }
   jalankanAksi(
-    'tambah-sesi',
-    async () => { await $fetch('/api/admin/sesi', { method: 'POST', body: { kegiatanId: id.value } }) },
-    'Gagal menambah sesi.',
-  )
-}
+    "tambah-sesi",
+    async () => {
+      await $fetch("/api/admin/sesi", {
+        method: "POST",
+        body: { kegiatanId: id.value },
+      });
+    },
+    "Gagal menambah sesi.",
+  );
+};
 
 // `simpanSesi` dihapus bersama tombolnya: SesiPengaturan.vue kini menyimpan
 // sendiri 800 ms setelah pengetikan berhenti — kecuali pada draf, yang
 // mengembalikan perubahannya lewat `ubahSesi` di bawah.
 
-const ubahSesi = (s: any, nilai: { judul: string, judulEn: string, tampil: boolean }) => {
-  Object.assign(s, nilai)
-}
+const ubahSesi = (
+  s: any,
+  nilai: { judul: string; judulEn: string; tampil: boolean },
+) => {
+  Object.assign(s, nilai);
+};
 
 const hapusSesi = (s: any) => {
-  if (baru.value) { sesi.value = sesi.value.filter(x => x.id !== s.id); return }
+  if (baru.value) {
+    sesi.value = sesi.value.filter((x) => x.id !== s.id);
+    return;
+  }
   jalankanAksi(
     `hapus-sesi-${s.id}`,
-    async () => { await $fetch(`/api/admin/sesi/${s.id}`, { method: 'DELETE' }) },
-    'Gagal menghapus sesi.',
-  )
-}
+    async () => {
+      await $fetch(`/api/admin/sesi/${s.id}`, { method: "DELETE" });
+    },
+    "Gagal menghapus sesi.",
+  );
+};
 
-const geserSesi = (s: any, arah: 'naik' | 'turun') => {
-  if (baru.value) { geserDalamLarik(sesi.value, sesi.value.indexOf(s), arah); return }
+const geserSesi = (s: any, arah: "naik" | "turun") => {
+  if (baru.value) {
+    geserDalamLarik(sesi.value, sesi.value.indexOf(s), arah);
+    return;
+  }
   jalankanAksi(
     `geser-sesi-${s.id}-${arah}`,
-    async () => { await $fetch(`/api/admin/sesi/${s.id}/geser`, { method: 'POST', body: { arah } }) },
-    'Gagal menggeser sesi.',
-  )
-}
+    async () => {
+      await $fetch(`/api/admin/sesi/${s.id}/geser`, {
+        method: "POST",
+        body: { arah },
+      });
+    },
+    "Gagal menggeser sesi.",
+  );
+};
 
 // ── Item sesi ────────────────────────────────────────────────────────────────
 // Formnya tinggal di components/SesiItemModal.vue, dipakai bersama penyuntingan di
 // tempat pada halaman event publik. Aturan bentuk form — jenis apa untuk bagian
 // mana, mana yang butuh berkas, kapan sakelar "khusus peserta" muncul — hanya ada
 // di satu tempat, jadi keduanya tidak bisa menyimpang.
-const itemModal = ref(false)
-const itemSesiId = ref('')
-const itemBagian = ref<'materi' | 'galeri' | 'referensi'>('materi')
-const itemDiubah = ref<any>(null)
+const itemModal = ref(false);
+const itemSesiId = ref("");
+const itemBagian = ref<"materi" | "galeri" | "referensi">("materi");
+const itemDiubah = ref<any>(null);
 
 // Galeri punya jalannya sendiri: belasan foto dari acara yang sama, dipilih
 // sekaligus lalu dipotong seperlunya. Form satu-item tetap dipakai untuk MENGUBAH
 // foto yang sudah ada — di sana yang diubah biasanya keterangannya, bukan berkasnya.
-const galeriModal = ref(false)
+const galeriModal = ref(false);
 
-const bukaItem = (sesiId: string, bagian: 'materi' | 'galeri' | 'referensi') => {
-  itemSesiId.value = sesiId
-  itemBagian.value = bagian
-  itemDiubah.value = null
-  galat.value = ''
-  if (bagian === 'galeri') { galeriModal.value = true; return }
-  itemModal.value = true
-}
+const bukaItem = (
+  sesiId: string,
+  bagian: "materi" | "galeri" | "referensi",
+) => {
+  itemSesiId.value = sesiId;
+  itemBagian.value = bagian;
+  itemDiubah.value = null;
+  galat.value = "";
+  if (bagian === "galeri") {
+    galeriModal.value = true;
+    return;
+  }
+  itemModal.value = true;
+};
 
 const bukaUbahItem = (sesiId: string, item: any) => {
-  itemSesiId.value = sesiId
-  itemBagian.value = item.bagian
-  itemDiubah.value = item
-  galat.value = ''
-  itemModal.value = true
-}
+  itemSesiId.value = sesiId;
+  itemBagian.value = item.bagian;
+  itemDiubah.value = item;
+  galat.value = "";
+  itemModal.value = true;
+};
 
 // Foto galeri disunting, bukan diganti: pensilnya membuka pemotong, bukan form
 // "pilih berkas pengganti". Lihat catatan di GaleriCropModal.vue.
-const cropModal = ref(false)
-const cropItem = ref<any>(null)
+const cropModal = ref(false);
+const cropItem = ref<any>(null);
 
 const bukaCrop = (item: any) => {
-  cropItem.value = item
-  galat.value = ''
-  cropModal.value = true
-}
+  cropItem.value = item;
+  galat.value = "";
+  cropModal.value = true;
+};
 
 /** Larik yang memuat sebuah item draf, beserta posisinya — dipakai geser & hapus. */
 const letakItem = (itemId: string) => {
   for (const s of sesi.value) {
-    for (const bagian of ['materi', 'galeri', 'referensi'] as const) {
-      const i = (s[bagian] as any[]).findIndex(x => x.id === itemId)
-      if (i >= 0) return { arr: s[bagian] as any[], i }
+    for (const bagian of ["materi", "galeri", "referensi"] as const) {
+      const i = (s[bagian] as any[]).findIndex((x) => x.id === itemId);
+      if (i >= 0) return { arr: s[bagian] as any[], i };
     }
   }
-  return null
-}
+  return null;
+};
 
-const geserItem = (itemId: string, arah: 'naik' | 'turun') => {
+const geserItem = (itemId: string, arah: "naik" | "turun") => {
   if (baru.value) {
-    const letak = letakItem(itemId)
-    if (letak) geserDalamLarik(letak.arr, letak.i, arah)
-    return
+    const letak = letakItem(itemId);
+    if (letak) geserDalamLarik(letak.arr, letak.i, arah);
+    return;
   }
   jalankanAksi(
     `geser-item-${itemId}-${arah}`,
-    async () => { await $fetch(`/api/admin/sesi-item/${itemId}/geser`, { method: 'POST', body: { arah } }) },
-    'Gagal menggeser item.',
-  )
-}
+    async () => {
+      await $fetch(`/api/admin/sesi-item/${itemId}/geser`, {
+        method: "POST",
+        body: { arah },
+      });
+    },
+    "Gagal menggeser item.",
+  );
+};
 
 const hapusItem = (itemId: string) => {
   if (baru.value) {
-    const letak = letakItem(itemId)
-    if (letak) letak.arr.splice(letak.i, 1)
-    return
+    const letak = letakItem(itemId);
+    if (letak) letak.arr.splice(letak.i, 1);
+    return;
   }
   jalankanAksi(
     `hapus-item-${itemId}`,
-    async () => { await $fetch(`/api/admin/sesi-item/${itemId}`, { method: 'DELETE' }) },
-    'Gagal menghapus item.',
-  )
-}
+    async () => {
+      await $fetch(`/api/admin/sesi-item/${itemId}`, { method: "DELETE" });
+    },
+    "Gagal menghapus item.",
+  );
+};
 
 // ── Draf item (khusus event baru) ────────────────────────────────────────────
 // Yang datang dari modal sudah berbentuk body yang akan dikirim nanti; yang
@@ -759,35 +931,50 @@ const hapusItem = (itemId: string) => {
 // pratinjau yang TIDAK ikut terkirim ke server.
 
 const drafItem = (isi: Record<string, any>) => {
-  const s = cariSesi(itemSesiId.value)
-  if (!s) return
-  const bagian = isi.bagian as 'materi' | 'galeri' | 'referensi'
+  const s = cariSesi(itemSesiId.value);
+  if (!s) return;
+  const bagian = isi.bagian as "materi" | "galeri" | "referensi";
 
   if (itemDiubah.value) {
     // `mediaUrl` kosong berarti berkasnya tidak diganti — cuplikan yang sudah ada
     // dipertahankan, bukan dikosongkan jadi kotak "gambar hilang".
-    const { bagian: _b, mediaUrl, ...sisa } = isi
-    Object.assign(itemDiubah.value, sisa, mediaUrl ? { thumbnail: mediaUrl } : {})
-    return
+    const { bagian: _b, mediaUrl, ...sisa } = isi;
+    Object.assign(
+      itemDiubah.value,
+      sisa,
+      mediaUrl ? { thumbnail: mediaUrl } : {},
+    );
+    return;
   }
 
-  const { bagian: _b, mediaUrl, ...sisa } = isi
-  ;(s[bagian] as any[]).push({ ...sisa, id: tmpId(), bagian, thumbnail: mediaUrl || null })
-}
+  const { bagian: _b, mediaUrl, ...sisa } = isi;
+  (s[bagian] as any[]).push({
+    ...sisa,
+    id: tmpId(),
+    bagian,
+    thumbnail: mediaUrl || null,
+  });
+};
 
 const drafGaleri = (daftar: Record<string, any>[]) => {
-  const s = cariSesi(itemSesiId.value)
-  if (!s) return
+  const s = cariSesi(itemSesiId.value);
+  if (!s) return;
   for (const { mediaUrl, bagian: _b, ...sisa } of daftar) {
-    s.galeri.push({ ...sisa, id: tmpId(), bagian: 'galeri', terkunci: false, thumbnail: mediaUrl || null })
+    s.galeri.push({
+      ...sisa,
+      id: tmpId(),
+      bagian: "galeri",
+      terkunci: false,
+      thumbnail: mediaUrl || null,
+    });
   }
-}
+};
 
-const drafCrop = (hasil: { mediaId: string, url: string }) => {
-  if (!cropItem.value) return
-  cropItem.value.mediaId = hasil.mediaId
-  cropItem.value.thumbnail = hasil.url
-}
+const drafCrop = (hasil: { mediaId: string; url: string }) => {
+  if (!cropItem.value) return;
+  cropItem.value.mediaId = hasil.mediaId;
+  cropItem.value.thumbnail = hasil.url;
+};
 
 /**
  * Tiga tab. Pembagiannya mengikuti tiga pekerjaan yang berbeda waktunya:
@@ -798,10 +985,10 @@ const drafCrop = (hasil: { mediaId: string, url: string }) => {
  * Ketiganya ada juga pada event baru, sama seperti pada event yang sudah tersimpan.
  */
 const tabs = [
-  { value: 'info', label: 'Informasi utama', icon: 'i-lucide-file-text' },
-  { value: 'peserta', label: 'Daftar peserta', icon: 'i-lucide-users' },
-  { value: 'materi', label: 'Materi', icon: 'i-lucide-folder-open' },
-]
+  { value: "info", label: "Informasi utama", icon: "i-lucide-file-text" },
+  { value: "peserta", label: "Daftar peserta", icon: "i-lucide-users" },
+  { value: "materi", label: "Materi", icon: "i-lucide-folder-open" },
+];
 
 /**
  * Tab pembuka boleh ditentukan pemanggil lewat `?tab=`.
@@ -814,9 +1001,39 @@ const tabs = [
  * `?status=` diteruskan ke tab peserta sebagai chip yang terpilih; dibaca sekali
  * saat halaman dibuka, sesudah itu chipnya milik orang yang membukanya.
  */
-const tabAwal = String(route.query.tab ?? '')
-const tabAktif = ref(tabs.some(t => t.value === tabAwal) ? tabAwal : 'info')
-const statusAwal = computed(() => String(route.query.status ?? ''))
+const tabAwal = String(route.query.tab ?? "");
+const tabAktif = ref(tabs.some((t) => t.value === tabAwal) ? tabAwal : "info");
+const statusAwal = computed(() => String(route.query.status ?? ""));
+
+const konfirmasiKeluar = ref(false);
+
+/** Ada isian yang belum disimpan — hanya berarti di mode baru, karena mode
+    ubah sudah ter-autosave. Dipakai untuk menahan tombol "Kembali". */
+const adaDraf = computed(() => {
+  if (!baru.value) return false;
+  return (
+    form.value.judul.trim() !== "" ||
+    form.value.lokasi.trim() !== "" ||
+    form.value.tanggalMulai !== "" ||
+    form.value.coverMediaId !== "" ||
+    pesertaDraf.value.length > 0 ||
+    sesi.value.some(
+      (s, i) =>
+        s.judul.trim() !== `Sesi ${i + 1}` ||
+        s.materi.length > 0 ||
+        s.galeri.length > 0 ||
+        s.referensi.length > 0,
+    )
+  );
+});
+
+const cobaKembali = () => {
+  if (adaDraf.value) {
+    konfirmasiKeluar.value = true;
+    return;
+  }
+  router.push("/admin/events");
+};
 
 /**
  * Berpindah tab TIDAK menyimpan apa pun, dan tidak membuat event.
@@ -833,30 +1050,39 @@ const statusAwal = computed(() => String(route.query.status ?? ''))
 // Formulir event baru selalu terbuka di tab pertama, dan drafnya dimulai dari nol —
 // sesi yang tertinggal dari event yang barusan dilihat bukan pekerjaan siapa pun.
 watch(baru, (b) => {
-  if (!b) return
-  tabAktif.value = 'info'
-  nomorTmp = 0
-  sesi.value = [sesiKosong()]
-  pesertaDraf.value = []
-})
+  if (!b) return;
+  tabAktif.value = "info";
+  nomorTmp = 0;
+  sesi.value = [sesiKosong()];
+  pesertaDraf.value = [];
+});
 
 // `petunjuk` ikut dicabut bersama tooltipnya — keterangan yang tidak digambar di
 // mana pun cuma menunggu dipakai lagi oleh yang mengira ia masih tampil.
 const BAGIAN = [
-  { key: 'materi', label: 'Materi Pembelajaran', ikon: 'i-lucide-file-text' },
-  { key: 'galeri', label: 'Galeri', ikon: 'i-lucide-images' },
-  { key: 'referensi', label: 'Referensi', ikon: 'i-lucide-link' },
-] as const
+  { key: "materi", label: "Materi Pembelajaran", ikon: "i-lucide-file-text" },
+  { key: "galeri", label: "Galeri", ikon: "i-lucide-images" },
+  { key: "referensi", label: "Referensi", ikon: "i-lucide-link" },
+] as const;
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <UButton to="/admin/events" color="neutral" variant="ghost" size="sm" icon="i-lucide-arrow-left" class="-ml-2 mb-1">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          icon="i-lucide-arrow-left"
+          class="-ml-2 mb-1"
+          @click="cobaKembali"
+        >
           Kembali ke daftar event
         </UButton>
-        <h1 class="font-serif text-5xl text-cc-green-800">{{ baru ? 'Event baru' : form.judul || 'Ubah event' }}</h1>
+        <h1 class="font-serif text-5xl text-cc-green-800">
+          {{ baru ? "Event baru" : form.judul || "Ubah event" }}
+        </h1>
       </div>
       <!-- Satu-satunya tombol simpan yang tersisa, dan ia hanya ada pada event
            baru: sesudah eventnya lahir, seluruh halaman ini menyimpan dirinya
@@ -906,15 +1132,23 @@ const BAGIAN = [
         Buat event
       </UButton>
     </div>
-
-    <UTabs
-      v-model="tabAktif"
-      :items="tabs"
-      :content="false"
-      color="secondary"
-      variant="link"
-      class="mb-6"
-    />
+    <div class="flex flex-wrap justify-between w-full items-center gap-2">
+      <UTabs
+        v-model="tabAktif"
+        :items="tabs"
+        :content="false"
+        color="secondary"
+        variant="link"
+        class="mb-6"
+      />
+      <UBadge
+        :color="warnaFase(faseEvent)"
+        size="lg"
+        class="mb-6 capitalize rounded-full shadow-md cursor-default event-badge"
+      >
+        {{ faseEvent }}</UBadge
+      >
+    </div>
 
     <!-- Penanda keadaan, bukan sekadar hiasan: seluruh halaman ini tetap bisa
          disunting sesudah event dibatalkan, jadi tanpa spanduk tidak ada apa pun di
@@ -932,7 +1166,14 @@ const BAGIAN = [
 
     <!-- Galat mengendap di sini, tidak lewat toast: yang gagal harus tetap terbaca
          sesudah beberapa detik berlalu. Kabar berhasil justru sebaliknya. -->
-    <UAlert v-if="galat" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
+    <UAlert
+      v-if="galat"
+      color="error"
+      variant="subtle"
+      class="mb-4"
+      icon="i-lucide-triangle-alert"
+      :description="galat"
+    />
 
     <!-- Identitas event -->
     <UCard v-if="tabAktif === 'info'" class="mb-6">
@@ -946,18 +1187,26 @@ const BAGIAN = [
            laptop peringatan itu berada di luar pandangan orang yang baru saja
            mengubah tanggal. Peringatan yang harus digulir untuk ditemukan tidak
            memperingatkan siapa pun. -->
-      <UAlert
+      <!-- <UAlert
         v-if="peringatan"
         color="warning"
         variant="subtle"
         class="mb-4"
         icon="i-lucide-triangle-alert"
         :description="peringatan"
-      />
+      /> -->
 
       <div class="grid gap-4 md:grid-cols-2">
-        <UFormField label="Judul (ID)" required :error="wajibKosong(form.judul, dicoba)">
-          <UInput v-model="form.judul" class="w-full" placeholder="Leadership with Compassion" />
+        <UFormField
+          label="Judul (ID)"
+          required
+          :error="wajibKosong(form.judul, dicoba)"
+        >
+          <UInput
+            v-model="form.judul"
+            class="w-full"
+            placeholder="Leadership with Compassion"
+          />
         </UFormField>
         <UFormField label="Judul (EN)" hint="opsional">
           <UInput v-model="form.judulEn" class="w-full" />
@@ -968,24 +1217,59 @@ const BAGIAN = [
              dan tinggi kotaknya membuat sisa formulir terdorong jauh ke bawah.
              Isinya tetap bisa sepanjang apa pun; kotaknya yang menggulir. -->
         <UFormField label="Deskripsi (ID)" class="md:col-span-2">
-          <UTextarea v-model="form.deskripsi" :rows="1" autoresize :maxrows="6" class="w-full" />
+          <UTextarea
+            v-model="form.deskripsi"
+            :rows="1"
+            autoresize
+            :maxrows="6"
+            class="w-full"
+          />
         </UFormField>
-        <UFormField label="Deskripsi (EN)" class="md:col-span-2" hint="opsional">
-          <UTextarea v-model="form.deskripsiEn" :rows="1" autoresize :maxrows="6" class="w-full" />
+        <UFormField
+          label="Deskripsi (EN)"
+          class="md:col-span-2"
+          hint="opsional"
+        >
+          <UTextarea
+            v-model="form.deskripsiEn"
+            :rows="1"
+            autoresize
+            :maxrows="6"
+            class="w-full"
+          />
         </UFormField>
 
         <!-- Wajib. Acara daring pun punya lokasi — "Online via Zoom" — dan
              menuliskannya membedakan acara yang memang daring dari kolom yang
              sekadar lupa diisi. -->
-        <UFormField label="Lokasi" required :error="wajibKosong(form.lokasi, dicoba)">
-          <UInput v-model="form.lokasi" class="w-full" placeholder="Jakarta · Rumah Retret St. Ignatius" />
+        <UFormField
+          label="Lokasi"
+          required
+          :error="wajibKosong(form.lokasi, dicoba)"
+        >
+          <UInput
+            v-model="form.lokasi"
+            class="w-full"
+            placeholder="Jakarta · Rumah Retret St. Ignatius"
+          />
         </UFormField>
         <UFormField label="Tautan daring">
-          <UInput v-model="form.tautanDaring" class="w-full" placeholder="https://zoom.us/j/…" />
+          <UInput
+            v-model="form.tautanDaring"
+            class="w-full"
+            placeholder="https://zoom.us/j/…"
+          />
         </UFormField>
 
-        <UFormField label="Tanggal mulai" required :error="wajibKosong(form.tanggalMulai, dicoba)">
-          <TanggalPicker v-model="form.tanggalMulai" placeholder="Pilih tanggal" />
+        <UFormField
+          label="Tanggal mulai"
+          required
+          :error="wajibKosong(form.tanggalMulai, dicoba)"
+        >
+          <TanggalPicker
+            v-model="form.tanggalMulai"
+            placeholder="Pilih tanggal"
+          />
         </UFormField>
         <UFormField label="Tanggal selesai">
           <!-- `minimal` menutup kesalahan yang paling sering: memilih tanggal
@@ -1024,19 +1308,28 @@ const BAGIAN = [
             <div class="min-w-0 flex-1">
               <TanggalPicker
                 v-model="form.tutupTanggal"
-                :maksimal="form.tanggalMulai || null"
+                :maksimal="form.tanggalSelesai || null"
                 placeholder="Sampai acara mulai"
               />
             </div>
             <span class="shrink-0 text-cc-stone-400" aria-hidden="true">–</span>
             <div class="min-w-0 flex-1">
-              <WaktuPicker v-model="form.tutupJam" :disabled="!form.tutupTanggal" />
+              <WaktuPicker
+                v-model="form.tutupJam"
+                :disabled="!form.tutupTanggal"
+              />
             </div>
           </div>
         </UFormField>
 
         <UFormField label="Kuota peserta">
-          <UInput v-model="form.kuota" type="number" min="1" class="w-full" placeholder="Tanpa batas" />
+          <UInput
+            v-model="form.kuota"
+            type="number"
+            min="1"
+            class="w-full"
+            placeholder="Tanpa batas"
+          />
         </UFormField>
       </div>
 
@@ -1058,7 +1351,6 @@ const BAGIAN = [
           @dilepas="lepasGambar()"
         />
       </div>
-
     </UCard>
 
     <!-- Daftar peserta -->
@@ -1085,7 +1377,11 @@ const BAGIAN = [
            mengurus pendaftar yang punya riwayat (saring, cari, majukan status,
            batalkan, anulir); pada event baru yang ada cuma menambah dan membuang.
            Formnya sendiri sama persis — PesertaFormModal dipakai keduanya. -->
-      <PesertaDraf v-if="baru" v-model="pesertaDraf" v-model:buka-tambah="pesertaModal" />
+      <PesertaDraf
+        v-if="baru"
+        v-model="pesertaDraf"
+        v-model:buka-tambah="pesertaModal"
+      />
       <AdminPesertaTab
         v-else
         :kegiatan-id="id"
@@ -1099,11 +1395,18 @@ const BAGIAN = [
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="font-serif text-2xl text-cc-green-800">Sesi &amp; materi</h2>
+            <h2 class="font-serif text-2xl text-cc-green-800">
+              Sesi &amp; materi
+            </h2>
             <p class="mt-1 text-sm text-cc-stone-600">
               {{ sesi.length }} sesi.
-              <template v-if="baru">Disusun di sini, tersimpan saat “Buat event” ditekan.</template>
-              <template v-else>Event baru otomatis dibekali satu sesi; tambah sendiri sesuai kebutuhan.</template>
+              <template v-if="baru"
+                >Disusun di sini, tersimpan saat “Buat event” ditekan.</template
+              >
+              <template v-else
+                >Event baru otomatis dibekali satu sesi; tambah sendiri sesuai
+                kebutuhan.</template
+              >
             </p>
           </div>
           <UButton
@@ -1119,7 +1422,10 @@ const BAGIAN = [
         </div>
       </template>
 
-      <div v-if="!sesi.length" class="py-6 text-center text-sm text-cc-stone-500">
+      <div
+        v-if="!sesi.length"
+        class="py-6 text-center text-sm text-cc-stone-500"
+      >
         Belum ada sesi.
       </div>
 
@@ -1129,156 +1435,220 @@ const BAGIAN = [
            satu kolom panjang berisi bagian-bagian yang seragam. Sekarang
            kebalikannya: latar sesi krem, isi tiap bagian putih. -->
       <TransitionGroup name="urut" tag="div">
-      <div
-        v-for="(s, iSesi) in sesi"
-        :key="s.id"
-        class="mb-6 rounded-xl border border-cc-brown-300 bg-cc-stone-50 p-4 last:mb-0"
-      >
-        <!-- Kepala bernomor kini digambar SesiPengaturan, bersama sakelar Tampil
+        <div
+          v-for="(s, iSesi) in sesi"
+          :key="s.id"
+          class="mb-6 rounded-xl border border-cc-brown-300 bg-cc-stone-50 p-4 last:mb-0"
+        >
+          <!-- Kepala bernomor kini digambar SesiPengaturan, bersama sakelar Tampil
              dan tombol geser/hapus — satu baris untuk seluruh kendali sesi.
              Nomornya urutan tampil, bukan id: itu yang dipakai orang saat menyebut
              "sesi kedua". -->
-        <!-- Judul & tanggal sesi menyimpan dirinya sendiri; komponen yang sama
+          <!-- Judul & tanggal sesi menyimpan dirinya sendiri; komponen yang sama
              dipakai penyuntingan di halaman event publik. Sakelar "Tampil" ikut
              ditampilkan di sini: menyiapkan isi dan memutuskan apa yang terbit
              ternyata pekerjaan yang sama, dan tanpa sakelarnya tidak ada tempat
              lain di dashboard untuk menyembunyikan sesi yang belum siap. -->
-        <SesiPengaturan
-          :key="s.id"
-          :sesi="s"
-          :nomor="iSesi + 1"
-          :lokal="baru"
-          :pertama="sesi[0]?.id === s.id"
-          :terakhir="sesi[sesi.length - 1]?.id === s.id"
-          :sibuk="Boolean(aksiSibuk)"
-          :aksi-sibuk="aksiSibuk"
-          @tersimpan="muat()"
-          @ubah="(nilai: any) => ubahSesi(s, nilai)"
-          @geser="(arah: 'naik' | 'turun') => geserSesi(s, arah)"
-          @hapus="hapusSesi(s)"
-        />
+          <SesiPengaturan
+            :key="s.id"
+            :sesi="s"
+            :nomor="iSesi + 1"
+            :lokal="baru"
+            :pertama="sesi[0]?.id === s.id"
+            :terakhir="sesi[sesi.length - 1]?.id === s.id"
+            :sibuk="Boolean(aksiSibuk)"
+            :aksi-sibuk="aksiSibuk"
+            @tersimpan="muat()"
+            @ubah="(nilai: any) => ubahSesi(s, nilai)"
+            @geser="(arah: 'naik' | 'turun') => geserSesi(s, arah)"
+            @hapus="hapusSesi(s)"
+          />
 
-        <!-- Tiga bagian jadi tiga baris penuh, bukan tiga kolom sempit. Judul
+          <!-- Tiga bagian jadi tiga baris penuh, bukan tiga kolom sempit. Judul
              materi hampir selalu panjang ("Rekaman sesi 2 — mendengarkan tanpa
              menilai"), dan di kolom selebar sepertiga layar semuanya terpotong jadi
              potongan yang tidak bisa dibedakan satu sama lain. -->
-        <div class="space-y-3">
-          <div v-for="b in BAGIAN" :key="b.key" class="rounded-lg border border-cc-stone-200 bg-white p-3">
-            <div class="mb-2 flex items-center gap-1.5">
-              <UIcon :name="b.ikon" class="size-4 text-cc-brown-500" />
-              <span class="text-sm font-semibold text-cc-green-800">{{ b.label }}</span>
-              <UBadge color="neutral" variant="subtle" size="sm" class="rounded-full">{{ s[b.key].length }}</UBadge>
+          <div class="space-y-3">
+            <div
+              v-for="b in BAGIAN"
+              :key="b.key"
+              class="rounded-lg border border-cc-stone-200 bg-white p-3"
+            >
+              <div class="mb-2 flex items-center gap-1.5">
+                <UIcon :name="b.ikon" class="size-4 text-cc-brown-500" />
+                <span class="text-sm font-semibold text-cc-green-800">{{
+                  b.label
+                }}</span>
+                <UBadge
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                  class="rounded-full"
+                  >{{ s[b.key].length }}</UBadge
+                >
 
-              <UButton
-                class="ml-auto"
-                color="neutral"
-                variant="soft"
-                size="xs"
-                icon="i-lucide-plus"
-                @click="bukaItem(s.id, b.key)"
-              >
-                {{ b.key === 'galeri' ? 'Tambah foto' : 'Tambah' }}
-              </UButton>
-            </div>
+                <UButton
+                  class="ml-auto"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  icon="i-lucide-plus"
+                  @click="bukaItem(s.id, b.key)"
+                >
+                  {{ b.key === "galeri" ? "Tambah foto" : "Tambah" }}
+                </UButton>
+              </div>
 
-            <p v-if="!s[b.key].length" class="py-1 text-xs text-cc-stone-500">
-              Belum ada isi.
-            </p>
+              <p v-if="!s[b.key].length" class="py-1 text-xs text-cc-stone-500">
+                Belum ada isi.
+              </p>
 
-            <!-- Galeri: pita cuplikan mendatar, bukan daftar baris berjudul.
+              <!-- Galeri: pita cuplikan mendatar, bukan daftar baris berjudul.
                  Pada daftar foto, FOTONYA yang jadi isi — namanya
                  ("Screenshot 2026 04 07 092118") tidak membantu siapa pun mengenali
                  mana yang sedang dilihat, dan cuplikan 32px di sampingnya sama saja.
                  Bergulir mendatar, bukan membungkus: satu baris membuat urutannya
                  terbaca sebagai urutan, persis seperti saat fotonya diunggah. -->
-            <TransitionGroup
-              v-else-if="b.key === 'galeri'"
-              name="urut"
-              tag="div"
-              class="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2"
-            >
-              <figure
-                v-for="(item, i) in s[b.key]"
-                :key="item.id"
-                class="group relative w-32 shrink-0"
+              <TransitionGroup
+                v-else-if="b.key === 'galeri'"
+                name="urut"
+                tag="div"
+                class="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2"
               >
-                <img
-                  v-if="item.thumbnail || item.url"
-                  :src="item.thumbnail ?? item.url"
-                  :alt="item.judul"
-                  class="h-24 w-32 rounded-lg border border-cc-stone-200 bg-cc-stone-100 object-cover"
-                  loading="lazy"
+                <figure
+                  v-for="(item, i) in s[b.key]"
+                  :key="item.id"
+                  class="group relative w-32 shrink-0"
                 >
-                <div v-else class="grid h-24 w-32 place-items-center rounded-lg border border-cc-stone-200 bg-cc-stone-100">
-                  <UIcon name="i-lucide-image-off" class="size-5 text-cc-stone-400" />
-                </div>
+                  <img
+                    v-if="item.thumbnail || item.url"
+                    :src="item.thumbnail ?? item.url"
+                    :alt="item.judul"
+                    class="h-24 w-32 rounded-lg border border-cc-stone-200 bg-cc-stone-100 object-cover"
+                    loading="lazy"
+                  />
+                  <div
+                    v-else
+                    class="grid h-24 w-32 place-items-center rounded-lg border border-cc-stone-200 bg-cc-stone-100"
+                  >
+                    <UIcon
+                      name="i-lucide-image-off"
+                      class="size-5 text-cc-stone-400"
+                    />
+                  </div>
 
-                <!-- Sunting & hapus menempel di pojok kanan atas FOTONYA, bukan
+                  <!-- Sunting & hapus menempel di pojok kanan atas FOTONYA, bukan
                      berbaris di bawahnya bersama tombol geser. Keduanya bekerja pada
                      gambar itu sendiri; empat tombol seukuran sama dalam satu baris
                      membuat "hapus" duduk sejauh satu piksel dari "geser kanan". -->
-                <div class="absolute right-1 top-1 flex gap-0.5 rounded-md bg-white/85 p-0.5 shadow-sm backdrop-blur-sm">
-                  <UButton
-                    color="neutral" variant="ghost" size="xs" icon="i-lucide-crop"
-                    :aria-label="`Sunting foto ${item.judul}`"
-                    :disabled="Boolean(aksiSibuk)" @click="bukaCrop(item)"
-                  />
-                  <UButton
-                    color="error" variant="ghost" size="xs" icon="i-lucide-x"
-                    :aria-label="`Hapus foto ${item.judul}`"
-                    :loading="aksiSibuk === `hapus-item-${item.id}`"
-                    :disabled="Boolean(aksiSibuk)" @click="hapusItem(item.id)"
-                  />
-                </div>
+                  <div
+                    class="absolute right-1 top-1 flex gap-0.5 rounded-md bg-white/85 p-0.5 shadow-sm backdrop-blur-sm"
+                  >
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      icon="i-lucide-crop"
+                      :aria-label="`Sunting foto ${item.judul}`"
+                      :disabled="Boolean(aksiSibuk)"
+                      @click="bukaCrop(item)"
+                    />
+                    <UButton
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      icon="i-lucide-x"
+                      :aria-label="`Hapus foto ${item.judul}`"
+                      :loading="aksiSibuk === `hapus-item-${item.id}`"
+                      :disabled="Boolean(aksiSibuk)"
+                      @click="hapusItem(item.id)"
+                    />
+                  </div>
 
-                <!-- Yang tinggal di bawah cuma urutan — pekerjaan yang berbeda dari
+                  <!-- Yang tinggal di bawah cuma urutan — pekerjaan yang berbeda dari
                      menyunting gambarnya. -->
-                <div class="mt-1 flex items-center justify-center">
-                  <UButton
-                    color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-left"
-                    aria-label="Geser ke kiri"
-                    :loading="aksiSibuk === `geser-item-${item.id}-naik`"
-                    :disabled="i === 0 || Boolean(aksiSibuk)" @click="geserItem(item.id, 'naik')"
-                  />
-                  <UButton
-                    color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-right"
-                    aria-label="Geser ke kanan"
-                    :loading="aksiSibuk === `geser-item-${item.id}-turun`"
-                    :disabled="i === s[b.key].length - 1 || Boolean(aksiSibuk)" @click="geserItem(item.id, 'turun')"
-                  />
-                </div>
-              </figure>
-            </TransitionGroup>
+                  <div class="mt-1 flex items-center justify-center">
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      icon="i-lucide-chevron-left"
+                      aria-label="Geser ke kiri"
+                      :loading="aksiSibuk === `geser-item-${item.id}-naik`"
+                      :disabled="i === 0 || Boolean(aksiSibuk)"
+                      @click="geserItem(item.id, 'naik')"
+                    />
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      icon="i-lucide-chevron-right"
+                      aria-label="Geser ke kanan"
+                      :loading="aksiSibuk === `geser-item-${item.id}-turun`"
+                      :disabled="
+                        i === s[b.key].length - 1 || Boolean(aksiSibuk)
+                      "
+                      @click="geserItem(item.id, 'turun')"
+                    />
+                  </div>
+                </figure>
+              </TransitionGroup>
 
-            <TransitionGroup v-else name="urut" tag="ul" class="space-y-1">
-              <li
-                v-for="(item, i) in s[b.key]"
-                :key="item.id"
-                class="flex items-center gap-2 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
-              >
-                <UIcon v-if="item.terkunci" name="i-lucide-lock" class="size-3 shrink-0 text-cc-stone-400" />
-                <span class="min-w-0 flex-1 break-words" :title="item.judul">{{ item.judul }}</span>
-                <UButton
-                  color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-up"
-                  aria-label="Geser ke atas" :disabled="i === 0" @click="geserItem(item.id, 'naik')"
-                />
-                <UButton
-                  color="neutral" variant="ghost" size="xs" icon="i-lucide-chevron-down"
-                  aria-label="Geser ke bawah" :disabled="i === s[b.key].length - 1" @click="geserItem(item.id, 'turun')"
-                />
-                <UButton
-                  color="neutral" variant="ghost" size="xs" icon="i-lucide-pencil"
-                  aria-label="Ubah item" @click="bukaUbahItem(s.id, item)"
-                />
-                <UButton
-                  color="error" variant="ghost" size="xs" icon="i-lucide-x"
-                  aria-label="Hapus item" @click="hapusItem(item.id)"
-                />
-              </li>
-            </TransitionGroup>
+              <TransitionGroup v-else name="urut" tag="ul" class="space-y-1">
+                <li
+                  v-for="(item, i) in s[b.key]"
+                  :key="item.id"
+                  class="flex items-center gap-2 rounded border border-cc-stone-200 bg-white px-2 py-1.5 text-xs"
+                >
+                  <UIcon
+                    v-if="item.terkunci"
+                    name="i-lucide-lock"
+                    class="size-3 shrink-0 text-cc-stone-400"
+                  />
+                  <span
+                    class="min-w-0 flex-1 break-words"
+                    :title="item.judul"
+                    >{{ item.judul }}</span
+                  >
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    icon="i-lucide-chevron-up"
+                    aria-label="Geser ke atas"
+                    :disabled="i === 0"
+                    @click="geserItem(item.id, 'naik')"
+                  />
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    icon="i-lucide-chevron-down"
+                    aria-label="Geser ke bawah"
+                    :disabled="i === s[b.key].length - 1"
+                    @click="geserItem(item.id, 'turun')"
+                  />
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    icon="i-lucide-pencil"
+                    aria-label="Ubah item"
+                    @click="bukaUbahItem(s.id, item)"
+                  />
+                  <UButton
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    icon="i-lucide-x"
+                    aria-label="Hapus item"
+                    @click="hapusItem(item.id)"
+                  />
+                </li>
+              </TransitionGroup>
+            </div>
           </div>
         </div>
-      </div>
       </TransitionGroup>
     </UCard>
 
@@ -1315,39 +1685,99 @@ const BAGIAN = [
     <!-- Konfirmasi pembatalan. Bahasanya menyebutkan akibat yang benar-benar terjadi,
          bukan sekadar bertanya "Anda yakin?" — pertanyaan itu tidak menambah
          informasi apa pun bagi yang sedang ragu. -->
-    <UModal :open="konfirmasiBatal" title="Batalkan event" @update:open="konfirmasiBatal = $event">
+    <UModal
+      :open="konfirmasiBatal"
+      title="Batalkan event"
+      @update:open="konfirmasiBatal = $event"
+    >
       <template #body>
         <p class="text-sm text-cc-stone-700">
-          Anda akan membatalkan <strong>{{ form.judul || 'event ini' }}</strong>.
+          Anda akan membatalkan <strong>{{ form.judul || "event ini" }}</strong
+          >.
         </p>
 
         <ul class="mt-3 space-y-2 text-sm text-cc-stone-600">
           <li class="flex gap-2">
-            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
-            <span>Halaman event tetap dapat dibuka publik dan akan ditandai sebagai dibatalkan.</span>
+            <UIcon
+              name="i-lucide-dot"
+              class="mt-0.5 size-4 shrink-0 text-cc-brown-500"
+            />
+            <span
+              >Halaman event tetap dapat dibuka publik dan akan ditandai sebagai
+              dibatalkan.</span
+            >
           </li>
           <li class="flex gap-2">
-            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
-            <span>Pendaftaran baru ditutup, terlepas dari tanggal yang tercantum.</span>
+            <UIcon
+              name="i-lucide-dot"
+              class="mt-0.5 size-4 shrink-0 text-cc-brown-500"
+            />
+            <span
+              >Pendaftaran baru ditutup, terlepas dari tanggal yang
+              tercantum.</span
+            >
           </li>
           <li class="flex gap-2">
-            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
-            <span>Data peserta yang telah terdaftar tidak dihapus, dan statusnya tetap dapat diubah.</span>
+            <UIcon
+              name="i-lucide-dot"
+              class="mt-0.5 size-4 shrink-0 text-cc-brown-500"
+            />
+            <span
+              >Data peserta yang telah terdaftar tidak dihapus, dan statusnya
+              tetap dapat diubah.</span
+            >
           </li>
           <li class="flex gap-2">
-            <UIcon name="i-lucide-dot" class="mt-0.5 size-4 shrink-0 text-cc-brown-500" />
-            <span>Pembatalan ini dapat dianulir sewaktu-waktu melalui tombol <strong>Pulihkan event</strong>.</span>
+            <UIcon
+              name="i-lucide-dot"
+              class="mt-0.5 size-4 shrink-0 text-cc-brown-500"
+            />
+            <span
+              >Pembatalan ini dapat dianulir sewaktu-waktu melalui tombol
+              <strong>Pulihkan event</strong>.</span
+            >
           </li>
         </ul>
       </template>
 
       <template #footer>
         <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="ghost" :disabled="memprosesStatus" @click="konfirmasiBatal = false">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :disabled="memprosesStatus"
+            @click="konfirmasiBatal = false"
+          >
             Kembali
           </UButton>
-          <UButton color="error" :loading="memprosesStatus" @click="ubahStatusEvent('batal')">
+          <UButton
+            color="error"
+            :loading="memprosesStatus"
+            @click="ubahStatusEvent('batal')"
+          >
             Ya, batalkan event
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+    <UModal
+      :open="konfirmasiKeluar"
+      title="Ada Data yang Belum Disimpan"
+      @update:open="konfirmasiKeluar = $event"
+    >
+      <template #body>
+        <p class="text-sm text-cc-stone-700">
+          Lengkapi data event Sebelum meninggalkan halaman ini.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="konfirmasiKeluar = false"
+          >
+            Tetap di sini
           </UButton>
         </div>
       </template>
