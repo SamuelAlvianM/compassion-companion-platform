@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: "admin" });
 
 // Daftar member sungguhan dari database. Endpoint-nya sudah membatasi ke level <= 3,
 // dan middleware admin.global.ts sudah menahan halaman ini lebih dulu.
@@ -7,7 +7,7 @@ definePageMeta({ layout: 'admin' })
 // untuk keadaan "belum dipilih" dan melempar galat render begitu ada item bernilai
 // kosong — dan galat itu menjatuhkan seluruh halaman jadi 500, bukan cuma
 // select-nya. Pola yang sama dipakai filter di halaman event dan form refleksi.
-const SEMUA = 'semua'
+const SEMUA = "semua";
 
 /**
  * Akun yang baru dibuat di /admin/member/new, dititipkan lewat state.
@@ -19,75 +19,86 @@ const SEMUA = 'semua'
  * Dibaca sekali lalu dibuang: menyegarkan halaman tidak boleh menampilkan password
  * lagi, dan yang sudah dikirim tidak perlu menetap di layar orang lain.
  */
-const akunBaru = useState<{ nama: string, email: string, noHp: string, password: string } | null>(
-  'akun-baru-dibuat',
-  () => null,
-)
+const akunBaru = useState<{
+  nama: string;
+  email: string;
+  noHp: string;
+  password: string;
+} | null>("akun-baru-dibuat", () => null);
 
-const kabarAkun = ref(akunBaru.value)
-akunBaru.value = null
+const kabarAkun = ref(akunBaru.value);
+akunBaru.value = null;
 
 /** Pesan WhatsApp yang sudah tersusun — tinggal ditekan. Nomor dinormalkan ke
     bentuk internasional; `wa.me` menolak yang berawalan 0. */
 const tautanWa = computed(() => {
-  const k = kabarAkun.value
-  if (!k?.noHp) return ''
-  const nomor = k.noHp.replace(/\D/g, '').replace(/^0/, '62')
-  const teks = `Halo ${k.nama}, akun Anda di Compassionate Companion sudah dibuat.\n\n`
-    + `Email: ${k.email}\nPassword: ${k.password}\n\n`
-    + 'Silakan masuk dan ganti passwordnya setelah login.'
-  return `https://wa.me/${nomor}?text=${encodeURIComponent(teks)}`
-})
+  const k = kabarAkun.value;
+  if (!k?.noHp) return "";
+  const nomor = k.noHp.replace(/\D/g, "").replace(/^0/, "62");
+  const teks =
+    `Halo ${k.nama}, akun Anda di Compassionate Companion sudah dibuat.\n\n` +
+    `Email: ${k.email}\nPassword: ${k.password}\n\n` +
+    "Silakan masuk dan ganti passwordnya setelah login.";
+  return `https://wa.me/${nomor}?text=${encodeURIComponent(teks)}`;
+});
 
-const q = ref('')
-const role = ref(SEMUA)
-const aktif = ref(SEMUA)
+const q = ref("");
+const role = ref(SEMUA);
+const aktif = ref(SEMUA);
 
 // Ketikan tidak langsung memicu request; jeda singkat mencegah satu panggilan
 // per huruf saat mengetik kata pencarian. Ditulis manual karena VueUse tidak
 // ter-auto-import di project ini.
-const qDebounced = ref('')
-let timer: ReturnType<typeof setTimeout> | undefined
+const qDebounced = ref("");
+let timer: ReturnType<typeof setTimeout> | undefined;
 watch(q, (nilai) => {
-  clearTimeout(timer)
-  timer = setTimeout(() => { qDebounced.value = nilai }, 300)
-})
-onScopeDispose(() => clearTimeout(timer))
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    qDebounced.value = nilai;
+  }, 300);
+});
+onScopeDispose(() => clearTimeout(timer));
 
 // Sentinel diterjemahkan balik jadi "tidak menyaring"; server tidak perlu tahu.
 const query = computed(() => ({
   q: qDebounced.value || undefined,
   role: role.value === SEMUA ? undefined : role.value,
   aktif: aktif.value === SEMUA ? undefined : aktif.value,
-}))
+}));
 
-const { data, status } = useFetch('/api/users', { query })
+const { data, status } = useFetch("/api/users", { query });
 
-const users = computed(() => data.value?.data ?? [])
+const users = computed(() => data.value?.data ?? []);
 const roleOptions = computed(() => [
-  { value: SEMUA, label: 'Semua role' },
+  { value: SEMUA, label: "Semua role" },
   ...(data.value?.opsi.roles ?? []),
-])
+]);
 const aktifOptions = [
-  { value: SEMUA, label: 'Semua status' },
-  { value: 'true', label: 'Aktif' },
-  { value: 'false', label: 'Nonaktif' },
-]
+  { value: SEMUA, label: "Semua status" },
+  { value: "true", label: "Aktif" },
+  { value: "false", label: "Nonaktif" },
+];
 
-const adaFilter = computed(() => Boolean(q.value) || role.value !== SEMUA || aktif.value !== SEMUA)
-const reset = () => { q.value = ''; role.value = SEMUA; aktif.value = SEMUA }
+const adaFilter = computed(
+  () => Boolean(q.value) || role.value !== SEMUA || aktif.value !== SEMUA,
+);
+const reset = () => {
+  q.value = "";
+  role.value = SEMUA;
+  aktif.value = SEMUA;
+};
 
 // Kolom "Terakhir masuk" dicabut atas permintaan: satu tanggal di dalam daftar
 // tidak menjawab pertanyaan apa pun yang bisa ditindaklanjuti di sini. Kalau
 // riwayat masuk dibutuhkan, tempatnya menu log tersendiri. `lastLogin` masih
 // dikirim GET /api/users; yang hilang cuma pemakainya.
 const columns = [
-  { accessorKey: 'fullName', header: 'Nama' },
-  { accessorKey: 'role', header: 'Role' },
-  { accessorKey: 'email', header: 'Email' },
-  { accessorKey: 'jumlahKegiatan', header: 'Event diikuti' },
-  { accessorKey: 'aksi', header: '' },
-]
+  { accessorKey: "fullName", header: "Nama" },
+  { accessorKey: "role", header: "Role" },
+  { accessorKey: "email", header: "Email" },
+  { accessorKey: "jumlahKegiatan", header: "Event diikuti" },
+  { accessorKey: "aksi", header: "" },
+];
 </script>
 
 <template>
@@ -105,7 +116,13 @@ const columns = [
           Semua akun beserta role dan riwayat keikutsertaannya.
         </p>
       </div>
-      <UButton to="/admin/member/new" color="secondary" size="lg" icon="i-lucide-user-plus" class="shrink-0">
+      <UButton
+        to="/admin/member/new"
+        color="secondary"
+        size="lg"
+        icon="i-lucide-user-plus"
+        class="shrink-0"
+      >
         Tambah Member
       </UButton>
     </div>
@@ -129,7 +146,9 @@ const columns = [
       <template #description>
         <p>Berikan password ini kepada pemiliknya.</p>
         <div class="mt-2 flex flex-wrap items-center gap-2">
-          <code class="rounded bg-white px-2 py-1 font-mono text-sm text-cc-green-800 ring-1 ring-cc-stone-200">
+          <code
+            class="rounded bg-white px-2 py-1 font-mono text-sm text-cc-green-800 ring-1 ring-cc-stone-200"
+          >
             {{ kabarAkun.password }}
           </code>
           <UButton
@@ -148,9 +167,16 @@ const columns = [
       </template>
     </UAlert>
 
-    <div class="mb-6 grid gap-3 rounded-lg border border-cc-green-800 bg-cc-stone-50 p-3 sm:grid-cols-[1fr_200px_170px_auto] sm:items-end">
+    <div
+      class="mb-6 grid gap-3 rounded-lg border border-cc-green-800 bg-cc-stone-50 p-3 sm:grid-cols-[1fr_200px_170px_auto] sm:items-end"
+    >
       <UFormField label="Cari" size="sm">
-        <UInput v-model="q" icon="i-lucide-search" placeholder="Nama atau email" class="w-full" />
+        <UInput
+          v-model="q"
+          icon="i-lucide-search"
+          placeholder="Nama atau email"
+          class="w-full"
+        />
       </UFormField>
       <UFormField label="Role" size="sm">
         <USelect v-model="role" :items="roleOptions" class="w-full" />
@@ -158,7 +184,13 @@ const columns = [
       <UFormField label="Status" size="sm">
         <USelect v-model="aktif" :items="aktifOptions" class="w-full" />
       </UFormField>
-      <UButton color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" :disabled="!adaFilter" @click="reset">
+      <UButton
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-rotate-ccw"
+        :disabled="!adaFilter"
+        @click="reset"
+      >
         Reset
       </UButton>
     </div>
@@ -174,16 +206,31 @@ const columns = [
         empty="Tidak ada member yang cocok."
       >
         <template #fullName-cell="{ row }">
-          <span class="font-semibold text-cc-green-800">{{ row.original.fullName }}</span>
+          <NuxtLink
+            :to="`/admin/member/${row.original.id}`"
+            class="group inline-flex items-start gap-1.5 font-semibold break-words text-cc-green-800 hover:text-cc-brown-500"
+          >
+            {{ row.original.fullName }}
+          </NuxtLink>
         </template>
 
         <!-- Nama rolenya saja. Angka level hanya berarti bagi yang hafal tabel
              wewenang, dan tabel itu sendiri sudah tidak ada di dashboard. -->
         <template #role-cell="{ row }">
-          <UBadge :color="warnaLevel(row.original.level)" variant="subtle" size="sm">
+          <UBadge
+            :color="warnaLevel(row.original.level)"
+            variant="subtle"
+            size="sm"
+          >
             {{ row.original.roleLabel }}
           </UBadge>
-          <UBadge v-if="!row.original.isActive" color="neutral" variant="outline" size="sm" class="ml-1">
+          <UBadge
+            v-if="!row.original.isActive"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="ml-1"
+          >
             nonaktif
           </UBadge>
         </template>
@@ -223,9 +270,14 @@ const columns = [
          dan boleh memotong diri (`truncate`) — di tabel ia memaksa seluruh baris
          melebar, di kartu ia cukup menyusut. -->
     <div class="space-y-3 md:hidden">
-      <p v-if="status === 'pending'" class="text-sm text-cc-stone-500">Memuat…</p>
+      <p v-if="status === 'pending'" class="text-sm text-cc-stone-500">
+        Memuat…
+      </p>
 
-      <p v-else-if="!users.length" class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500">
+      <p
+        v-else-if="!users.length"
+        class="rounded-lg border border-cc-stone-200 bg-white p-4 text-sm text-cc-stone-500"
+      >
         Tidak ada member yang cocok.
       </p>
 
@@ -236,8 +288,12 @@ const columns = [
       >
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <p class="font-semibold break-words text-cc-green-800">{{ u.fullName }}</p>
-            <p v-if="u.email" class="mt-0.5 truncate text-sm text-cc-stone-500">{{ u.email }}</p>
+            <p class="font-semibold break-words text-cc-green-800">
+              {{ u.fullName }}
+            </p>
+            <p v-if="u.email" class="mt-0.5 truncate text-sm text-cc-stone-500">
+              {{ u.email }}
+            </p>
           </div>
 
           <!-- Tombolnya tetap di kanan atas, sejajar dengan tabel — yang berubah
@@ -262,9 +318,15 @@ const columns = [
           </div>
         </div>
 
-        <div class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-cc-stone-100 pt-3">
-          <UBadge :color="warnaLevel(u.level)" variant="subtle" size="sm">{{ u.roleLabel }}</UBadge>
-          <UBadge v-if="!u.isActive" color="neutral" variant="outline" size="sm">nonaktif</UBadge>
+        <div
+          class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-cc-stone-100 pt-3"
+        >
+          <UBadge :color="warnaLevel(u.level)" variant="subtle" size="sm">{{
+            u.roleLabel
+          }}</UBadge>
+          <UBadge v-if="!u.isActive" color="neutral" variant="outline" size="sm"
+            >nonaktif</UBadge
+          >
           <span class="ml-auto text-xs text-cc-stone-500">
             {{ u.jumlahKegiatan }} event diikuti
           </span>

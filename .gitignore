@@ -41,3 +41,6 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Keluaran graphify: graf, cache, dan laporan yang dihasilkan ulang dari sumber.
+graphify-out/

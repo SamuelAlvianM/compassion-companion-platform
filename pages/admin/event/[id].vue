@@ -1067,7 +1067,7 @@ const BAGIAN = [
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl">
+  <div class="mx-auto max-w-8xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <UButton
@@ -1343,7 +1343,7 @@ const BAGIAN = [
           label="Gambar event"
           wajib
           :tanda-galat="!form.coverMediaId && (dicoba || !baru)"
-          petunjuk="Dipakai di kepala halaman event sekaligus di kartu daftar event. Rasio 16:9."
+          petunjuk="Dipakai sebagai thumbnail di daftar event dan gambar utama di detail event"
           :url="gambar"
           :rasio="16 / 9"
           :lebar-pratinjau="288"

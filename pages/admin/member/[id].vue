@@ -9,33 +9,33 @@
 // Add dan Edit sengaja berbentuk sama persis, termasuk kolom passwordnya. Yang
 // dulu memisahkan keduanya adalah modal "Ganti password" yang hanya ada di mode
 // ubah — satu kemampuan yang sama, disembunyikan di balik bentuk yang berbeda.
-definePageMeta({ layout: 'admin' })
+definePageMeta({ layout: "admin" });
 
-const route = useRoute()
-const router = useRouter()
-const id = computed(() => String(route.params.id))
-const baru = computed(() => id.value === 'new')
+const route = useRoute();
+const router = useRouter();
+const id = computed(() => String(route.params.id));
+const baru = computed(() => id.value === "new");
 
-const { user: aktor } = useAuth()
+const { user: aktor } = useAuth();
 
 // Tanpa `username`. Akun di sini masuk memakai emailnya; username tetap ada di
 // database (dipakai tautan lama dan pencarian), tapi diisi server dari email —
 // bukan hal yang perlu diketik ulang oleh siapa pun.
 const form = reactive({
-  fullName: '',
-  email: '',
-  phoneNumber: '',
-  role: 'user',
+  fullName: "",
+  email: "",
+  phoneNumber: "",
+  role: "user",
   isActive: true,
   bolehTulisJurnal: false,
-  password: '',
-})
+  password: "",
+});
 
-const toast = useToast()
-const lihatPassword = ref(true)
-const sibuk = ref(false)
-const galat = ref('')
-const sukses = ref('')
+const toast = useToast();
+const lihatPassword = ref(true);
+const sibuk = ref(false);
+const galat = ref("");
+const sukses = ref("");
 
 /**
  * Akun yang baru lahir, dititipkan ke halaman daftar member.
@@ -45,10 +45,12 @@ const sukses = ref('')
  * atau apa pun yang menyalin URL. State ini hidup di memori satu tab dan dibuang
  * halaman penerima begitu terbaca.
  */
-const akunBaru = useState<{ nama: string, email: string, noHp: string, password: string } | null>(
-  'akun-baru-dibuat',
-  () => null,
-)
+const akunBaru = useState<{
+  nama: string;
+  email: string;
+  noHp: string;
+  password: string;
+} | null>("akun-baru-dibuat", () => null);
 
 /**
  * Id akun yang baru saja dibuat di layar ini.
@@ -64,7 +66,7 @@ const akunBaru = useState<{ nama: string, email: string, noHp: string, password:
  * pertama. Karena itu tombolnya dimatikan begitu satu akun lahir, dan jalan
  * lanjutannya ditulis terang-terangan sebagai tautan.
  */
-const dibuatId = ref('')
+const dibuatId = ref("");
 
 const muat = async () => {
   if (baru.value) {
@@ -73,34 +75,36 @@ const muat = async () => {
     // diketik pendaftar — mengetik ulang nama dan email dari layar sebelah adalah
     // kesempatan salah ketik tanpa satu pun manfaat.
     Object.assign(form, {
-      fullName: String(route.query.nama ?? ''),
-      email: String(route.query.email ?? ''),
-      phoneNumber: String(route.query.wa ?? ''),
+      fullName: String(route.query.nama ?? ""),
+      email: String(route.query.email ?? ""),
+      phoneNumber: String(route.query.wa ?? ""),
       // Akun peserta lahir dengan password bawaan yang sama, dan itu bagian dari
       // alur yang tertulis di modal tab peserta. Passwordnya sendiri TIDAK ikut
       // lewat alamat halaman — yang lewat cuma penanda asalnya.
-      password: route.query.asal === 'peserta' ? PASSWORD_PESERTA : '',
-    })
-    return
+      password: route.query.asal === "peserta" ? PASSWORD_PESERTA : "",
+    });
+    return;
   }
   // Saat SSR, $fetch tidak ikut membawa cookie browser — tanpa penerusan ini
   // endpoint admin menjawab 401 pada render pertama.
-  const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-  const res = await $fetch<any>(`/api/users/${id.value}`, { headers })
-  const u = res.user
+  const headers = import.meta.server
+    ? useRequestHeaders(["cookie"])
+    : undefined;
+  const res = await $fetch<any>(`/api/users/${id.value}`, { headers });
+  const u = res.user;
   Object.assign(form, {
-    fullName: u.fullName ?? '',
-    email: u.email ?? '',
-    phoneNumber: u.phoneNumber ?? '',
-    role: u.role ?? 'user',
+    fullName: u.fullName ?? "",
+    email: u.email ?? "",
+    phoneNumber: u.phoneNumber ?? "",
+    role: u.role ?? "user",
     isActive: u.isActive ?? true,
     bolehTulisJurnal: u.bolehTulisJurnal ?? false,
-    password: '',
-  })
-}
+    password: "",
+  });
+};
 
-await muat()
-watch(id, muat)
+await muat();
+watch(id, muat);
 
 /**
  * Role yang boleh dipilih: hanya yang wewenangnya di bawah aktor, kecuali master
@@ -111,21 +115,22 @@ watch(id, muat)
  */
 const roleOptions = computed(() => {
   const semua = [
-    { value: 'master', label: 'Master', level: 1 },
-    { value: 'admin', label: 'Admin', level: 2 },
-    { value: 'editor', label: 'Editor', level: 3 },
-    { value: 'user', label: 'User', level: 4 },
-  ]
-  const saya = aktor.value
+    { value: "master", label: "Master", level: 1 },
+    { value: "admin", label: "Admin", level: 2 },
+    { value: "editor", label: "Editor", level: 3 },
+    { value: "user", label: "User", level: 4 },
+  ];
+  const saya = aktor.value;
   // Tanpa aktor yang diketahui, master tetap disembunyikan. Sebelumnya daftar
   // penuhlah yang dipakai selagi sesi belum termuat, sehingga "Master" sempat
   // terlihat sekejap oleh admin biasa pada setiap muat halaman.
-  if (!saya) return semua.filter(r => r.value !== 'master')
-  if (saya.role === 'master') return semua
-  return semua.filter(r => r.level > saya.level)
-})
+  if (!saya) return semua.filter((r) => r.value !== "master");
+  if (saya.role === "master") return semua;
+  return semua.filter((r) => r.level > saya.level);
+});
 
-const pesan = (e: any, bawaan: string) => e?.data?.statusMessage ?? e?.statusMessage ?? bawaan
+const pesan = (e: any, bawaan: string) =>
+  e?.data?.statusMessage ?? e?.statusMessage ?? bawaan;
 
 /**
  * Satu tombol simpan untuk kedua mode.
@@ -141,36 +146,36 @@ const pesan = (e: any, bawaan: string) => e?.data?.statusMessage ?? e?.statusMes
  */
 // Diikat ke variabel lokal supaya bisa dipanggil dari template: auto-import Nuxt
 // bekerja pada blok script, dan yang hanya muncul di template tidak ikut terbawa.
-const wajibKosong = belumDiisi
+const wajibKosong = belumDiisi;
 
 /** Tombol simpan sudah pernah ditekan — penanda kolom wajib menyala dari sini,
     bukan sejak formulir dibuka. */
-const dicoba = ref(false)
+const dicoba = ref(false);
 
 const simpan = async () => {
-  dicoba.value = true
+  dicoba.value = true;
 
   // Diperiksa di sini, bukan lewat atribut `required` bawaan HTML: atribut itu
   // membatalkan submit sebelum satu baris pun kode ini jalan, sehingga penanda yang
   // mestinya menyala tidak pernah sempat menyala — yang muncul cuma balon peramban
   // yang bentuknya bukan bentuk aplikasi ini.
-  const kurang: string[] = []
-  if (kosongkah(form.fullName)) kurang.push('Nama lengkap')
-  if (baru.value && kosongkah(form.password)) kurang.push('Password')
+  const kurang: string[] = [];
+  if (kosongkah(form.fullName)) kurang.push("Nama lengkap");
+  if (baru.value && kosongkah(form.password)) kurang.push("Password");
   if (kurang.length) {
-    galat.value = `Masih kosong: ${kurang.join(', ')}.`
-    return
+    galat.value = `Masih kosong: ${kurang.join(", ")}.`;
+    return;
   }
 
-  sibuk.value = true
-  galat.value = ''
-  sukses.value = ''
+  sibuk.value = true;
+  galat.value = "";
+  sukses.value = "";
   try {
     if (baru.value) {
-      const res = await $fetch<any>('/api/admin/users', {
-        method: 'POST',
+      const res = await $fetch<any>("/api/admin/users", {
+        method: "POST",
         body: { ...form },
-      })
+      });
 
       // Kembali ke daftar member, sama seperti mode ubah. Dua formulir yang tombolnya
       // berbunyi sama tidak boleh berakhir di tempat berbeda — yang membuat tiga akun
@@ -183,29 +188,33 @@ const simpan = async () => {
       // peramban maupun apa pun yang menyalin URL.
       akunBaru.value = {
         nama: res.data.fullName ?? form.fullName,
-        email: res.data.email ?? '',
-        noHp: form.phoneNumber ?? '',
+        email: res.data.email ?? "",
+        noHp: form.phoneNumber ?? "",
         password: form.password,
-      }
-      await navigateTo('/admin/members')
-      return
+      };
+      await navigateTo("/admin/members");
+      return;
     }
 
-    const { password, ...tanpaPassword } = form
-    await $fetch(`/api/admin/users/${id.value}`, { method: 'PATCH', body: tanpaPassword })
+    const { password, ...tanpaPassword } = form;
+    await $fetch(`/api/admin/users/${id.value}`, {
+      method: "PATCH",
+      body: tanpaPassword,
+    });
 
     if (password) {
       try {
         await $fetch(`/api/admin/users/${id.value}/password`, {
-          method: 'POST',
+          method: "POST",
           body: { passwordBaru: password },
-        })
-      }
-      catch (e: any) {
+        });
+      } catch (e: any) {
         // Galat password menahan kepergian: kalau halamannya ikut ditinggalkan,
         // yang tersisa cuma kabar "tersimpan" untuk perubahan yang setengah jadi.
-        galat.value = pesan(e, 'Password gagal diganti.') + ' Perubahan data lainnya tetap tersimpan.'
-        return
+        galat.value =
+          pesan(e, "Password gagal diganti.") +
+          " Perubahan data lainnya tetap tersimpan.";
+        return;
       }
     }
 
@@ -218,25 +227,27 @@ const simpan = async () => {
     // peringatan itu pergi bersama halamannya.
     toast.add({
       title: password
-        ? 'Perubahan tersimpan. Password baru sudah dipasang — kirimkan lewat WhatsApp sekarang.'
-        : 'Perubahan tersimpan.',
-      color: 'primary',
-      icon: 'i-lucide-check',
-    })
-    await navigateTo('/admin/members')
+        ? "Perubahan tersimpan. Password baru sudah dipasang — kirimkan lewat WhatsApp sekarang."
+        : "Perubahan tersimpan.",
+      color: "primary",
+      icon: "i-lucide-check",
+    });
+    await navigateTo("/admin/members");
+  } catch (e: any) {
+    galat.value = pesan(e, "Gagal menyimpan akun.");
+  } finally {
+    sibuk.value = false;
   }
-  catch (e: any) { galat.value = pesan(e, 'Gagal menyimpan akun.') }
-  finally { sibuk.value = false }
-}
+};
 
 /** Acak, mudah dibaca lewat telepon: tanpa huruf/angka yang gampang tertukar. */
-const ABJAD = 'abcdefghjkmnpqrstuvwxyz23456789'
+const ABJAD = "abcdefghjkmnpqrstuvwxyz23456789";
 const acakPassword = () => {
   form.password = Array.from(crypto.getRandomValues(new Uint32Array(10)))
-    .map(n => ABJAD[n % ABJAD.length])
-    .join('')
-  lihatPassword.value = true
-}
+    .map((n) => ABJAD[n % ABJAD.length])
+    .join("");
+  lihatPassword.value = true;
+};
 </script>
 
 <template>
@@ -252,32 +263,71 @@ const acakPassword = () => {
     </UButton>
 
     <div class="mb-7">
-      <h1 class="font-serif text-5xl text-cc-green-800">{{ baru ? 'Add Member' : 'Edit Member' }}</h1>
+      <h1 class="font-serif text-5xl text-cc-green-800">
+        {{ baru ? "Add Member" : "Edit Member" }}
+      </h1>
       <p class="mt-2 text-sm text-cc-stone-600">
-        Tidak ada pendaftaran mandiri di situs ini. Semua akun dibuat di sini, lalu passwordnya
-        dikirimkan ke pemiliknya lewat WhatsApp.
+        Tidak ada pendaftaran mandiri di situs ini. Semua akun dibuat di sini,
+        lalu passwordnya dikirimkan ke pemiliknya lewat WhatsApp.
       </p>
     </div>
 
-    <UAlert v-if="galat" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
-    <UAlert v-if="sukses" color="primary" variant="subtle" class="mb-4" icon="i-lucide-check" :description="sukses" />
+    <UAlert
+      v-if="galat"
+      color="error"
+      variant="subtle"
+      class="mb-4"
+      icon="i-lucide-triangle-alert"
+      :description="galat"
+    />
+    <UAlert
+      v-if="sukses"
+      color="primary"
+      variant="subtle"
+      class="mb-4"
+      icon="i-lucide-check"
+      :description="sukses"
+    />
 
     <UCard>
       <UForm :state="form" class="space-y-5" @submit="simpan">
-        <UFormField label="Nama lengkap" name="fullName" required :error="wajibKosong(form.fullName, dicoba)">
-          <UInput v-model="form.fullName" placeholder="Nama pemilik akun" class="w-full" />
+        <UFormField
+          label="Nama lengkap"
+          name="fullName"
+          required
+          :error="wajibKosong(form.fullName, dicoba)"
+        >
+          <UInput
+            v-model="form.fullName"
+            placeholder="Nama pemilik akun"
+            class="w-full"
+          />
         </UFormField>
 
         <UFormField label="Email" name="email">
-          <UInput v-model="form.email" type="email" placeholder="nama@email.com" class="w-full" />
+          <UInput
+            v-model="form.email"
+            type="email"
+            placeholder="nama@email.com"
+            class="w-full"
+          />
         </UFormField>
 
         <UFormField label="Nomor WhatsApp" name="phoneNumber">
-          <UInput v-model="form.phoneNumber" placeholder="08xx xxxx xxxx" class="w-full" />
+          <UInput
+            v-model="form.phoneNumber"
+            placeholder="08xx xxxx xxxx"
+            class="w-full"
+          />
         </UFormField>
 
         <UFormField label="Role" name="role">
-          <USelect v-model="form.role" :items="roleOptions" value-key="value" class="w-full" />
+          <USelect
+            v-model="form.role"
+            :items="roleOptions"
+            value-key="value"
+            class="w-full"
+          />
         </UFormField>
 
         <!-- Kolom yang sama di kedua mode. Pada mode ubah ia boleh dikosongkan;
@@ -294,12 +344,19 @@ const acakPassword = () => {
             v-model="form.password"
             :type="lihatPassword ? 'text' : 'password'"
             autocomplete="new-password"
-            :placeholder="baru ? 'Password yang akan dikirim lewat WhatsApp' : 'Password baru'"
+            :placeholder="
+              baru
+                ? 'Password yang akan dikirim lewat WhatsApp'
+                : 'Password baru'
+            "
             class="w-full"
           >
             <template #trailing>
               <UButton
-                color="neutral" variant="link" size="sm" tabindex="-1"
+                color="neutral"
+                variant="link"
+                size="sm"
+                tabindex="-1"
                 :icon="lihatPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                 aria-label="Tampilkan password"
                 @click="lihatPassword = !lihatPassword"
@@ -309,7 +366,10 @@ const acakPassword = () => {
         </UFormField>
 
         <UButton
-          color="neutral" variant="soft" size="xs" icon="i-lucide-dices"
+          color="neutral"
+          variant="soft"
+          size="xs"
+          icon="i-lucide-dices"
           :disabled="Boolean(dibuatId)"
           @click="acakPassword"
         >
@@ -331,12 +391,13 @@ const acakPassword = () => {
              menulis adalah mereka yang memang diminta atau mengajukan diri. Selama
              tertutup, tombol "Tambah jurnal" tidak digambar sama sekali di halaman
              member — bukan digambar lalu menolak saat ditekan. -->
-        <UFormField v-if="!baru" name="bolehTulisJurnal">
+        <!-- dicomment dulu karna sekarang yang nulis jurnal admin  -->
+        <!-- <UFormField v-if="!baru" name="bolehTulisJurnal">
           <USwitch
             v-model="form.bolehTulisJurnal"
             label="Boleh menulis jurnal"
           />
-        </UFormField>
+        </UFormField> -->
 
         <div class="flex flex-wrap items-center gap-3 pt-2">
           <UButton
@@ -347,7 +408,7 @@ const acakPassword = () => {
             :loading="sibuk"
             :disabled="Boolean(dibuatId)"
           >
-            {{ baru ? 'Buat akun' : 'Simpan perubahan' }}
+            {{ baru ? "Buat akun" : "Simpan perubahan" }}
           </UButton>
 
           <!-- Muncul hanya sesudah satu akun lahir di layar ini. Tautan biasa,

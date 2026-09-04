@@ -177,7 +177,7 @@ const columns = [
 </script>
 
 <template>
-  <div class="mx-auto max-w-7xl">
+  <div class="mx-auto max-w-8xl">
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="font-serif text-5xl text-cc-green-800">Event</h1>
@@ -203,11 +203,11 @@ const columns = [
         placeholder="Cari judul atau slug…"
         class="w-72"
       />
+      <!-- :icon="ikonFase" dihilangkan boss gamau ada ikon fasenya  -->
       <USelect
         v-model="fase"
         :items="faseOptions"
         value-key="value"
-        :icon="ikonFase"
         class="w-48"
       />
 

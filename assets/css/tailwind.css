@@ -35,6 +35,20 @@
  * memakai heksadesimal persis dari Tailwind v3.
  */
 @theme {
+  /* Tailwind v4 berhenti di `--container-7xl`; `max-w-8xl` yang dipakai tiga
+   * halaman admin (`event/[id]`, `events`, `jurnal/[id]`) karena itu TIDAK
+   * menghasilkan apa pun — kelasnya tidak dikenal, tidak diterbitkan ke CSS, dan
+   * tidak ada peringatan apa pun. Yang tergambar bukan halaman selebar 8xl
+   * melainkan halaman TANPA batas lebar sama sekali.
+   *
+   * Kegagalannya menyamar sebagai keberhasilan: di layar 1440px "tanpa batas"
+   * kebetulan terlihat seperti "lebih lebar dari 5xl", persis yang diinginkan.
+   * Baru di monitor lebar tabel adminnya melar sampai tepi.
+   *
+   * 90rem (1440px) adalah lanjutan deret bawaan Tailwind — 6xl 72rem, 7xl 80rem,
+   * jadi 8xl 90rem. */
+  --container-8xl: 90rem;
+
   --color-slate-500: #64748b;
   --color-slate-600: #475569;
   --color-stone-50: #fafaf9;

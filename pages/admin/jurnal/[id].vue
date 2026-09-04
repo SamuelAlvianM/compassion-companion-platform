@@ -73,7 +73,10 @@ const bolehMengirim = computed(() => bolehMenerbitkan.value || milikSaya.value);
  * `editorId`-nya dirinya sendiri.
  */
 const tugasSaya = computed(
-  () => adalahEditor.value && Boolean(editorId.value) && editorId.value === user.value?.id,
+  () =>
+    adalahEditor.value &&
+    Boolean(editorId.value) &&
+    editorId.value === user.value?.id,
 );
 
 // Penanda "Tugas Anda …" dan "Hanya bisa dibaca" dicabut, atas permintaan.
@@ -171,7 +174,7 @@ const { data: dataKegiatan } = useFetch("/api/admin/kegiatan-pilihan", {
  * menyertakannya lewat query — permintaan itu berangkat sebelum jurnalnya selesai
  * dimuat, jadi id yang mau disertakan belum diketahui saat dibutuhkan.
  */
-const kegiatanTerpasang = ref<{ id: string, judul: string } | null>(null);
+const kegiatanTerpasang = ref<{ id: string; judul: string } | null>(null);
 
 /** Sentinel "tidak terkait event". USelectMenu menolak nilai string kosong
     (ComboboxItem melemparkan galat kalau `value=""`), jadi ketiadaan tidak bisa
@@ -297,8 +300,8 @@ const penulisOptions = computed(() => {
 /** Yang sedang terpilih di kotak penulis. `userId` kosong berarti penulisnya
     tidak punya akun — dan itu tetap sebuah pilihan yang tergambar, bukan kotak
     kosong. */
-const penulisPilihan = computed(() =>
-  form.userId || (penulisTanpaAkun.value ? TANPA_AKUN : undefined),
+const penulisPilihan = computed(
+  () => form.userId || (penulisTanpaAkun.value ? TANPA_AKUN : undefined),
 );
 
 /** Memilih penulis mengubah DUA kolom: `userId` yang menautkannya ke profil, dan
@@ -556,9 +559,12 @@ const buatJurnal = async (lanjutReview = false) => {
     });
     await router.replace(`/admin/jurnal/${data.id}`);
   } catch (e: any) {
-    galat.value = pesan(e, lanjutReview
-      ? "Gagal mengirim jurnal untuk direview."
-      : "Gagal menyimpan draft.");
+    galat.value = pesan(
+      e,
+      lanjutReview
+        ? "Gagal mengirim jurnal untuk direview."
+        : "Gagal menyimpan draft.",
+    );
   } finally {
     sibuk.value = false;
   }
@@ -691,7 +697,7 @@ const tabBahasa = ref("id");
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl">
+  <div class="mx-auto max-w-8xl">
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
         <NuxtLink
@@ -825,7 +831,11 @@ const tabBahasa = ref("id");
                alasannya terbaca di tooltipnya. -->
           <UTooltip
             v-if="bolehMenerbitkan && statusJurnal !== 'published'"
-            :text="statusJurnal === 'approved' ? 'Terbitkan ke halaman jurnal' : 'Bisa diterbitkan setelah editor menyetujui'"
+            :text="
+              statusJurnal === 'approved'
+                ? 'Terbitkan ke halaman jurnal'
+                : 'Bisa diterbitkan setelah editor menyetujui'
+            "
           >
             <UButton
               color="primary"
@@ -900,7 +910,9 @@ const tabBahasa = ref("id");
         <UIcon name="i-lucide-message-square-warning" class="size-4 shrink-0" />
         Catatan minta direvisi
       </div>
-      <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line text-cc-stone-700">
+      <p
+        class="mt-1.5 text-sm leading-relaxed whitespace-pre-line text-cc-stone-700"
+      >
         {{ catatanRevisi }}
       </p>
     </div>

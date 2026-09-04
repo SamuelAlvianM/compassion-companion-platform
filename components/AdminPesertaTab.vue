@@ -16,7 +16,7 @@
 // itu hanya terbaca kalau kolomnya sejajar.
 
 const props = defineProps<{
-  kegiatanId: string
+  kegiatanId: string;
   /**
    * Chip status yang sudah terpilih saat tab ini dibuka, dari `?status=` di alamat.
    *
@@ -24,8 +24,8 @@ const props = defineProps<{
    * mendarat langsung di daftar dua belas orang itu, bukan di daftar semua
    * pendaftar yang lalu harus disaring ulang dengan tangan.
    */
-  statusAwal?: string
-}>()
+  statusAwal?: string;
+}>();
 
 /**
  * Terbukanya modal "Tambah peserta" dikendalikan induk.
@@ -35,17 +35,42 @@ const props = defineProps<{
  * baru (PesertaDraf), supaya tombol yang sama tidak berpindah tempat hanya karena
  * eventnya sudah tersimpan.
  */
-const tambahModal = defineModel<boolean>('bukaTambah', { default: false })
+const tambahModal = defineModel<boolean>("bukaTambah", { default: false });
 
 // Tiap status membawa ikonnya sendiri supaya chip terbaca sekilas tanpa membaca
 // labelnya — lima tombol yang bentuknya identik menuntut dibaca satu per satu.
 const STATUS = [
-  { key: 'semua', label: 'Semua', warna: 'neutral' as const, ikon: 'i-lucide-users' },
-  { key: 'baru', label: 'Perlu diproses', warna: 'warning' as const, ikon: 'i-lucide-inbox' },
-  { key: 'proses', label: 'Perlu dikonfirmasi', warna: 'secondary' as const, ikon: 'i-lucide-loader' },
-  { key: 'konfirmasi', label: 'Terkonfirmasi', warna: 'primary' as const, ikon: 'i-lucide-check' },
-  { key: 'batal', label: 'Batal', warna: 'neutral' as const, ikon: 'i-lucide-x' },
-]
+  {
+    key: "semua",
+    label: "Semua",
+    warna: "neutral" as const,
+    ikon: "i-lucide-users",
+  },
+  {
+    key: "baru",
+    label: "Perlu diproses",
+    warna: "warning" as const,
+    ikon: "i-lucide-inbox",
+  },
+  {
+    key: "proses",
+    label: "Perlu dikonfirmasi",
+    warna: "secondary" as const,
+    ikon: "i-lucide-loader",
+  },
+  {
+    key: "konfirmasi",
+    label: "Terkonfirmasi",
+    warna: "primary" as const,
+    ikon: "i-lucide-check",
+  },
+  {
+    key: "batal",
+    label: "Batal",
+    warna: "neutral" as const,
+    ikon: "i-lucide-x",
+  },
+];
 
 /**
  * Warna chip aktif, ditulis sebagai kelas utuh — bukan disusun dari potongan
@@ -54,67 +79,77 @@ const STATUS = [
  * transparan tanpa satu pun galat.
  */
 const warnaChip: Record<string, string> = {
-  neutral: 'bg-cc-stone-700 text-white',
-  warning: 'bg-cc-brown-500 text-white',
-  secondary: 'bg-cc-brown-600 text-white',
-  primary: 'bg-cc-green-800 text-white',
-}
+  neutral: "bg-cc-stone-700 text-white",
+  warning: "bg-cc-brown-500 text-white",
+  secondary: "bg-cc-brown-600 text-white",
+  primary: "bg-cc-green-800 text-white",
+};
 
-const warnaStatus = (s: string) => STATUS.find(x => x.key === s)?.warna ?? 'neutral'
-const labelStatus = (s: string) => STATUS.find(x => x.key === s)?.label ?? s
+const warnaStatus = (s: string) =>
+  STATUS.find((x) => x.key === s)?.warna ?? "neutral";
+const labelStatus = (s: string) => STATUS.find((x) => x.key === s)?.label ?? s;
 
 // Nilai asing diabaikan, jatuh ke "semua": alamat yang salah ketik jangan sampai
 // membuka daftar tanpa satu chip pun menyala, karena yang terlihat lalu sama
 // persis dengan daftar kosong.
-const tab = ref(STATUS.some(s => s.key === props.statusAwal) ? props.statusAwal! : 'semua')
-const cari = ref('')
-const galat = ref('')
-const sibukId = ref('')
+const tab = ref(
+  STATUS.some((s) => s.key === props.statusAwal) ? props.statusAwal! : "semua",
+);
+const cari = ref("");
+const galat = ref("");
+const sibukId = ref("");
 
-const { data, refresh, status: muatStatus } = useFetch(
-  () => `/api/admin/events/${props.kegiatanId}/peserta`,
-  {
-    query: { status: tab, cari },
-    // Cookie tidak ikut terbawa $fetch saat SSR; tanpa penerusan ini render
-    // pertama selalu 401.
-    headers: import.meta.server ? useRequestHeaders(['cookie']) : undefined,
-  },
-)
+const {
+  data,
+  refresh,
+  status: muatStatus,
+} = useFetch(() => `/api/admin/events/${props.kegiatanId}/peserta`, {
+  query: { status: tab, cari },
+  // Cookie tidak ikut terbawa $fetch saat SSR; tanpa penerusan ini render
+  // pertama selalu 401.
+  headers: import.meta.server ? useRequestHeaders(["cookie"]) : undefined,
+});
 
-const peserta = computed(() => data.value?.data ?? [])
+const peserta = computed(() => data.value?.data ?? []);
 // Tipe kembalian ditulis di computed-nya, bukan di-cast pada cabang `??`. Kalau
 // hanya cabang kanan yang dicast, hasilnya union dengan bentuk persis milik
 // server — dan union itu tidak boleh diindeks dengan `string` sembarang.
-const hitung = computed<Record<string, number>>(() => data.value?.meta.perStatus ?? {})
+const hitung = computed<Record<string, number>>(
+  () => data.value?.meta.perStatus ?? {},
+);
 
 /** Rangka hanya saat belum ada data sama sekali. Berganti tab atau mengetik di
     kotak cari membiarkan baris yang sudah tergambar tetap terlihat — kalau tidak,
     tiap huruf yang diketik mengosongkan daftarnya. */
-const memuatAwal = computed(() => muatStatus.value === 'pending' && !data.value)
+const memuatAwal = computed(
+  () => muatStatus.value === "pending" && !data.value,
+);
 
 const columns = [
-  { accessorKey: 'nama', header: 'Nama' },
-  { accessorKey: 'email', header: 'Email' },
-  { accessorKey: 'noHp', header: 'WhatsApp' },
-  { accessorKey: 'berakun', header: 'Status member' },
-  { accessorKey: 'status', header: 'Status Pendaftaran' },
-  { accessorKey: 'aksi', header: 'Aksi' },
-]
+  { accessorKey: "nama", header: "Nama" },
+  { accessorKey: "email", header: "Email" },
+  { accessorKey: "noHp", header: "WhatsApp" },
+  { accessorKey: "berakun", header: "Status member" },
+  { accessorKey: "status", header: "Status Pendaftaran" },
+  { accessorKey: "aksi", header: "Aksi" },
+];
 
 /** Tombol maju berikutnya, atau null kalau sudah di ujung / sudah batal. */
 const langkahMaju = (status: string) =>
-  ({ baru: 'Proses', proses: 'Konfirmasi' } as Record<string, string>)[status] ?? null
+  (({ baru: "Proses", proses: "Konfirmasi" }) as Record<string, string>)[
+    status
+  ] ?? null;
 
 // Diikat ke variabel lokal supaya bisa dibaca template; auto-import Nuxt bekerja
 // pada blok script, dan yang hanya muncul di template tidak dijamin ikut terbawa.
-const passwordBawaan = PASSWORD_PESERTA
+const passwordBawaan = PASSWORD_PESERTA;
 
 /** Alamat form Add Member yang sudah terisi data pendaftar ini. Passwordnya
     sendiri tidak lewat alamat halaman — yang lewat cuma penanda asalnya. */
 const tautanBuatAkun = (p: any) => ({
-  path: '/admin/member/new',
-  query: { nama: p.nama, email: p.email, wa: p.noHp ?? '', asal: 'peserta' },
-})
+  path: "/admin/member/new",
+  query: { nama: p.nama, email: p.email, wa: p.noHp ?? "", asal: "peserta" },
+});
 
 // ── Konfirmasi ───────────────────────────────────────────────────────────────
 // Tiap perpindahan status lewat modal dulu, bukan langsung dari kliknya.
@@ -126,7 +161,7 @@ const tautanBuatAkun = (p: any) => ({
 // semua itu sudah terjadi.
 //
 // Karena isinya daftar periksa dan bukan peringatan bahaya, ia bisa dimatikan.
-type Aksi = 'maju' | 'batal' | 'pulihkan'
+type Aksi = "maju" | "batal" | "pulihkan";
 
 /**
  * Pesan yang sudah dimatikan, disimpan di peramban.
@@ -137,164 +172,183 @@ type Aksi = 'maju' | 'batal' | 'pulihkan'
  * layar ini, bukan sifat akunnya, dan project ini belum punya satu pun kolom
  * preferensi yang bisa ditumpangi.
  */
-const KUNCI_SENYAP = { proses: 'cc.peserta.senyap.proses', konfirmasi: 'cc.peserta.senyap.konfirmasi' }
-const senyap = ref({ proses: false, konfirmasi: false })
+const KUNCI_SENYAP = {
+  proses: "cc.peserta.senyap.proses",
+  konfirmasi: "cc.peserta.senyap.konfirmasi",
+};
+const senyap = ref({ proses: false, konfirmasi: false });
 
 onMounted(() => {
   senyap.value = {
-    proses: localStorage.getItem(KUNCI_SENYAP.proses) === '1',
-    konfirmasi: localStorage.getItem(KUNCI_SENYAP.konfirmasi) === '1',
-  }
-})
+    proses: localStorage.getItem(KUNCI_SENYAP.proses) === "1",
+    konfirmasi: localStorage.getItem(KUNCI_SENYAP.konfirmasi) === "1",
+  };
+});
 
 /** Dicentang di dalam modal; baru ditulis ke localStorage saat aksinya dijalankan.
     Membatalkan modal berarti tidak ada yang berubah, termasuk centang itu. */
-const janganTampilkan = ref(false)
+const janganTampilkan = ref(false);
 
 /** Pendaftar yang menunggu konfirmasi, beserta aksi yang akan dijalankan. */
-const calon = ref<{ peserta: any, aksi: Aksi } | null>(null)
+const calon = ref<{ peserta: any; aksi: Aksi } | null>(null);
 
 /** Pesan mana yang berlaku untuk satu langkah — sekaligus kunci senyapnya. */
-const tahap = (p: any, aksi: Aksi): 'proses' | 'konfirmasi' | null => {
-  if (aksi !== 'maju') return null
-  return p.status === 'baru' ? 'proses' : 'konfirmasi'
-}
+const tahap = (p: any, aksi: Aksi): "proses" | "konfirmasi" | null => {
+  if (aksi !== "maju") return null;
+  return p.status === "baru" ? "proses" : "konfirmasi";
+};
 
 const minta = (peserta: any, aksi: Aksi) => {
-  galat.value = ''
-  const t = tahap(peserta, aksi)
+  galat.value = "";
+  const t = tahap(peserta, aksi);
 
   // Pesan yang sudah dimatikan berarti langsung jalan. `batal` dan `pulihkan`
   // tidak pernah bisa dimatikan: keduanya mengubah keikutsertaan orang, bukan
   // menandai pekerjaan yang sudah selesai.
-  if (t && senyap.value[t]) { jalankan({ peserta, aksi }); return }
+  if (t && senyap.value[t]) {
+    jalankan({ peserta, aksi });
+    return;
+  }
 
-  janganTampilkan.value = false
-  calon.value = { peserta, aksi }
-}
+  janganTampilkan.value = false;
+  calon.value = { peserta, aksi };
+};
 
 /** Isi modal, ditentukan aksi, status peserta, dan apakah ia sudah punya akun. */
 const dialog = computed(() => {
-  const c = calon.value
-  if (!c) return null
-  const nama = c.peserta.nama
+  const c = calon.value;
+  if (!c) return null;
+  const nama = c.peserta.nama;
 
-  if (c.aksi === 'batal') {
+  if (c.aksi === "batal") {
     return {
-      judul: 'Batalkan pendaftaran ini?',
+      judul: "Batalkan pendaftaran ini?",
       isi: `${nama} tidak akan terhitung sebagai peserta event ini dan hilang dari riwayat keikutsertaannya. Pembatalan masih bisa dianulir kembali ke status ${labelStatus(c.peserta.status)}.`,
       langkah: [] as string[],
-      tombol: 'Batalkan pendaftaran',
-      warna: 'error' as const,
-      ikon: 'i-lucide-x',
+      tombol: "Batalkan pendaftaran",
+      warna: "error" as const,
+      ikon: "i-lucide-x",
       bisaDisenyapkan: false,
-    }
+    };
   }
 
-  if (c.aksi === 'pulihkan') {
-    const balik = labelStatus(c.peserta.statusSebelumBatal ?? 'baru')
+  if (c.aksi === "pulihkan") {
+    const balik = labelStatus(c.peserta.statusSebelumBatal ?? "baru");
     return {
-      judul: 'Kembalikan pendaftar ini?',
+      judul: "Kembalikan pendaftar ini?",
       isi: `${nama} kembali ke status ${balik} — status terakhirnya sebelum dibatalkan, bukan diulang dari awal.`,
       langkah: [],
       tombol: `Kembalikan ke ${balik}`,
-      warna: 'primary' as const,
-      ikon: 'i-lucide-rotate-ccw',
+      warna: "primary" as const,
+      ikon: "i-lucide-rotate-ccw",
       bisaDisenyapkan: false,
-    }
+    };
   }
 
   // Maju: dua tahap, dan keduanya berarti pekerjaan yang berbeda.
-  if (c.peserta.status === 'baru') {
+  if (c.peserta.status === "baru") {
     return {
-      judul: 'Proses pendaftaran ini?',
-      isi: 'Pastikan Anda telah melakukan:',
+      judul: "Proses pendaftaran ini?",
+      isi: "Pastikan Anda telah melakukan:",
       langkah: [
-        'kontak peserta via WhatsApp',
-        'masukkan peserta ke dalam WA Group Event',
+        "kontak peserta via WhatsApp",
+        "masukkan peserta ke dalam WA Group Event",
       ],
-      tombol: 'Jadikan Proses',
-      warna: 'secondary' as const,
-      ikon: 'i-lucide-loader',
+      tombol: "Jadikan Proses",
+      warna: "secondary" as const,
+      ikon: "i-lucide-loader",
       // Pada pendaftar tanpa akun ada satu langkah yang menuntut membuka halaman
       // lain, jadi centang "jangan tampilkan lagi" tidak ditawarkan di sana: yang
       // disembunyikan bukan pengingat melainkan satu-satunya jalan ke form itu.
       bisaDisenyapkan: Boolean(c.peserta.berakun),
-    }
+    };
   }
 
   return {
-    judul: 'Konfirmasi pendaftaran ini?',
-    isi: 'Pastikan peserta telah melakukan pembayaran (jika ada) dan berhak atas materi event khusus Peserta.',
+    judul: "Konfirmasi pendaftaran ini?",
+    isi: "Pastikan peserta telah melakukan pembayaran (jika ada) dan berhak atas materi event khusus Peserta.",
     langkah: [],
-    tombol: 'Konfirmasi peserta',
-    warna: 'primary' as const,
-    ikon: 'i-lucide-check',
+    tombol: "Konfirmasi peserta",
+    warna: "primary" as const,
+    ikon: "i-lucide-check",
     bisaDisenyapkan: true,
-  }
-})
+  };
+});
 
 /** Menutup modal tanpa mengirim apa pun. Dipakai tombol Batal maupun klik di luar. */
-const tutupDialog = () => { calon.value = null }
+const tutupDialog = () => {
+  calon.value = null;
+};
 
 // ── Tambah peserta ───────────────────────────────────────────────────────────
 // Untuk yang membooking di luar situs. Formnya di PesertaFormModal.vue, dipakai
 // bersama halaman event baru — di sana yang sama persis disimpan sebagai draf.
-const formTambah = ref<any>(null)
-const menambah = ref(false)
+const formTambah = ref<any>(null);
+const menambah = ref(false);
 
 /** Email yang sudah terpakai, supaya bentrokan tertahan sebelum dikirim. Hanya
     yang sedang terlihat — tab "Semua" tanpa pencarian memuat seluruhnya, dan
     yang lolos dari daftar ini tetap ditolak unique index di server. */
-const emailTerpakai = computed(() => peserta.value.map((p: any) => String(p.email).toLowerCase()))
+const emailTerpakai = computed(() =>
+  peserta.value.map((p: any) => String(p.email).toLowerCase()),
+);
 
 const simpanTambah = async (nilai: any) => {
-  menambah.value = true
-  galat.value = ''
+  menambah.value = true;
+  galat.value = "";
   try {
-    await $fetch(`/api/admin/events/${props.kegiatanId}/peserta`, { method: 'POST', body: nilai })
-    tambahModal.value = false
-    await refresh()
-  }
-  catch (e: any) {
+    await $fetch(`/api/admin/events/${props.kegiatanId}/peserta`, {
+      method: "POST",
+      body: nilai,
+    });
+    tambahModal.value = false;
+    await refresh();
+  } catch (e: any) {
     // Galatnya masuk ke dalam modal, bukan ke halaman di belakangnya: modalnya
     // tetap terbuka, dan isian yang sudah diketik tidak perlu diulang.
-    formTambah.value?.tolak(e?.data?.statusMessage ?? e?.statusMessage ?? 'Gagal menambah peserta.')
+    formTambah.value?.tolak(
+      e?.data?.statusMessage ?? e?.statusMessage ?? "Gagal menambah peserta.",
+    );
+  } finally {
+    menambah.value = false;
   }
-  finally { menambah.value = false }
-}
+};
 
-const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
-  const c = paksa ?? calon.value
-  if (!c) return
-  const id = c.peserta.id
-  galat.value = ''
-  sibukId.value = id
+const jalankan = async (paksa?: { peserta: any; aksi: Aksi }) => {
+  const c = paksa ?? calon.value;
+  if (!c) return;
+  const id = c.peserta.id;
+  galat.value = "";
+  sibukId.value = id;
 
   // Centang disimpan sebelum permintaannya berangkat: yang dimatikan adalah
   // pesannya, dan itu keputusan yang berdiri sendiri dari berhasil-tidaknya
   // perpindahan status ini.
-  const t = tahap(c.peserta, c.aksi)
+  const t = tahap(c.peserta, c.aksi);
   if (t && janganTampilkan.value) {
-    senyap.value[t] = true
-    localStorage.setItem(KUNCI_SENYAP[t], '1')
+    senyap.value[t] = true;
+    localStorage.setItem(KUNCI_SENYAP[t], "1");
   }
 
   try {
-    await $fetch(`/api/admin/peserta/${id}`, { method: 'PATCH', body: { aksi: c.aksi } })
+    await $fetch(`/api/admin/peserta/${id}`, {
+      method: "PATCH",
+      body: { aksi: c.aksi },
+    });
     // Modal ditutup hanya sesudah permintaannya berhasil: kalau gagal, galatnya
     // muncul di dalam modal dan tombolnya bisa ditekan lagi tanpa mencari ulang
     // barisnya di daftar.
-    calon.value = null
-    await refresh()
+    calon.value = null;
+    await refresh();
+  } catch (e: any) {
+    galat.value =
+      e?.data?.statusMessage ??
+      e?.statusMessage ??
+      "Gagal mengubah status pendaftar.";
+  } finally {
+    sibukId.value = "";
   }
-  catch (e: any) {
-    galat.value = e?.data?.statusMessage ?? e?.statusMessage ?? 'Gagal mengubah status pendaftar.'
-  }
-  finally {
-    sibukId.value = ''
-  }
-}
+};
 </script>
 
 <template>
@@ -307,7 +361,7 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
              benar-benar menonjol — sebelumnya lima garis tepi bersaing sama kuat;
            · statusnya berwarna sendiri-sendiri, jadi warnanya ikut jadi penanda,
              bukan sekadar hiasan. -->
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <!-- Di layar sempit: DUA BARIS rata tengah — tiga chip di atas, dua di bawah —
            bukan barisan yang bisa digeser.
 
@@ -336,10 +390,12 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
         <template v-for="(s, i) in STATUS" :key="s.key">
           <button
             type="button"
-            class="inline-flex shrink-0 items-center gap-1 rounded-xl px-1 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors sm:gap-1.5 sm:rounded-full sm:px-3 sm:text-sm"
-            :class="tab === s.key
-              ? warnaChip[s.warna]
-              : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'"
+            class="inline-flex shrink-0 items-center rounded-xl px-0.5 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors sm:gap-1.5 sm:rounded-full sm:px-3 sm:text-sm"
+            :class="
+              tab === s.key
+                ? warnaChip[s.warna]
+                : 'text-cc-stone-600 hover:bg-white hover:text-cc-green-800'
+            "
             :aria-pressed="tab === s.key"
             @click="tab = s.key"
           >
@@ -347,11 +403,13 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
                  48px untuk tiga chip sebaris — dan itu justru selisih yang membuat
                  barisan tiga tidak muat. Labelnya sendiri sudah menyebutkan
                  statusnya; ikonnya di sini penguat, bukan penanda tunggal. -->
-            <UIcon :name="s.ikon" class="hidden size-3.5 sm:inline-block" />
+            <!-- <UIcon :name="s.ikon" class="hidden size-3.5 sm:inline-block" /> -->
             {{ s.label }}
             <span
               class="inline-block min-w-4 rounded-full px-0.5 py-0.5 text-center text-[10px] leading-none tabular-nums sm:min-w-0 sm:px-1.5 sm:text-[11px]"
-              :class="tab === s.key ? 'bg-white/25' : 'bg-white text-cc-stone-500'"
+              :class="
+                tab === s.key ? 'bg-primary/40' : 'bg-white text-cc-stone-500'
+              "
             >
               {{ hitung[s.key] ?? 0 }}
             </span>
@@ -362,19 +420,27 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
           <div v-if="i === 2" class="basis-full sm:hidden" aria-hidden="true" />
         </template>
       </div>
-
-      <UInput
-        v-model="cari"
-        placeholder="Cari nama atau email…"
-        icon="i-lucide-search"
-        size="sm"
-        class="ml-auto w-full sm:w-64"
-      />
+      <div class="ml-2 shadow-xs">
+        <UInput
+          v-model="cari"
+          placeholder="Cari nama atau email…"
+          icon="i-lucide-search"
+          size="md"
+          class="ml-auto w-full sm:w-64"
+        />
+      </div>
     </div>
 
     <!-- Galat saat modal terbuka ditampilkan di dalam modalnya, bukan di sini —
          di belakang lapisan gelap ia tidak akan terbaca. -->
-    <UAlert v-if="galat && !calon" color="error" variant="subtle" class="mb-4" icon="i-lucide-triangle-alert" :description="galat" />
+    <UAlert
+      v-if="galat && !calon"
+      color="error"
+      variant="subtle"
+      class="mb-4"
+      icon="i-lucide-triangle-alert"
+      :description="galat"
+    />
 
     <div v-if="memuatAwal" class="space-y-2" aria-hidden="true">
       <USkeleton v-for="n in 4" :key="n" class="h-11 w-full" />
@@ -393,12 +459,16 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
       :data="peserta"
       class="w-full overflow-x-auto"
       :columns="columns"
-      :empty="cari
-        ? 'Tidak ada pendaftar yang cocok dengan pencarian ini.'
-        : 'Belum ada pendaftar pada status ini.'"
+      :empty="
+        cari
+          ? 'Tidak ada pendaftar yang cocok dengan pencarian ini.'
+          : 'Belum ada pendaftar pada status ini.'
+      "
     >
       <template #nama-cell="{ row }">
-        <span class="font-semibold text-cc-green-800">{{ row.original.nama }}</span>
+        <span class="font-semibold text-cc-green-800">{{
+          row.original.nama
+        }}</span>
         <p v-if="row.original.institusi" class="text-xs text-cc-stone-500">
           {{ row.original.institusi }}
         </p>
@@ -409,7 +479,9 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
       </template>
 
       <template #noHp-cell="{ row }">
-        <span class="text-sm text-cc-stone-700">{{ row.original.noHp || '—' }}</span>
+        <span class="text-sm text-cc-stone-700">{{
+          row.original.noHp || "—"
+        }}</span>
       </template>
 
       <!-- "Member" menjawab satu pertanyaan yang menentukan pekerjaan admin:
@@ -420,15 +492,24 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
           variant="subtle"
           size="sm"
         >
-          {{ row.original.berakun ? 'Member' : 'Non member' }}
+          {{ row.original.berakun ? "Member" : "Non member" }}
         </UBadge>
       </template>
 
       <template #status-cell="{ row }">
-        <UBadge :color="warnaStatus(row.original.status)" variant="subtle" size="sm">
+        <UBadge
+          :color="warnaStatus(row.original.status)"
+          variant="subtle"
+          size="sm"
+        >
           {{ labelStatus(row.original.status) }}
         </UBadge>
-        <p v-if="row.original.status === 'batal' && row.original.statusSebelumBatal" class="text-xs text-cc-stone-500">
+        <p
+          v-if="
+            row.original.status === 'batal' && row.original.statusSebelumBatal
+          "
+          class="text-xs text-cc-stone-500"
+        >
           dari {{ labelStatus(row.original.statusSebelumBatal) }}
         </p>
       </template>
@@ -488,12 +569,19 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
     <UModal
       :open="calon !== null"
       :title="dialog?.judul ?? ''"
-      @update:open="(nilai: boolean) => { if (!nilai) tutupDialog() }"
+      @update:open="
+        (nilai: boolean) => {
+          if (!nilai) tutupDialog();
+        }
+      "
     >
       <template #body>
         <p class="text-sm text-cc-stone-600">{{ dialog?.isi }}</p>
 
-        <ul v-if="dialog?.langkah.length" class="mt-2 space-y-1 text-sm text-cc-stone-700">
+        <ul
+          v-if="dialog?.langkah.length"
+          class="mt-2 space-y-1 text-sm text-cc-stone-700"
+        >
           <li v-for="l in dialog.langkah" :key="l" class="flex gap-2">
             <span class="text-cc-brown-500">–</span>
             <span>{{ l }}</span>
@@ -517,18 +605,34 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
           </li>
         </ul>
 
-        <div v-if="calon" class="mt-3 rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3">
+        <div
+          v-if="calon"
+          class="mt-3 rounded-lg border border-cc-stone-200 bg-cc-stone-50 p-3"
+        >
           <div class="flex flex-wrap items-center gap-2">
-            <span class="font-semibold text-cc-green-800">{{ calon.peserta.nama }}</span>
-            <UBadge :color="warnaStatus(calon.peserta.status)" variant="subtle" size="sm">
+            <span class="font-semibold text-cc-green-800">{{
+              calon.peserta.nama
+            }}</span>
+            <UBadge
+              :color="warnaStatus(calon.peserta.status)"
+              variant="subtle"
+              size="sm"
+            >
               {{ labelStatus(calon.peserta.status) }}
             </UBadge>
-            <UBadge :color="calon.peserta.berakun ? 'secondary' : 'neutral'" variant="subtle" size="sm">
-              {{ calon.peserta.berakun ? 'Member' : 'Non member' }}
+            <UBadge
+              :color="calon.peserta.berakun ? 'secondary' : 'neutral'"
+              variant="subtle"
+              size="sm"
+            >
+              {{ calon.peserta.berakun ? "Member" : "Non member" }}
             </UBadge>
           </div>
           <p class="mt-1 text-sm text-cc-stone-600">
-            {{ calon.peserta.email }}<template v-if="calon.peserta.noHp"> · {{ calon.peserta.noHp }}</template>
+            {{ calon.peserta.email
+            }}<template v-if="calon.peserta.noHp">
+              · {{ calon.peserta.noHp }}</template
+            >
           </p>
         </div>
 
@@ -551,7 +655,9 @@ const jalankan = async (paksa?: { peserta: any, aksi: Aksi }) => {
 
       <template #footer>
         <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="tutupDialog">Batal</UButton>
+          <UButton color="neutral" variant="ghost" @click="tutupDialog"
+            >Batal</UButton
+          >
           <UButton
             :color="dialog?.warna ?? 'primary'"
             :icon="dialog?.ikon"
