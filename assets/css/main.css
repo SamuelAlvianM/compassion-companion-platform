@@ -1716,52 +1716,16 @@ a[href^="https://wa.me/"]::before {
    `.journal-count` ikut dicabut bersama barisnya di markup — lihat catatan di
    pages/jurnal/index.vue. */
 
-.journal-controls {
-  display: grid;
-  grid-template-columns: 300px 1fr 155px;
-  gap: 0;
-  background: var(--color-surface);
-  border-radius: 8px;
-  padding: 7px;
-  margin-top: 28px;
-  color: var(--color-text);
-  position: relative;
-}
-.control-field,
-.search-field,
-.sort-field {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-.control-field {
-  border-right: 1px solid var(--color-line);
-  padding: 0 12px;
-}
-.control-field span,
-.sort-field span {
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.search-field {
-  padding: 0 8px;
-}
-.sort-field {
-  padding-left: 10px;
-}
-.control-event {
-  position: absolute;
-  top: 54px;
-  left: 0;
-  width: 360px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  border-radius: 0 0 8px 8px;
-  padding: 10px;
-  z-index: 2;
-}
+/* Ikut dicabut di sini: `.journal-controls` beserta `.control-field`,
+   `.search-field`, `.sort-field`, dan `.control-event` — penyaring lama yang
+   digambar sendiri sebagai kisi tiga kolom, sebelum barisnya diganti UInput/USelect
+   dari Nuxt UI. Tidak ada satu pun template yang memakai kelima kelas itu lagi.
+
+   Tiga aturan turunannya ikut hilang: blok 850px yang melipat kisinya jadi satu
+   kolom, dan blok 639px yang menyembunyikannya. Blok 639px itu sendiri lahir dari
+   satu bug yang layak diingat walau kodenya sudah pergi — `display: grid` di
+   berkas ini tidak berlayer, jadi ia mengalahkan `hidden` milik Tailwind yang
+   ber-layer, dan menyembunyikannya lewat markup tidak pernah bekerja. */
 .journal-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1862,26 +1826,6 @@ a[href^="https://wa.me/"]::before {
   }
 }
 
-@media (max-width: 850px) {
-  .journal-controls {
-    grid-template-columns: 1fr;
-    gap: 9px;
-  }
-  .control-field {
-    border-right: 0;
-    padding: 0;
-  }
-  .control-event {
-    position: static;
-    width: auto;
-  }
-  .search-field {
-    padding: 0;
-  }
-  .sort-field {
-    padding-left: 0;
-  }
-}
 @media (max-width: 480px) {
   .journal-card h2 {
     font-size: 27px;
@@ -2645,23 +2589,6 @@ a[href^="https://wa.me/"]::before {
   margin-bottom: 0;
 }
 
-/* `.journal-controls` diberi `display: grid` oleh aturan tanpa layer di berkas ini,
-   dan aturan tanpa layer menang atas utility Tailwind yang ber-layer — jadi `hidden`
-   di markup tidak pernah menyembunyikannya.
-
-   HARUS di akhir berkas. Percobaan pertama menaruhnya di dekat `.filter-bar`
-   (baris ~730), sementara `.journal-controls` sendiri didefinisikan di baris ~1236 —
-   dan media query tidak menambah spesifisitas, jadi yang belakangan tetap menang.
-   Kesalahan yang sama sudah tiga kali muncul di berkas ini.
-
-   639px = tepat di bawah `sm` (640px), sejajar dengan `sm:hidden` pada bilah
-   bawahnya, supaya tidak ada lebar layar yang menampilkan keduanya atau tidak satu
-   pun. */
-@media (max-width: 639px) {
-  .journal-controls {
-    display: none;
-  }
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PENGETATAN RUANG DI PONSEL
