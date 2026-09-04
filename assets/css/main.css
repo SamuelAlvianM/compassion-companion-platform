@@ -309,18 +309,28 @@ h3,
   gap: 30px;
 }
 
-.event-page {
+/* `.journal-page` ikut disebut di setiap aturan rangka halaman ini, BUKAN
+   disalin ke bloknya sendiri. Kedua halaman punya bentuk yang sama persis —
+   kepala halaman di atas pita hijau, lalu isinya mengalir menembus batas warna —
+   dan menyalinnya berarti dua tempat yang harus diingat bersamaan setiap kali
+   tinggi pita atau ukuran judulnya diubah. Pelajaran yang sama sudah ditulis
+   untuk `.filter-bar` dan dilanggar sekali di blok ponsel: pinjam deklarasinya,
+   jangan salin nilainya. */
+.event-page,
+.journal-page {
   padding: 74px 0 80px;
   background: linear-gradient(#102944 0 300px, var(--paper) 300px);
   min-height: 100vh;
 }
 
-.event-page .page-head {
+.event-page .page-head,
+.journal-page .page-head {
   color: white;
   margin-bottom: 45px;
 }
 
-.event-page h1 {
+.event-page h1,
+.journal-page h1 {
   font-size: 58px;
   margin: 10px 0;
 }
@@ -422,7 +432,7 @@ h3,
    `left` dipatok ke lebar sidebar (bukan `right` di dalam aside) supaya tidak kena
    pemotongan overflow milik sidebar, dan ikut bergeser saat sidebar dilipat. */
 .sidebar-toggle {
-  position: absolute;
+  position: fixed;
   top: 92px;
   left: 254px;
   transform: translateX(-50%);
@@ -605,7 +615,8 @@ h3,
     font-size: 40px;
   }
 
-  .event-page h1 {
+  .event-page h1,
+  .journal-page h1 {
     font-size: 45px;
   }
 
@@ -668,11 +679,13 @@ h3,
   }
 }
 
-.event-page {
+.event-page,
+.journal-page {
   padding-top: 40px;
 }
 
-.event-page .page-head {
+.event-page .page-head,
+.journal-page .page-head {
   margin-bottom: 30px;
 }
 
@@ -830,7 +843,8 @@ body {
   color: var(--color-surface);
 }
 
-.event-page {
+.event-page,
+.journal-page {
   background: linear-gradient(
     var(--color-primary) 0 300px,
     var(--color-surface) 300px
@@ -1684,25 +1698,24 @@ a[href^="https://wa.me/"]::before {
   }
 }
 
-.journal-hero {
-  height: 300px;
-  box-sizing: border-box;
-  background: var(--color-primary);
-  color: var(--color-surface);
-  padding: 40px 0;
-}
-.journal-hero .eyebrow {
-  color: var(--color-accent);
-}
-.journal-hero h1 {
-  font-size: 58px;
-  line-height: 1.08;
-  margin: 10px 0;
-}
-.journal-hero p {
-  margin: 0;
-  font-size: 16px;
-}
+/* `.journal-hero` dan `.journal-listing` DICABUT, bukan disembunyikan.
+
+   Keduanya adalah dua bagian bertumpuk: pita hijau setinggi 300px, lalu bidang
+   krem di bawahnya. Karena masing-masing menggambar latarnya sendiri, tidak ada
+   isi yang bisa menyeberangi batas keduanya — apa pun yang ditaruh di sana akan
+   berhenti di garis itu. Garis yang tidak pernah ditabrak apa pun terbaca sebagai
+   jahitan antara dua halaman yang ditempel.
+
+   Halaman ini kini memakai rangka yang sama dengan halaman event: satu latar
+   dengan titik henti di 300px, dan isinya mengalir di atasnya. Lihat
+   `.event-page, .journal-page` di bagian atas berkas.
+
+   `.journal-hero p { font-size: 16px }` juga ikut hilang dan itu disengaja:
+   pengantar halaman kini memakai ukuran bawaan `p`, sama dengan halaman event.
+
+   `.journal-count` ikut dicabut bersama barisnya di markup — lihat catatan di
+   pages/jurnal/index.vue. */
+
 .journal-controls {
   display: grid;
   grid-template-columns: 300px 1fr 155px;
@@ -1748,16 +1761,6 @@ a[href^="https://wa.me/"]::before {
   border-radius: 0 0 8px 8px;
   padding: 10px;
   z-index: 2;
-}
-.journal-listing {
-  background: var(--color-surface-alt);
-  padding: 0 0 70px;
-}
-.journal-count {
-  color: var(--color-muted);
-  margin: 0 0 18px;
-  padding-top: 24px;
-  font-size: 13px;
 }
 .journal-grid {
   display: grid;
@@ -1843,15 +1846,23 @@ a[href^="https://wa.me/"]::before {
   padding: 50px;
   color: var(--color-muted);
 }
+/* Kisi kartu jurnal mengikuti titik patah `.event-page .cards`: tiga kolom,
+   dua di bawah 900px, satu di bawah 640px. Sebelumnya ia melompat dari tiga
+   langsung ke satu di 850px — di tablet 800px kartunya jadi selebar 760px, satu
+   per baris, sementara halaman event di lebar yang sama masih dua kolom. */
+@media (max-width: 900px) {
+  .journal-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .journal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 850px) {
-  .journal-hero {
-    height: auto;
-    min-height: 300px;
-    padding: 40px 0;
-  }
-  .journal-hero h1 {
-    font-size: 43px;
-  }
   .journal-controls {
     grid-template-columns: 1fr;
     gap: 9px;
@@ -1870,14 +1881,8 @@ a[href^="https://wa.me/"]::before {
   .sort-field {
     padding-left: 0;
   }
-  .journal-grid {
-    grid-template-columns: 1fr;
-  }
 }
 @media (max-width: 480px) {
-  .journal-hero h1 {
-    font-size: 36px;
-  }
   .journal-card h2 {
     font-size: 27px;
   }
@@ -2517,7 +2522,8 @@ a[href^="https://wa.me/"]::before {
    Titik hentinya dijadikan variabel supaya halaman semacam itu cukup menaikkan
    satu nilai, bukan menyalin ulang seluruh aturan gradien dan berisiko lepas dari
    palet saat warnanya diganti. */
-.event-page {
+.event-page,
+.journal-page {
   --pita-hijau: 300px;
   background: linear-gradient(
     var(--color-primary) 0 var(--pita-hijau),
@@ -2734,12 +2740,14 @@ a[href^="https://wa.me/"]::before {
 
        `margin-inline` negatif menembus selokan `.container` supaya pitanya tetap
        selebar layar seperti sebelumnya. */
-  .event-page {
+  .event-page,
+  .journal-page {
     padding: 0 0 48px;
     background: var(--paper);
   }
 
-  .event-page .page-head {
+  .event-page .page-head,
+  .journal-page .page-head {
     /* `var(--color-primary)`, BUKAN `#102944`.
            Nilai biru itu tersalin dari aturan dasar `.event-page` di baris ~304 —
            dan aturan itu sendiri sudah ditimpa blok tema di baris ~798 menjadi
@@ -2756,7 +2764,8 @@ a[href^="https://wa.me/"]::before {
     padding: 18px 16px 22px;
   }
 
-  .event-page h1 {
+  .event-page h1,
+  .journal-page h1 {
     font-size: 30px;
     line-height: 1.12;
   }
@@ -2770,43 +2779,23 @@ a[href^="https://wa.me/"]::before {
        (`mb-3` di markup), bukan di atasnya. Begitu digulir, bilahnya lepas dari
        pita dan menempel di bawah navbar — dan di situ jarak atasnya memang tidak
        diperlukan karena yang di atasnya navbar, bukan pita. */
-  .event-page .page-head {
+  .event-page .page-head,
+  .journal-page .page-head {
     margin-bottom: 0;
   }
 
   /* Kalimat pengantar di bawah judul: dua baris 16px. Diturunkan ke 14px, ukuran
        yang sama dengan pengantar halaman jurnal, supaya keduanya sepadan. */
-  .event-page .page-head p {
+  .event-page .page-head p,
+  .journal-page .page-head p {
     font-size: 14px;
     line-height: 1.45;
   }
 
   .event-page .eyebrow,
-  .journal-hero .eyebrow {
+  .journal-page .eyebrow {
     font-size: 11px;
     letter-spacing: 0.12em;
-  }
-
-  .journal-hero {
-    height: auto;
-    min-height: 0;
-    padding: 18px 0 16px;
-  }
-
-  .journal-hero h1 {
-    font-size: 30px;
-    line-height: 1.12;
-    margin: 6px 0;
-  }
-
-  .journal-hero p {
-    font-size: 14px;
-  }
-
-  .journal-count {
-    padding-top: 10px;
-    margin-bottom: 10px;
-    font-size: 12px;
   }
 
   /* ── Bagian isi halaman utama ────────────────────────────────────────────
