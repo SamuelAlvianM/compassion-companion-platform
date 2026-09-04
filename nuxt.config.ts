@@ -214,6 +214,37 @@ export default defineNuxtConfig({
   app: {
     pageTransition: { name: "page", mode: "out-in" },
     layoutTransition: { name: "layout", mode: "out-in" },
+
+    /**
+     * Satu baris skrip yang menyalakan reveal-saat-gulir di beranda.
+     *
+     * Yang menyembunyikan elemen di main.css adalah `html.js-reveal .reveal`,
+     * bukan `.reveal` sendirian. Artinya penyembunyian itu hanya berlaku kalau
+     * baris ini benar-benar berjalan — tanpa JavaScript, seluruh isi halaman
+     * tampil apa adanya dan tidak ada yang perlu "dikembalikan" oleh siapa pun.
+     * Pola reveal yang menyembunyikan lewat CSS tanpa pagar semacam ini punya satu
+     * mode gagal yang parah: JS-nya tidak jalan, dan halaman kosong tanpa satu
+     * galat pun.
+     *
+     * HARUS `tagPosition: "head"` dan tanpa `defer`/`async`. Skrip ini perlu
+     * selesai SEBELUM <body> tergambar; kalau kelasnya baru dipasang saat komponen
+     * dipasang (`onMounted`), yang terlihat adalah isi halaman muncul utuh sepersekian
+     * detik lalu tiba-tiba hilang untuk dianimasikan — kedipan yang justru lebih
+     * buruk daripada tidak ada animasi sama sekali.
+     *
+     * Preferensi "reduce motion" TIDAK dicek di sini melainkan di
+     * composables/useRevealGulir.ts, yang mencabut kelasnya lagi. Menaruh
+     * pengecekannya di sini berarti menduplikasi syarat yang sama di dua tempat,
+     * dan yang satu pasti akan tertinggal saat yang lain diubah.
+     */
+    head: {
+      script: [
+        {
+          innerHTML: "document.documentElement.classList.add('js-reveal')",
+          tagPosition: "head",
+        },
+      ],
+    },
   },
 
   icon: { serverBundle: { collections: ["lucide"] } },

@@ -1867,6 +1867,7 @@ a[href^="https://wa.me/"]::before {
 .journal-card,
 .sharing-card,
 .reflection-card,
+.reflection-card,
 .gallery-item,
 .links a,
 .admin-menu a,
@@ -1885,13 +1886,74 @@ a[href^="https://wa.me/"]::before {
 
 .card:hover,
 .journal-card:hover,
-.sharing-card:hover {
+.sharing-card:hover,
+.reflection-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 30px #1e29361f;
 }
 
+/* Tanda kutip besar di kepala kartu refleksi ikut hidup saat kartunya disentuh:
+   membesar sedikit dan warnanya menguat. Yang bergerak sengaja dipilih elemen ini,
+   bukan seluruh isi kartu — kutipan adalah hal pertama yang dilihat mata di kartu
+   ini, dan menggerakkan satu titik fokus terbaca lebih tenang daripada
+   menggerakkan semuanya sekaligus.
+
+   `transform-origin` di kiri-bawah supaya pembesarannya tidak mendorong baris nama
+   di bawahnya; tanpa itu, huruf kutipnya tumbuh ke segala arah dan tepi atas kartu
+   terasa sesak.
+
+   Transisinya diwarisi dari daftar di atas — `.reflection-card` ikut disebut di
+   sana — jadi `.quote-mark` cukup menyatakan miliknya sendiri. */
+.quote-mark {
+  transition:
+    transform 0.3s ease,
+    color 0.3s ease;
+  transform-origin: left bottom;
+  will-change: transform;
+}
+
+.reflection-card:hover .quote-mark {
+  transform: scale(1.14);
+  color: var(--color-accent);
+}
+
 .links a:hover {
   color: var(--color-accent);
+}
+
+/* ── Keadaan awal reveal-saat-gulir ──────────────────────────────────────────
+   Elemen ber-`data-reveal` di beranda mulai dari tidak terlihat, lalu dinaikkan
+   anime.js begitu bagiannya masuk viewport (composables/useRevealGulir.ts).
+
+   Selektornya `html.js-reveal`, BUKAN `[data-reveal]` sendirian, dan itu bukan
+   kerapian melainkan pagar: kelas `js-reveal` hanya ada kalau skrip sebaris di
+   <head> benar-benar berjalan (lihat nuxt.config.ts). Tanpa JavaScript — atau
+   kalau anime.js gagal dimuat, saat mana composable-nya mencabut kelas itu —
+   aturan ini tidak pernah cocok dan halaman tampil utuh. Reveal yang
+   menyembunyikan tanpa pagar semacam ini gagal dengan cara paling buruk: halaman
+   kosong, tanpa satu galat pun di konsol.
+
+   `translateY` disebut di sini juga, bukan hanya di JS, supaya bingkai pertama
+   sudah berada di posisi awal yang benar. Kalau hanya opacity yang disetel CSS,
+   elemen tak terlihat itu tetap menempati posisi akhirnya, dan begitu anime.js
+   memasang `translateY` awalnya, tata letak sekitarnya sempat bergeser sekali. */
+/* `:not(.is-terlihat)` — dan itu satu-satunya bentuk yang benar di sini.
+
+   Percobaan sebelumnya memakai dua aturan yang saling menimpa: satu menyembunyikan
+   `[data-reveal]`, satu lagi menampilkan `[data-reveal].is-terlihat`. Hasilnya benar
+   dilihat sekilas dan salah begitu kartunya disentuh — `html.js-reveal
+   [data-reveal].is-terlihat` berspesifisitas (0,3,1) dan MENGALAHKAN `.card:hover`
+   yang cuma (0,2,0). Bayangannya berubah saat disentuh (properti lain, tidak
+   bertabrakan) tapi kartunya tidak terangkat sedikit pun. Bug yang sangat mudah
+   dikira "hover-nya belum dibuat".
+
+   Dengan `:not()`, tidak ada aturan tandingan: begitu composable memasang
+   `is-terlihat`, aturan ini BERHENTI COCOK dan elemennya kembali ke keadaan
+   normalnya — tidak ada `transform` yang dinyatakan siapa pun, jadi `:hover` bebas
+   memilikinya. Satu aturan, bukan dua yang berebut. */
+html.js-reveal [data-reveal]:not(.is-terlihat) {
+  opacity: 0;
+  transform: translateY(26px);
 }
 
 /* Hormati preferensi sistem: kalau pengguna meminta gerakan dikurangi, matikan
@@ -1914,7 +1976,23 @@ a[href^="https://wa.me/"]::before {
 
   .card:hover,
   .journal-card:hover,
-  .sharing-card:hover {
+  .sharing-card:hover,
+  .reflection-card:hover {
+    transform: none;
+  }
+
+  .reflection-card:hover .quote-mark {
+    transform: none;
+  }
+
+  /* Pagar kedua untuk reveal. useRevealGulir.ts sudah mencabut `js-reveal` begitu
+     ia membaca preferensi ini, jadi aturan di bawah seharusnya tidak pernah
+     terpakai — tapi di antara skrip <head> dan composable yang dipasang, ada satu
+     jendela waktu tempat kelasnya sudah terpasang. Tanpa baris ini, jendela itu
+     terlihat sebagai halaman yang berkedip kosong justru bagi pengguna yang secara
+     eksplisit meminta lebih sedikit gerakan. */
+  html.js-reveal [data-reveal]:not(.is-terlihat) {
+    opacity: 1;
     transform: none;
   }
 
